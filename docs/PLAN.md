@@ -59,8 +59,10 @@ Done when: unit tests cover create, clone, property validation, notification
 signals and hit testing; `hmi_core` links without Qt Quick.
 
 Status: done. Build scaffolding from phase 0 (presets, warnings as errors,
-dependency fetching, clang-format, clang-tidy, CI) came with it; the Qt Quick
-shell, `AppContext` and `Theme` from phase 0 are still open.
+dependency fetching, clang-format, clang-tidy) came with it; the Qt Quick
+shell, `AppContext` and `Theme` from phase 0 are still open. CI is deferred
+until the application is further along: aqtinstall cannot yet install Qt 6.12
+on Windows, and the Conan route (local branch `wip/conan-ci`) is unfinished.
 
 ## Phase 2 — Canvas and input
 
