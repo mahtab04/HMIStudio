@@ -43,7 +43,9 @@ and all tests pass.
    Items are created and changed on the GUI thread only.
 8. **No new singletons**, in C++ or QML. Only registries filled at start-up
    may be function-local statics. Everything else is reached through
-   `AppContext` and exposed to QML as a context object.
+   `AppContext` and passed to QML as a typed required property of the root
+   window (`setInitialProperties`), then down to panels as required
+   properties. No context properties.
 9. **No blocking I/O on the GUI thread.** Drivers run on the `TagEngine`
    worker thread.
 10. **Every saved file has `formatVersion`.** A format change needs a
@@ -136,16 +138,23 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 1. Create the class in `src/quick/`, deriving from `QQuickPaintedItem` when
    `QPainter` drawing is simplest, or `QQuickItem` with `updatePaintNode()`
    for lines and rectangles that change every frame (grid, guides, handles).
+   Build scene-graph content from rectangle and transform nodes
+   (`SceneGraphShapes`), never custom geometry or materials: the software
+   backend ignores those. After adding or removing nodes, call
+   `SceneGraphShapes::refreshTransform(data->transformNode)` before
+   returning.
 2. Add `QML_ELEMENT`; list the header in the module's `qt_add_qml_module`.
 3. For a plain `QQuickItem` that draws, call `setFlag(ItemHasContents)`.
 4. Expose configuration as `Q_PROPERTY`s; call `update()` in setters when the
    value changes, and only then.
 5. In `updatePaintNode()`, use only member data copied on the GUI thread;
-   reuse the old node instead of recreating it.
+   reuse the old root node instead of recreating it.
 6. Do not accept input in the item. Input goes through `CanvasItem` and the
    gesture path.
 7. Test offscreen: create a `QQuickWindow`, add the item, grab the window and
-   compare with a reference image, or assert on item state.
+   check pixels, or assert on item state. Offscreen tests run on the software
+   renderer, so they also prove the item works without a GPU. Put the item
+   away from the window origin in at least one test.
 
 ## Recipe: add a gesture
 
@@ -189,7 +198,8 @@ For canvas parts such as overlays, rulers or a new viewport feature.
    `QAbstractListModel`, `QAbstractTableModel` or `QAbstractItemModel` with
    named roles, plus invokables for actions. Edits go through `setData`,
    which pushes a command.
-2. Expose it from `AppContext` as a context object.
+2. Own it in `AppContext` and pass it to `Main.qml` as a required property
+   (`setInitialProperties` in `main.cpp` and `EditorShellTest`).
 3. Write the QML view under `src/editor/qml/panels/`: `ListView`,
    `TableView` or `TreeView` with a delegate. Bindings and one-line calls
    only.

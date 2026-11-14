@@ -277,8 +277,11 @@ registries, so new ones do not touch existing code.
 On Singleton: registries are safe as singletons because they are filled once
 and then read-only. Document state, settings, the undo stack and the tag
 engine are not singletons; they live in an `AppContext` created in `main()`.
-QML reaches them through context objects set on the engine, not through QML
-singletons with hidden state.
+QML reaches them as typed required properties of the root window, set with
+`QQmlApplicationEngine::setInitialProperties()` and passed down to each
+panel as required properties. Unlike context properties this keeps every
+access visible to `qmllint` and the QML compiler; there are no QML singletons
+with hidden state.
 
 ## 7. Editor application
 
@@ -286,7 +289,7 @@ singletons with hidden state.
 
 ```
 CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all input
-├─ GridItem : QQuickItem           scene-graph lines (QSGGeometryNode)
+├─ GridItem : QQuickItem           one-pixel rectangle nodes
 ├─ ScreenItem : QQuickItem         one Screen; scaled and translated by CanvasItem
 │  └─ ObjectItem : QQuickPaintedItem   one per HmiObject, in z-order
 ├─ SelectionOverlay : QQuickItem   frame, handles, rotation handle, size label
@@ -302,6 +305,15 @@ CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all inp
   stores no state of its own.
 - Overlays are siblings above the screen, drawn in viewport coordinates so
   handles keep a constant on-screen size at any zoom.
+- Grid and overlays are built only from rectangle and transform nodes
+  (`SceneGraphShapes`), because the software scene graph backend, used where
+  no GPU is available, ignores custom geometry nodes. After rebuilding its
+  nodes an overlay marks its item transform node dirty: the software
+  renderer otherwise places nodes added to an already rendered subtree with
+  a stale transform.
+- Tools preview by moving `ObjectItem`s (`ICanvasView::setPreviewGeometry`)
+  and drawing on the overlay; the model changes once, through a command, when
+  the gesture ends.
 - Only `CanvasItem` accepts input. Object items are not interactive in edit
   mode; that keeps all interaction logic in tools rather than spread over
   items.
@@ -577,8 +589,8 @@ composites. Consequences and how they are handled:
   basic shapes (rectangle, line, ellipse) with scene-graph geometry nodes in
   `updatePaintNode` instead of textures; evaluate Qt Canvas Painter, the
   GPU-accelerated painter added in Qt 6.12, as a replacement painter.
-- **Antialiasing.** `setAntialiasing(true)` on painted items; overlays drawn
-  with geometry nodes use multisampling on the window.
+- **Antialiasing.** `setAntialiasing(true)` on painted items; overlay lines
+  are axis-aligned one-pixel rectangles snapped to whole pixels.
 - **Level of detail.** `PaintContext` carries the current zoom; below a
   threshold objects skip small text and tick marks.
 - **Icons.** Toolbox and toolbar icons are single-colour SVGs recoloured from

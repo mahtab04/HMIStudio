@@ -9,15 +9,23 @@ properties, tag binding, simulation), written in C++20 with Qt 6 Qt Quick.
 
 ## Status
 
-Phase 1 (core model) is in place: `hmi_core` with strong ids, the property
-system with validation, `HmiObject` with Rectangle, Ellipse, Line and Text box,
-the self-registering `ObjectRegistry`, `Screen`, `Project`,
-`DocumentNotifier`, `ScreenBuilder` and `HitTester`, all covered by unit
-tests. The Qt Quick shell (phase 0) and the canvas (phase 2) are next.
+- Phase 1, core model: `hmi_core` with strong ids, the property system,
+  Rectangle, Ellipse, Line and Text box, the object registry, `Screen`,
+  `Project`, `DocumentNotifier`, `ScreenBuilder` and `HitTester`.
+- Phase 2, canvas and input (with the phase 0 shell): the Qt Quick editor
+  window, a canvas with zoom, pan, grid, rulers and selection handles, one
+  gesture path for mouse, touch and pen, and Select, Create and Pan tools. The
+  toolbox supports tap-to-place and drag and drop. Every change is undoable.
+
+Run `HmiStudio` from the build folder. Mouse: click and Shift+click to
+select, drag to move or rubber-band select, drag handles to resize, wheel to
+pan and Ctrl+wheel to zoom. Touch: tap, long press to add to the selection,
+drag to move, pinch to zoom, two fingers to pan; switch the layout to touch
+density with the Input button.
 
 ## Requirements
 
-- Qt 6.8 or newer (6.12 LTS recommended) with Qt Core, Gui and Test
+- Qt 6.8 or newer (6.12 LTS recommended) with Qt Quick, Quick Controls, SVG and Test
 - CMake 3.25+, Ninja
 - MSVC 2022, GCC 13+ or Clang 16+
 

@@ -97,6 +97,13 @@ place the four basic shapes, select, move and resize them, pan with two
 fingers and pinch-zoom from 10% to 800% with sharp results after the zoom
 settles. Tool tests pass with both synthetic mouse and touch gestures.
 
+Status: implemented on `feat/phase-2-canvas`, together with the phase 0 shell
+(`main.cpp`, `AppContext`, `Theme` with the density switch, `Main.qml`). The
+add, move and resize commands from phase 3 came early, because tools may only
+change the model through commands. Gesture, tool and canvas tests pass
+offscreen with synthetic mouse and touch input; trying it on a real touch
+screen is still open.
+
 ## Phase 3 — Editing operations
 
 - `QUndoStack` in `AppContext`; `AddObjectCommand`, `RemoveObjectsCommand`,

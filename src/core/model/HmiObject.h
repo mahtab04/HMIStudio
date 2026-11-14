@@ -94,6 +94,10 @@ public:
     [[nodiscard]] QTransform sceneTransform() const;
     [[nodiscard]] QRectF sceneBoundingRect() const;
 
+    // The same mapping for any geometry and rotation, for previews of a
+    // geometry the object does not have yet.
+    [[nodiscard]] static QTransform sceneTransform(const QRectF& geometry, double rotation);
+
 protected:
     // `descriptors` must outlive the object; types pass a static table.
     HmiObject(std::span<const PropertyDescriptor> descriptors, ObjectId id);
