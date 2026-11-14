@@ -29,7 +29,10 @@ Why Qt Quick:
 1. Touch is a first-class input: multi-touch events, pinch and flick reach
    items directly, and Qt Quick Controls are built for fingers.
 2. Rendering is GPU-accelerated through the scene graph, so zooming, panning
-   and animated objects stay smooth on panel hardware.
+   and animated objects stay smooth on panel hardware. Without a usable GPU
+   (virtual machines, remote desktop, some panels) Qt Quick falls back to its
+   software renderer; everything in this design must also draw there
+   (section 7.1).
 3. The editor and the later runtime share one technology, so Simulate mode
    and the runtime are the same code.
 
@@ -76,8 +79,8 @@ GCC 13+ or Clang 16+ for full C++20 including `std::format`.
 Each module is a CMake target. Nothing may depend upward.
 
 ```
-hmi_editor (app: controllers + QML shell) ──┐
-hmi_runtime (later) ────────────────────────┤
+hmi_editor (exe) → hmi_editor_lib (controllers + QML shell) ─┐
+hmi_runtime (later) ─────────────────────────────────────────┤
                                             ▼
                     hmi_quick (QQuickItem classes: canvas, object items)
                                             │
@@ -90,15 +93,20 @@ hmi_runtime (later) ────────────────────
 
 | Target | Contents | Qt modules |
 |---|---|---|
-| `hmi_core` | Project, Screen, HmiObject hierarchy, property system, tags, bindings, events, serialization, object registry, hit testing | Core, Gui |
+| `hmi_core` | Project, Screen, HmiObject hierarchy, property system, tags, bindings, events, serialization, object registry, hit testing. Built as the static `hmi_core_impl`; consumers link the `hmi::core` interface target, which links it whole so self-registering types are kept | Core, Gui |
 | `hmi_render` | Painter helpers, symbol drawing, graphic loading and caching (section 14) | Gui, Svg |
 | `hmi_comm` | `IDriver`, simulator, OPC UA, S7, Modbus drivers, `TagEngine` | Core, Network |
-| `hmi_quick` | `CanvasItem`, `ScreenItem`, `ObjectItem`, overlays, gesture recognizer; a QML module (`qt_add_qml_module`) | Quick |
-| `hmi_editor` | `main.cpp`, `AppContext`, controllers, panel models, undo commands, tools, QML shell, theme | Quick, QuickControls2, QuickDialogs2 |
+| `hmi_quick` | `CanvasItem`, `ScreenItem`, `ObjectItem`, overlays, gesture recognizer; static QML module `HmiStudio.Quick` | Quick |
+| `hmi_editor_lib` | `AppContext`, `Theme`, controllers, panel models, undo commands, tools and the QML shell; static QML module `HmiStudio.Editor`, so tests link it without the app | Quick, QuickControls2, Svg (QuickDialogs2 from phase 4) |
+| `hmi_editor` | The executable: `main.cpp` only; output name `HmiStudio` | as above |
 | `hmi_runtime` | Full-screen player (phase 9), links `hmi_quick` without editor code | Quick |
-| `tests` | Unit tests per module | Test, QuickTest |
+| `tests` | One Qt Test executable per test class | Test |
 
-`hmi_core` must stay free of Qt Quick so it can be tested headless.
+`hmi_core` must stay free of Qt Quick so it can be tested headless. The
+static QML modules are imported in `main.cpp` (and in tests that load QML)
+with `Q_IMPORT_QML_PLUGIN(HmiStudio_QuickPlugin)` and
+`Q_IMPORT_QML_PLUGIN(HmiStudio_EditorPlugin)`; their build output goes to
+`build/<preset>/qml/HmiStudio/...` so `qmllint` can resolve them.
 
 ## 4. Directory layout
 
@@ -123,19 +131,25 @@ hmi-studio/
 │  │  └─ TagEngine.*
 │  ├─ quick/                 # C++ Qt Quick items
 │  │  ├─ CanvasItem.*        # viewport: zoom, pan, input
+│  │  ├─ ICanvasView.h       # what tools may ask of the canvas
 │  │  ├─ ScreenItem.*        # one screen, parent of ObjectItems
 │  │  ├─ ObjectItem.*        # QQuickPaintedItem per HmiObject
-│  │  ├─ overlays/           # SelectionOverlay, GuideOverlay, GridItem, RulerItem
-│  │  └─ input/              # GestureRecognizer, PointerGesture
+│  │  ├─ overlays/           # SelectionOverlay, GridItem, RulerItem,
+│  │  │                      # SelectionGeometry, SceneGraphShapes
+│  │  │                      # (GuideOverlay in phase 3)
+│  │  └─ input/              # GestureRecognizer, PointerGesture, InputSettings
 │  └─ editor/
-│     ├─ app/                # main.cpp, AppContext, EditorController
-│     ├─ tools/              # SelectTool, CreateTool, PipeTool, PanTool
+│     ├─ app/                # main.cpp, AppContext, EditorController, Theme
+│     ├─ tools/              # ITool, ToolController, ToolContext, SelectTool,
+│     │                      # CreateTool, PanTool (PipeTool in phase 5)
 │     ├─ commands/           # QUndoCommand subclasses
-│     ├─ models/             # ToolboxModel, PropertyModel, LayerModel, TagModel
-│     └─ qml/                # Main.qml, panels/, controls/, Theme.qml
-├─ tests/
-├─ resources/
-└─ docs/                     # ARCHITECTURE.md, PLAN.md, SKILL.md
+│     ├─ models/             # SelectionModel, ToolboxModel, ToolboxDragController;
+│     │                      # later PropertyModel, LayerModel, TagModel
+│     └─ qml/                # Main.qml, panels/, controls/
+├─ tests/                    # core/, quick/, editor/, mirroring src/
+├─ resources/icons/          # single-colour SVG icons
+├─ docs/                     # ARCHITECTURE.md, PLAN.md, HMI Editor@2x.png
+└─ .claude/skills/hmi-studio-dev/SKILL.md   # rules and recipes
 ```
 
 ## 5. Core model
@@ -177,8 +191,9 @@ public:
     virtual void accept(ObjectVisitor& visitor) = 0;                      // Visitor
 
     [[nodiscard]] ObjectId id() const noexcept;
-    [[nodiscard]] QRectF geometry() const noexcept;
-    // rotation, z-order, name, visibility, lock state, bindings, events
+    [[nodiscard]] QRectF geometry() const;            // from x, y, width, height
+    [[nodiscard]] QTransform sceneTransform() const;  // rotation about the centre
+    // name, rotation, visibility, lock state; later bindings and events
 };
 ```
 
@@ -189,11 +204,14 @@ Each type passes its static descriptor table to the `HmiObject` constructor,
 which stores the values in table order. While an object belongs to a
 `Screen` inside a `Project`, `setProperty()` emits
 `DocumentNotifier::propertyChanged`; a detached object (fixture, undo
-snapshot, clipboard) changes silently. `PropertyId` and `ObjectTypeId` are
+snapshot, clipboard) changes silently. Z-order is the object's index in its
+`Screen` (index 0 at the bottom), not a property. `PropertyId` and
+`ObjectTypeId` are
 compile-time FNV-1a hashes of their file keys; `ObjectId` and `ScreenId` are
 UUIDs so they stay unique across paste and projects.
 
-Hierarchy:
+Hierarchy (only `ShapeObject` exists so far; each other family base is added
+with its first member):
 
 ```
 HmiObject
@@ -215,8 +233,10 @@ serializer and tag binding all work from the same description.
 using PropertyValue = std::variant<bool, int, double, QString, QColor,
                                    QPointF, QSizeF, QFont, TagRef, EnumValue>;
 
+// True when T is one of the variant's alternatives. A requires-expression on
+// std::get<T> does not work here: std::get with a wrong type is a hard error.
 template <typename T>
-concept PropertyType = requires { std::get<T>(std::declval<PropertyValue>()); };
+concept PropertyType = detail::IsAlternative<T, PropertyValue>::value;
 
 struct PropertyDescriptor {
     PropertyId    id;
@@ -224,7 +244,7 @@ struct PropertyDescriptor {
     const char*   displayName;  // translated in context "hmi::Property"
     const char*   category;     // Layout, Appearance, Behaviour ...
     PropertyValue defaultValue;
-    Constraint    constraint;   // min/max, enum options, read-only
+    Constraint    constraint;   // min/max, enum options, read-only (advice for editors)
     bool          bindable;     // can a tag drive it at runtime?
 };
 
@@ -265,11 +285,11 @@ registries, so new ones do not touch existing code.
 | Command | Every model change is a `QUndoCommand`. Multi-step edits use `beginMacro`. |
 | State | Canvas tools (`SelectTool`, `CreateTool`, `PipeTool`, `PanTool`) behind `ITool`; `ToolController` holds the current one. `GestureRecognizer` is also a small state machine. |
 | Observer | Qt signals from `DocumentNotifier`, `TagEngine`, `QUndoStack`; QML bindings observe controller properties. |
-| Builder | `ScreenBuilder` and `ProjectBuilder` assemble templates and test fixtures fluently. |
+| Builder | `ScreenBuilder` assembles screens for templates and test fixtures fluently (a `ProjectBuilder` when projects need it). |
 | Strategy | Snapping (grid, object edges, guides), binding transforms, SVG backend, export formats. |
 | Visitor | `ObjectVisitor` for validation, export, "where is this tag used". |
 | Adapter | Each driver adapts a third-party client library to `IDriver`; `GestureRecognizer` adapts mouse, touch and pen to one `PointerGesture`. |
-| Facade | `TagEngine` hides drivers and threading; `EditorController` is the single object QML talks to for commands. |
+| Facade | `TagEngine` hides drivers and threading; `EditorController` is the single object QML talks to for editing actions and display state. |
 | Memento | Project snapshot for autosave and crash recovery. |
 | Model/View | `QAbstractItemModel` subclasses feed QML `ListView`, `TableView` and `TreeView`. |
 | Singleton | Used sparingly: registries filled at start-up only, as function-local statics. |
@@ -289,13 +309,21 @@ with hidden state.
 
 ```
 CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all input
-├─ GridItem : QQuickItem           one-pixel rectangle nodes
-├─ ScreenItem : QQuickItem         one Screen; scaled and translated by CanvasItem
-│  └─ ObjectItem : QQuickPaintedItem   one per HmiObject, in z-order
-├─ SelectionOverlay : QQuickItem   frame, handles, rotation handle, size label
-├─ GuideOverlay : QQuickItem       snap guides, rubber band
-└─ RulerItem ×2 : QQuickPaintedItem
+├─ ScreenItem : QQuickItem         one Screen and its background; scaled and
+│  │                               translated by CanvasItem
+│  └─ ObjectItem : QQuickPaintedItem   one per HmiObject, z from its index
+├─ GridItem : QQuickItem           grid lines over the screen area
+└─ SelectionOverlay : QQuickItem   frames, eight handles, rubber band
+                                   (rotation handle and size label: phase 3)
+
+RulerItem ×2 : QQuickPaintedItem   QML siblings of the canvas, bound to it
+                                   through their `canvas` property
+GuideOverlay : QQuickItem          snap guides (phase 3)
 ```
+
+`CanvasItem` creates its children in C++ in this order, so the grid is drawn
+over the objects. It is faint; it moves below them when snapping arrives in
+phase 3.
 
 - `ScreenItem` listens to `DocumentNotifier` and creates or removes
   `ObjectItem`s. It is the Qt Quick counterpart of a scene.
@@ -312,8 +340,14 @@ CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all inp
   renderer otherwise places nodes added to an already rendered subtree with
   a stale transform.
 - Tools preview by moving `ObjectItem`s (`ICanvasView::setPreviewGeometry`)
-  and drawing on the overlay; the model changes once, through a command, when
-  the gesture ends.
+  and drawing on the overlay (`setRubberBand`); the model changes once,
+  through a command, when the gesture ends. During a resize preview the item
+  stretches the model's drawing to the preview size.
+- `SelectionGeometry` computes frames, handle positions, handle hits and
+  resize results (opposite edge fixed, also when rotated). The overlay and
+  `SelectTool` both use it, so what is drawn is what can be hit.
+- When an object is removed, `ScreenItem` detaches its `ObjectItem` before
+  deleting it, so the render thread never paints a destroyed object.
 - Only `CanvasItem` accepts input. Object items are not interactive in edit
   mode; that keeps all interaction logic in tools rather than spread over
   items.
@@ -324,35 +358,56 @@ CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all inp
 QQuickItem events (mouse, touch, wheel, key)
         │
         ▼
-GestureRecognizer  →  PointerGesture { kind, scenePos, delta, scale, modifiers, device }
-        │
+GestureRecognizer  →  PointerGesture { kind, device, view and scene positions,
+        │                             start, delta, scaleDelta, angleDelta,
+        │                             modifiers, afterLongPress }
         ▼
-ToolController  →  current ITool  →  preview on items/overlays  →  QUndoCommand on release
+ToolController  →  navigation (pinch, pan, wheel) for every tool
+                →  current ITool  →  preview on items/overlay  →  QUndoCommand at the end
 ```
 
 `CanvasItem` calls `setAcceptTouchEvents(true)` and overrides `touchEvent`,
-the mouse event handlers, `wheelEvent` and `keyPressEvent`. Tools never see
-raw events, only gestures, so each tool works with every input device.
+the mouse event handlers, `wheelEvent` and the key handlers, and adds scene
+positions to each gesture. Holding Space turns a left drag into a pan.
+Escape first cancels a gesture in progress (`DragCancel`) and reaches the
+tool only when nothing is in progress. Tools never see raw events, only
+gestures, so each tool works with every input device. The recognizer tracks
+each finger by point id, because positions of stationary touch points are
+not reliable.
 
 | Gesture | Mouse and keyboard | Touch |
 |---|---|---|
 | Select | Click | Tap |
-| Add to selection | Shift+click | Tap with multi-select mode on, or long-press then tap |
-| Rubber-band select | Drag on empty area | Long-press on empty area, then drag |
+| Add to or remove from selection | Shift+click | Tap with multi-select mode on, or long-press the object |
+| Rubber-band select | Drag on empty area; dragging right selects enclosed objects, dragging left also touched ones | Long-press on empty area, then drag |
 | Move object | Drag object | Drag object |
-| Resize, rotate | Drag handle | Drag handle (handles have a 44 px touch target) |
-| Pan | Space+drag, middle button | Two-finger drag; one-finger drag on empty area |
-| Zoom | Ctrl+wheel | Pinch, centred between the fingers |
-| Context menu | Right-click | Long-press on object |
-| Place new object | Drag from toolbox, or click tool then drag on canvas | Drag from toolbox, or tap tool then tap canvas |
-| Nudge | Arrow keys | Arrow buttons in the selection toolbar |
+| Resize | Drag handle | Drag handle (44 px touch target) |
+| Rotate | Rotation handle (phase 3) | Rotation handle (phase 3) |
+| Pan | Wheel, Space+drag, middle button, Pan tool | Two-finger drag; one-finger drag on empty area; Pan tool |
+| Zoom | Ctrl+wheel; toolbar − and +; Ctrl+0 fit; Ctrl+1 100 % | Pinch, centred between the fingers; toolbar |
+| Context menu | Right-click (phase 3) | "More" button in the selection toolbar (phase 3); long-press is used for multi-select |
+| Place new object | Drag from toolbox, or click a tile then click or drag on canvas | Drag from toolbox, or tap a tile then tap or drag on canvas |
+| Cancel | Escape | A second finger landing during a drag |
+| Nudge | Arrow keys (phase 3) | Arrow buttons in the selection toolbar (phase 3) |
+
+Thresholds come from `InputSettings`, in view pixels:
+
+| | Mouse | Touch | Pen |
+|---|---|---|---|
+| Drag starts after | 4 | 12 | 6 |
+| Hit tolerance | 3 | 12 | 5 |
+| Handle hit square | 12 | 44 | 20 |
+
+A long press is 500 ms (touch and pen only; the mouse uses right-click). A
+double tap must follow within 400 ms and 24 px.
 
 Touch additions outside the canvas: a floating selection toolbar (delete,
 duplicate, group, bring forward) near the selection, undo and redo always
 visible, numeric fields that open an on-screen keypad, and all controls at
 least 44 px high when the UI is in touch density. `Theme` exposes a density
-setting (compact for mouse, comfortable for touch) chosen from the primary
-input device and changeable by the user.
+setting (compact for mouse, comfortable for touch): comfortable when a touch
+screen is attached at start-up, switchable with the Input button in the top
+bar, and saved in settings from phase 4.
 
 Hit testing: `HitTester` in `hmi_core` walks the objects of a screen from
 top to bottom and tests `hitShape()` with a tolerance that depends on the
@@ -365,16 +420,19 @@ Every panel is a C++ model plus a short QML view.
 
 | Panel | C++ | QML view |
 |---|---|---|
-| Toolbox | `ToolboxModel` (from `ObjectRegistry`), `ToolboxDragController` | `GridView` of tiles |
+| Toolbox | `ToolboxModel` (from `ObjectRegistry`), `ToolboxDragController` (fed by each tile's `DragHandler`; mouse and touch) | `GridView` of tiles; not flickable, so dragging a tile places an object; a scroll bar scrolls |
 | Properties | `PropertyModel` built from the selection's descriptors; `setData` pushes `SetPropertyCommand` | `ListView` with a delegate chosen by value type |
 | Layers | `LayerModel` (tree) | `TreeView` |
 | Tags | `TagModel`, `TagFilterProxy` | `TableView` |
 | Output | `MessageModel` filled by `ValidationVisitor` | `ListView` |
 
-`EditorController` exposes actions (`undo`, `redo`, `copy`, `align…`,
-`simulate`) and state (`canUndo`, `zoom`, `currentTool`) as properties and
-invokables. `Main.qml` lays the panels out in a `SplitView`; panels can be
-collapsed and their sizes are saved in settings.
+`EditorController` exposes actions as invokables (`undo`, `redo`,
+`selectTool`, `panTool`, `createTool(key)`, zoom actions; later `copy`,
+`align…`, `simulate`) and display state as properties (`canUndo`,
+`zoomText`, `cursorText`, `selectionText`, one `…ToolActive` bool per tool,
+`createType`). Text is formatted in C++ so QML only binds. `Main.qml` lays
+the panels out in a `SplitView` and sets the Controls palette from `Theme`.
+Collapsing panels and saving their sizes comes in phase 4.
 
 ### 7.4 Simulation mode and runtime
 
@@ -430,14 +488,18 @@ licence column is from memory and should be confirmed on the project page.
 | OPC UA client | open62541 | MPL 2.0 | Qt OPC UA is GPL/commercial only |
 | Siemens S7 | Snap7 | LGPL 3 | Covers S7-300/400/1200/1500 with PUT/GET enabled |
 | Modbus TCP/RTU | Qt SerialBus or libmodbus | LGPL | |
-| Tests | Qt Test and Qt Quick Test, or Catch2 for core | LGPL / BSL | |
+| Tests | Qt Test | LGPL | Qt Quick Test only if QML-level tests become necessary |
 | JSON | `QJsonDocument` | part of Qt | No extra dependency needed |
 | SVG rendering | Qt SVG | part of Qt (LGPL) | Default backend, see section 14 |
 | SVG rendering, fuller standard support | lunasvg or resvg | MIT / MPL 2.0 | Optional second backend |
 | On-screen keyboard | Qt Virtual Keyboard | GPL/commercial | Only if the OS keyboard is not enough; check licence first |
 
-Dependencies are fetched with CMake `FetchContent` or vcpkg manifest mode;
-pick one and keep it. Qt Quick, Qt Quick Controls and Qt SVG are LGPL, which
+Libraries are fetched with CMake `FetchContent` in `cmake/Dependencies.cmake`
+(today only tl::expected, pinned by version and hash). Qt comes from the Qt
+installer. Conan was tried for CI only, because ConanCenter has prebuilt Qt
+6.12 binaries; that work is parked on the local branch `wip/conan-ci`.
+vcpkg was ruled out: it builds Qt from source and was one minor version
+behind when checked. Qt Quick, Qt Quick Controls and Qt SVG are LGPL, which
 permits closed-source use with dynamic linking, or commercial.
 
 ## 10. Project file format
@@ -480,15 +542,26 @@ Not used: C++20 modules (tooling with moc is still awkward) and coroutines.
 
 ## 12. Quality
 
-- Warnings as errors: `/W4 /permissive-` or `-Wall -Wextra -Wpedantic`.
+- Warnings as errors: `/W4 /permissive-` or `-Wall -Wextra -Wpedantic
+  -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual`
+  (`cmake/CompilerWarnings.cmake`).
+- `Q_ASSERT` stays on in Debug builds even with a release-only Qt kit, where
+  CMake 4.2+ (policy CMP0199) would otherwise define `QT_NO_DEBUG`
+  (`QT_FORCE_ASSERTS` for Debug in `cmake/CompilerWarnings.cmake`).
 - AddressSanitizer and UBSan on the Linux debug preset.
-- clang-format, clang-tidy and `qmllint` in CI.
-- `hmi_core` and `hmi_comm` have unit tests. Commands are tested for do,
-  undo, redo leaving the model identical. Tools are tested by feeding
-  synthetic `PointerGesture`s, once as mouse and once as touch.
-- Canvas items are tested offscreen with `QQuickWindow` and `QTest` touch
-  and mouse helpers.
-- CI builds Windows and Linux and runs tests on every push.
+- clang-format (Allman braces), clang-tidy and `qmllint` (the `all_qmllint`
+  target) run locally for now.
+- Every module has unit tests. Commands are tested for do, undo, redo leaving
+  the model identical. Tools are tested by feeding synthetic
+  `PointerGesture`s, once as mouse and once as touch.
+- The gesture recognizer and canvas items are tested offscreen in a
+  `QQuickWindow` with `QTest` mouse and touch helpers and pixel checks. The
+  offscreen platform uses the software renderer, so these tests also cover
+  machines without a GPU.
+- `EditorShellTest` loads the real `Main.qml`, fails on any warning that
+  names a `.qml` file, and saves a screenshot when `HMI_SCREENSHOT` is set.
+- CI (Windows and Linux on every push) is deferred until the application is
+  further along; see PLAN.md.
 
 ## 13. Main risks
 
@@ -502,6 +575,7 @@ Not used: C++20 modules (tooling with moc is still awkward) and coroutines.
 | Fine editing with fingers is imprecise | Larger hit tolerance, numeric fields, nudge buttons, zoom-to-selection |
 | S7-1500 access needs PUT/GET enabled or OPC UA | Make OPC UA the first real driver |
 | An imported SVG uses features Qt SVG cannot draw | Import check, optional second backend, rasterize fallback (section 14.3) |
+| No GPU on the target, so Qt Quick uses the software renderer, which ignores custom geometry nodes | Overlays use rectangle and transform nodes only; offscreen tests run on that renderer |
 
 ## 14. Graphics and image rendering
 
@@ -579,16 +653,19 @@ composites. Consequences and how they are handled:
   existing textures are scaled by the GPU (fast, slightly soft). When the
   zoom settles, `ObjectItem` sets its texture size to item size × zoom ×
   device pixel ratio and repaints, so the result is sharp.
-- **Texture size limit.** The texture size is capped (for example 4096 px);
-  beyond that an item stays at the cap and is scaled.
+- **Texture size limit.** The texture side is capped at 4096 px
+  (`ObjectItem::kMaxTextureSide`); beyond that an item stays at the cap and
+  is scaled.
 - **Repaint cost.** Only items whose model changed call `update()`. Panning
   and zooming move textures without repainting anything.
 - **Memory with many objects.** If the 2,000-object test shows a problem,
   three fallbacks exist, in order of effort: lower the texture scale for
   off-screen items and release textures of items outside the viewport; draw
-  basic shapes (rectangle, line, ellipse) with scene-graph geometry nodes in
-  `updatePaintNode` instead of textures; evaluate Qt Canvas Painter, the
-  GPU-accelerated painter added in Qt 6.12, as a replacement painter.
+  basic shapes (rectangle, line, ellipse) with scene-graph nodes in
+  `updatePaintNode` instead of textures, keeping the painted path for the
+  software renderer, which cannot draw custom geometry; evaluate Qt Canvas
+  Painter, the GPU-accelerated painter added in Qt 6.12, as a replacement
+  painter.
 - **Antialiasing.** `setAntialiasing(true)` on painted items; overlay lines
   are axis-aligned one-pixel rectangles snapped to whole pixels.
 - **Level of detail.** `PaintContext` carries the current zoom; below a

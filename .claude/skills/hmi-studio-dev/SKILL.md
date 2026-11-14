@@ -12,10 +12,22 @@ new code consistent.
 ## Build and test
 
 ```bash
-cmake --preset dev            # configure (Debug, sanitizers on Linux)
+cmake --preset dev            # configure (Debug, sanitizers on Linux); needs QT_ROOT_DIR
 cmake --build --preset dev
-QT_QPA_PLATFORM=offscreen ctest --preset dev --output-on-failure
+cmake --build --preset dev --target all_qmllint
+ctest --preset dev            # offscreen platform and output-on-failure are set
 ```
+
+`dev` expects the environment variable `QT_ROOT_DIR` to point at the Qt
+kit. For a MinGW kit, a local `CMakeUserPresets.json` (ignored by Git)
+inherits `dev` and pins the matching compiler and `PATH`; use its preset
+name instead of `dev`.
+
+On Windows a Qt test's console output may not reach the terminal. To see
+why a test failed, run it with a file logger:
+`build/dev/<Test>.exe -o result.txt,txt` (set `QT_QPA_PLATFORM=offscreen`).
+Set `HMI_SCREENSHOT=<file.png>` when running `EditorShellTest` to save an
+image of the shell.
 
 A task is finished only when the build has no warnings, `qmllint` is clean
 and all tests pass.
@@ -24,16 +36,20 @@ and all tests pass.
 
 1. **The model changes only inside a `QUndoCommand`.** Tools, models and
    controllers never call `setProperty`, add or remove objects directly; they
-   push a command on `AppContext::undoStack()`.
+   push a command on the undo stack (`AppContext::undoStack()`, reached from
+   tools through `ToolContext::undoStack()`). Selection, zoom and previews
+   are editor state, not model, and change outside commands.
 2. **Logic lives in C++. QML is layout.** No JavaScript functions, no
    imperative blocks beyond a single call to a C++ invokable, no state stored
    in QML. If a QML file needs an `if` or a loop, add a property or method to
    a C++ controller or model instead.
 3. **`hmi_core` never includes Qt Quick** or anything from `quick/` or
-   `editor/`. Dependencies point downward only: editor → quick → render/comm
-   → core.
-4. **`ObjectItem` holds no state.** Geometry, colours and text come from the
-   `HmiObject` every time.
+   `editor/`, and `quick/` never includes `editor/`. Dependencies point
+   downward only: editor → quick → core (render and comm sit between them
+   from phases 5 and 6).
+4. **`ObjectItem` holds no model state.** Geometry, colours and text come
+   from the `HmiObject` every time; it keeps only view state (render scale,
+   a tool's preview geometry until the next sync).
 5. **Tools receive `PointerGesture`, never raw mouse or touch events.** Every
    interaction must work with mouse and with touch.
 6. **Never switch on a concrete object type** outside that type's own files.
@@ -71,13 +87,17 @@ and all tests pass.
 | Comments | Explain why, not what; public classes get a one-paragraph purpose comment |
 | Formatting | `.clang-format` (Allman braces, 100 columns); run it on every changed file |
 | Linking `hmi_core` | Link `hmi::core`, never `hmi_core_impl`: the interface target links the archive whole so self-registering types are not dropped |
+| Headers in QML modules | The generated QML type registration includes headers by file name only. A `QML_ELEMENT` class in a subfolder of a module needs that folder in the target's private include directories |
+| Translation outside QObjects | Classes that are not `QObject`s (commands, model code) use `QCoreApplication::translate("hmi::<Context>", ...)`; `tr()` does not exist there |
+| Types in signals | Ids and other value types used in signals have `Q_DECLARE_METATYPE` next to the signal's class |
 
 ## Recipe: add a new HMI object
 
 Example: a `Gauge`.
 
 1. Create `src/core/objects/Gauge.h` and `Gauge.cpp`, deriving from the
-   right family base (`ElementObject` here).
+   right family base (`ElementObject` here). Only `ShapeObject` exists so
+   far; the first member of a family adds its base in `src/core/model/`.
 2. Declare `static constexpr ObjectTypeId kTypeId{"gauge"};` and the
    property table in `staticDescriptors()`, built with
    `withCommonDescriptors()` so the common properties come first. Reuse ids
@@ -107,7 +127,7 @@ Example: a `Gauge`.
    to `ObjectVisitor`) and `paint(QPainter&, const PaintContext&)`. Paint in
    local coordinates from `(0,0)` to `geometry().size()`. `paint()` runs on
    the render thread: read only the object's own data, use no shared
-   mutable state.
+   mutable state. Skip fine detail when `context.lowDetail()`.
 4. Override `hitShape()` if the object is not rectangular (line, polygon,
    pipe), so tapping empty corners does not select it.
 5. Register the type at the bottom of the `.cpp`:
@@ -118,8 +138,11 @@ Example: a `Gauge`.
                        hmi::ObjectCategory::Elements, ":/icons/gauge.svg")
    ```
 
-   Add the `.cpp`/`.h` to `src/core/CMakeLists.txt`.
-6. Add the toolbox icon to `resources/icons/` as a single-colour SVG.
+   Add the `.cpp`/`.h` to `src/core/CMakeLists.txt`. A `static_assert` in
+   the macro checks that the key matches `kTypeId`.
+6. Add the toolbox icon to `resources/icons/` as a single-colour 24 × 24 SVG
+   drawn in black (the toolbox recolours it from `Theme`), and list it in the
+   `hmi_icons` resource in `src/editor/CMakeLists.txt`.
 7. Tests in `tests/core/objects/GaugeTest.cpp`, registered with
    `hmi_add_test` in `tests/CMakeLists.txt`. The checks in
    `tests/core/objects/ObjectContract.h` (`checkDefaults`, `checkClone`,
@@ -143,7 +166,8 @@ For canvas parts such as overlays, rulers or a new viewport feature.
    backend ignores those. After adding or removing nodes, call
    `SceneGraphShapes::refreshTransform(data->transformNode)` before
    returning.
-2. Add `QML_ELEMENT`; list the header in the module's `qt_add_qml_module`.
+2. List the files in the module's `qt_add_qml_module`. Add `QML_ELEMENT`
+   only if QML creates the item (like `RulerItem`).
 3. For a plain `QQuickItem` that draws, call `setFlag(ItemHasContents)`.
 4. Expose configuration as `Q_PROPERTY`s; call `update()` in setters when the
    value changes, and only then.
@@ -163,34 +187,47 @@ For canvas parts such as overlays, rulers or a new viewport feature.
    to produce it, or document why one device cannot.
 3. Thresholds (drag distance, long-press time, hit tolerance) come from
    `InputSettings`, with larger values for touch.
-4. Tests feed synthetic `QTouchEvent` and `QMouseEvent` sequences and check
-   the emitted gestures.
+4. Tests in `tests/quick/GestureRecognizerTest.cpp` send `QTest` mouse and
+   touch sequences (`QTest::touchEvent` with `QTest::createTouchDevice()`) to
+   a `CanvasItem` in a `QQuickWindow` and check the emitted gestures.
 
 ## Recipe: add a canvas tool
 
-1. Derive from `ITool` in `src/editor/tools/`.
-2. Implement `activate`, `deactivate`, `handleGesture(const PointerGesture&)`,
-   `keyPress` and `cursor()`.
-3. Preview by moving `ObjectItem`s or drawing on an overlay; change the model
-   only when the gesture ends, with a single command (or a macro).
-4. Cancel (Escape, or a second finger landing during a drag) must leave the
-   model untouched.
-5. Register the tool in `ToolController`; add its toolbar button in QML bound
-   to `editor.currentTool`.
-6. Test with synthetic gestures marked as mouse and again as touch.
+1. Derive from `ITool` in `src/editor/tools/`; take a `ToolContext&` in the
+   constructor (project, current screen, undo stack, selection, input
+   settings, canvas).
+2. Implement `handleGesture(const PointerGesture&)` and `cursor()`, and
+   `activate`, `deactivate` (must drop any preview) and `keyPress` as needed.
+   Hit tolerances in scene units come from `ToolContext::sceneHitTolerance()`
+   and `sceneHandleHitSize()`.
+3. Preview through `ICanvasView` (`setPreviewGeometry`, `setRubberBand`);
+   change the model only when the gesture ends, with a single command (or a
+   macro). Navigation gestures never reach tools; `ToolController` handles
+   them.
+4. Cancel (`DragCancel`, from Escape or a second finger landing during a
+   drag) must leave the model untouched.
+5. Add a value to `ToolController::Tool` and create the tool there; add a
+   `<name>ToolActive` property and an invokable to `EditorController`, and a
+   toolbar button in `TopBar.qml` bound to them.
+6. Test with `tests/editor/FakeCanvas.h` and `GestureFactory.h`: run each
+   case with `test::addDeviceRows()` so it runs as mouse and as touch.
 
 ## Recipe: add an undo command
 
 1. Create `src/editor/commands/<Verb><Noun>Command.h/.cpp` deriving from
    `QUndoCommand`.
-2. Store object ids, not pointers, plus the old and new values.
+2. Store `Project&`, the `ScreenId` and object ids, never pointers to model
+   objects, plus the old and new values. A command that removes an object
+   owns it while undone.
 3. `redo()` applies, `undo()` restores. The first `redo()` is called by
    `push()`, so do not apply the change before pushing.
 4. For continuous edits (dragging, sliders) implement `id()` and
    `mergeWith()`.
-5. Set a translated text: `setText(tr("Move %n object(s)", "", count))`.
-6. Test: build a fixture with `ScreenBuilder`, push, compare; undo, compare
-   with the original; redo, compare again.
+5. Set a translated text:
+   `setText(QCoreApplication::translate("hmi::Commands", "Move %n object(s)", nullptr, count))`.
+6. Test in `tests/editor/CommandsTest.cpp`: build a fixture with
+   `ScreenBuilder`, clone the screen, push, compare; undo, compare with the
+   original; redo, compare again.
 
 ## Recipe: add a panel
 
@@ -205,11 +242,11 @@ For canvas parts such as overlays, rulers or a new viewport feature.
    only.
 4. All sizes, colours and fonts come from `Theme`; rows are at least
    `Theme.touchTarget` high in comfortable density.
-5. Add the panel to the `SplitView` in `Main.qml` and its collapse state to
-   settings.
+5. Add the panel to the `SplitView` in `Main.qml` (and, from phase 4, its
+   collapse state to settings).
 6. Test the model in C++ without loading any QML.
 
-## Recipe: add a property editor type
+## Recipe: add a property editor type (from phase 4)
 
 1. Add the alternative to `PropertyValue` and extend JSON conversion in
    `PropertyJson.cpp` in both directions.
@@ -220,7 +257,7 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 4. Support the mixed-value state for multi-selection and a touch-friendly
    input (keypad, picker) in comfortable density.
 
-## Recipe: add a tag driver
+## Recipe: add a tag driver (from phase 6)
 
 1. Create `src/comm/drivers/<protocol>/` with `<Protocol>Driver` implementing
    `IDriver` and a `<Protocol>DriverFactory` implementing `IDriverFactory`.
@@ -228,11 +265,12 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 3. Parse addresses in a separate `<Protocol>Address` class with unit tests.
 4. Report every failure through `Result`; reconnect with back-off inside the
    driver.
-5. Register with `HMI_REGISTER_DRIVER`.
-6. Add the library to the dependency manifest and to the table in
-   ARCHITECTURE.md with its licence.
+5. Register with `HMI_REGISTER_DRIVER` (added with the first driver, like
+   `HMI_REGISTER_OBJECT`).
+6. Add the library to `cmake/Dependencies.cmake` (FetchContent, pinned
+   version and hash) and to the table in ARCHITECTURE.md with its licence.
 
-## Recipe: change the file format
+## Recipe: change the file format (from phase 4)
 
 1. Increase `kCurrentFormatVersion`.
 2. Add `migrateV<n>ToV<n+1>(QJsonObject&)` and append it to the chain.
@@ -249,6 +287,12 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 - Nothing depends on hover, right-click or a modifier key without a touch
   alternative (long-press, toolbar button, mode toggle).
 - Colours, spacing and fonts come from `Theme`; no literals in QML or items.
+  The Controls palette is set from `Theme` in `Main.qml`.
+- A button whose state comes from C++ binds `checked` and is not
+  `checkable`: a checkable button flips `checked` on click and breaks the
+  binding.
+- A QML `id` must not shadow a property name of a child object
+  (`qmllint` reports it).
 - Every action has an accessible name; icon-only buttons set
   `Accessible.name`.
 - Status and Output messages are short and state what happened and what to do.
@@ -258,7 +302,8 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 - [ ] Builds without warnings; `qmllint` clean
 - [ ] New code has tests; all tests pass
 - [ ] Model changes go through commands and undo correctly
-- [ ] Tried with touch only and with mouse only
+- [ ] Tool tests run as mouse and as touch; tried on a real touch screen when
+      one is available
 - [ ] No logic added to QML
 - [ ] Nothing in `paint()` or `updatePaintNode()` writes shared state
 - [ ] Save and load still round-trips

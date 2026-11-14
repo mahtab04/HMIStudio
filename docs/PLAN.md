@@ -44,6 +44,14 @@ phase 9 is shorter because the runtime reuses the editor's Qt Quick items.
 Done when: a clean checkout builds with one command on both platforms and
 opens the themed shell; switching density resizes the controls.
 
+Status: done except CI. The build scaffolding came with phase 1 and the
+shell with phase 2 (`EditorShellTest` checks that switching density resizes
+the controls). Built and tested locally with MinGW and MSVC on Windows; the
+Linux build has not been tried since phase 1. CI is deferred until the
+application is further along: aqtinstall cannot yet install Qt 6.12 on
+Windows, and CI must use the same Qt as development. The Conan route is
+parked on the local branch `wip/conan-ci`.
+
 ## Phase 1 — Core model
 
 - Ids (`ObjectId`, `PropertyId`, `ObjectTypeId`) as strong types with `<=>`.
@@ -58,11 +66,7 @@ opens the themed shell; switching density resizes the controls.
 Done when: unit tests cover create, clone, property validation, notification
 signals and hit testing; `hmi_core` links without Qt Quick.
 
-Status: done. Build scaffolding from phase 0 (presets, warnings as errors,
-dependency fetching, clang-format, clang-tidy) came with it; the Qt Quick
-shell, `AppContext` and `Theme` from phase 0 are still open. CI is deferred
-until the application is further along: aqtinstall cannot yet install Qt 6.12
-on Windows, and the Conan route (local branch `wip/conan-ci`) is unfinished.
+Status: done (merged to `main`).
 
 ## Phase 2 — Canvas and input
 
@@ -101,23 +105,34 @@ Status: implemented on `feat/phase-2-canvas`, together with the phase 0 shell
 (`main.cpp`, `AppContext`, `Theme` with the density switch, `Main.qml`). The
 add, move and resize commands from phase 3 came early, because tools may only
 change the model through commands. Gesture, tool and canvas tests pass
-offscreen with synthetic mouse and touch input; trying it on a real touch
-screen is still open.
+offscreen with synthetic mouse and touch input.
+
+Still open from this phase:
+
+- Trying it on a real touch screen.
+- The editor opens a built-in sample project until projects can be opened
+  (phase 4).
+- The toolbox shows one section and has no search yet.
 
 ## Phase 3 — Editing operations
 
-- `QUndoStack` in `AppContext`; `AddObjectCommand`, `RemoveObjectsCommand`,
-  `MoveObjectsCommand`, `ResizeObjectCommand`, `SetPropertyCommand`,
-  `ReorderCommand`.
-- Rule from here on: the model changes only inside commands.
+- Commands still to add: `RemoveObjectsCommand`, `SetPropertyCommand`,
+  `ReorderCommand`; merging consecutive nudges into one `MoveObjectsCommand`.
+  (`QUndoStack` in `AppContext` and `AddObjectCommand`, `MoveObjectsCommand`,
+  `ResizeObjectCommand` exist since phase 2, and the rule that the model
+  changes only inside commands applies from then on.)
 - Cut, copy, paste, duplicate through `clone()` and a JSON clipboard format.
 - `GroupObject`, group and ungroup.
 - Align, distribute, same size, bring forward and send backward.
-- Snapping strategies: grid, object edges and centres; `GuideOverlay`.
-- Rotation handle.
+- Snapping strategies: grid, object edges and centres; `GuideOverlay`. The
+  grid moves below the objects (today it is drawn over them).
+- Rotation handle, and a size label next to the selection.
 - Keyboard: arrows nudge, delete, Ctrl+A, standard shortcuts.
 - Touch: floating selection toolbar (delete, duplicate, group, order, nudge
-  buttons), long-press context menu, multi-select mode toggle.
+  buttons, and a "more" button that opens the context menu). Long-press on an
+  object already adds it to the selection and the multi-select toggle
+  exists, so the touch context menu comes from the toolbar, not long-press.
+- Mouse: right-click context menu (the gesture exists; the menu does not).
 - Performance and memory check with 2,000 objects on one screen; apply the
   fallbacks from ARCHITECTURE.md section 14.5 if needed.
 
@@ -139,7 +154,7 @@ pans and zooms smoothly within the memory budget you set.
   unsaved-changes prompt.
 - Autosave snapshot and recovery on next start.
 - Screen management: add, rename, duplicate, delete, tabs for open screens.
-- Panel collapse and sizes saved in settings.
+- Panel collapse and sizes, and the input density, saved in settings.
 
 Done when: a project with several screens survives save, close, reopen with
 a byte-identical second save, and every property can be edited by touch.
@@ -258,12 +273,13 @@ without the editor installed.
 
 ## First week checklist
 
-- [ ] Install Qt 6.12 LTS (or 6.8+) with Qt Quick, Quick Controls, Quick
+- [x] Install Qt 6.12 LTS (or 6.8+) with Qt Quick, Quick Controls, Quick
       Dialogs and SVG; CMake 3.25+; a C++20 compiler.
-- [ ] Create the repository and commit the three documents under `docs/`.
-- [ ] Top-level CMake with the targets as empty libraries.
-- [ ] One `QQuickPaintedItem` subclass registered with `QML_ELEMENT`,
-      painting a rectangle, shown from `Main.qml`.
-- [ ] CI workflow building both platforms.
-- [ ] One trivial test passing in CI.
+- [x] Create the repository and commit the documents under `docs/` (the skill
+      lives in `.claude/skills/hmi-studio-dev/`).
+- [x] Top-level CMake with the targets.
+- [x] A `QQuickPaintedItem` subclass shown from `Main.qml` (`ObjectItem`,
+      hosted by `CanvasItem`).
+- [ ] CI workflow building both platforms (deferred, see phase 0).
+- [x] Tests passing locally.
 - [ ] A touch screen or tablet available for testing from phase 2 onward.
