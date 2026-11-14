@@ -4,6 +4,7 @@ namespace hmi
 {
 
 class Ellipse;
+class GroupObject;
 class Line;
 class Rectangle;
 class TextBox;
@@ -26,6 +27,9 @@ public:
     virtual void visit(Ellipse& /*object*/) {}
     virtual void visit(Line& /*object*/) {}
     virtual void visit(TextBox& /*object*/) {}
+    // Does not descend into the children; a visitor that needs them walks
+    // GroupObject::children() itself.
+    virtual void visit(GroupObject& /*object*/) {}
 };
 
 } // namespace hmi

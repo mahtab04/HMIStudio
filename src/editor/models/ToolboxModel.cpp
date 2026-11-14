@@ -33,7 +33,10 @@ ToolboxModel::ToolboxModel(QObject* parent)
     : QAbstractListModel(parent)
 {
     for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
-        m_types.push_back(&info);
+    {
+        if (info.inToolbox)
+            m_types.push_back(&info);
+    }
 }
 
 int ToolboxModel::rowCount(const QModelIndex& parent) const

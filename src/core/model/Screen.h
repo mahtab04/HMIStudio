@@ -68,6 +68,10 @@ public:
     // Moves an object to a new z-index.
     Result<void> moveObject(ObjectId id, std::size_t newIndex);
 
+    // Puts the objects in the given z-order (bottom first), with one
+    // notification. `order` must name each object on the screen exactly once.
+    Result<void> setOrder(std::span<const ObjectId> order);
+
 private:
     friend class Project;
 

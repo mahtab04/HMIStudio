@@ -109,6 +109,27 @@ private Q_SLOTS:
         QCOMPARE(screen->moveObject(ObjectId::create(), 0).error().code, ErrorCode::NotFound);
     }
 
+    void setOrderReordersOnce()
+    {
+        auto screen = ScreenBuilder(QStringLiteral("S"))
+                          .add(Rectangle::kTypeId, {0, 0, 10, 10})
+                          .add(Ellipse::kTypeId, {0, 0, 10, 10})
+                          .add(Line::kTypeId, {0, 0, 10, 10})
+                          .build();
+        const auto before = zOrder(*screen);
+        const std::vector<ObjectId> reversed(before.rbegin(), before.rend());
+        QVERIFY(screen->setOrder(reversed));
+        QCOMPARE(zOrder(*screen), reversed);
+
+        // Wrong count, unknown id and a repeated id are rejected unchanged.
+        QVERIFY(!screen->setOrder(std::span(reversed).first(2)));
+        std::vector<ObjectId> repeated{reversed[0], reversed[0], reversed[1]};
+        QCOMPARE(screen->setOrder(repeated).error().code, ErrorCode::NotFound);
+        std::vector<ObjectId> unknown{reversed[0], reversed[1], ObjectId::create()};
+        QVERIFY(!screen->setOrder(unknown));
+        QCOMPARE(zOrder(*screen), reversed);
+    }
+
     void sizeAndBackgroundValidation()
     {
         Screen screen(QStringLiteral("S"));

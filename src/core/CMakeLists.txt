@@ -4,8 +4,13 @@
 add_library(hmi_core_impl STATIC
     Result.h
 
+    io/ObjectJson.cpp
+    io/ObjectJson.h
+
     model/DocumentNotifier.cpp
     model/DocumentNotifier.h
+    model/GroupObject.cpp
+    model/GroupObject.h
     model/HmiObject.cpp
     model/HmiObject.h
     model/Ids.h
@@ -41,6 +46,8 @@ add_library(hmi_core_impl STATIC
 
     spatial/HitTester.cpp
     spatial/HitTester.h
+    spatial/Snapper.cpp
+    spatial/Snapper.h
 )
 
 target_include_directories(hmi_core_impl PUBLIC "${PROJECT_SOURCE_DIR}/src")
