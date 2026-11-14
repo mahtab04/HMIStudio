@@ -112,11 +112,15 @@ bool HmiObject::isLocked() const
 
 QTransform HmiObject::sceneTransform() const
 {
-    const QRectF g = geometry();
+    return sceneTransform(geometry(), rotation());
+}
+
+QTransform HmiObject::sceneTransform(const QRectF& geometry, double rotation)
+{
     QTransform t;
-    t.translate(g.x() + g.width() / 2.0, g.y() + g.height() / 2.0);
-    t.rotate(rotation());
-    t.translate(-g.width() / 2.0, -g.height() / 2.0);
+    t.translate(geometry.x() + geometry.width() / 2.0, geometry.y() + geometry.height() / 2.0);
+    t.rotate(rotation);
+    t.translate(-geometry.width() / 2.0, -geometry.height() / 2.0);
     return t;
 }
 
