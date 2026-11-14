@@ -21,13 +21,21 @@ jobs:
             qt-arch: win64_msvc2022_64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # aqtinstall (used by install-qt-action) fails under the runner's
+      # default Python 3.15; pin a version its dependencies support.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.12.*'
           arch: ${{ matrix.qt-arch }}
+          setup-python: false
           cache: true
 
       - name: Install Ninja
