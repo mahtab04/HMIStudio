@@ -3,6 +3,7 @@
 #include "core/model/Ids.h"
 
 #include <QObject>
+#include <QSet>
 
 #include <vector>
 
@@ -41,6 +42,7 @@ Q_SIGNALS:
 
 private:
     std::vector<ObjectId> m_ids;
+    QSet<ObjectId> m_set; // same ids, for contains() on large selections
     bool m_multiSelectMode = false;
 };
 

@@ -57,6 +57,7 @@ void CanvasItem::setScreen(const Screen* screen, DocumentNotifier* notifier)
     m_screen = screen;
     m_preview.clear();
     m_selection.clear();
+    m_selectionSet.clear();
     m_rubberBand.reset();
     m_guides.clear();
     m_screenItem->setScreen(screen, notifier);
@@ -70,6 +71,7 @@ void CanvasItem::setScreen(const Screen* screen, DocumentNotifier* notifier)
 void CanvasItem::setSelection(std::vector<ObjectId> ids)
 {
     m_selection = std::move(ids);
+    m_selectionSet = QSet<ObjectId>(m_selection.begin(), m_selection.end());
     refreshOverlay();
 }
 
@@ -124,8 +126,9 @@ void CanvasItem::setView(double zoom, QPointF pan)
     m_zoom = zoom;
     m_pan = pan;
     applyView();
-    if (zoomChanged)
-        m_settleTimer.start();
+    // After zooming, and after panning (new objects come into view), the
+    // textures are re-rendered for the new view once it stops changing.
+    m_settleTimer.start();
 }
 
 void CanvasItem::applyView()
@@ -143,7 +146,10 @@ void CanvasItem::onZoomSettled()
 {
     const double dpr = window() ? window()->effectiveDevicePixelRatio() : 1.0;
     m_settledZoom = m_zoom;
-    m_screenItem->setRenderScale(m_zoom * dpr);
+    const QRectF sharp =
+        QRectF(mapViewToScene(QPointF(-kSharpMargin, -kSharpMargin)),
+               mapViewToScene(QPointF(width() + kSharpMargin, height() + kSharpMargin)));
+    m_screenItem->setRenderScale(m_zoom * dpr, sharp);
     Q_EMIT zoomSettled();
 }
 
@@ -171,12 +177,14 @@ void CanvasItem::refreshOverlay()
     QRectF sceneBounds;
     QSizeF selectionSize;
     double selectionRotation = 0.0;
-    if (m_screen)
+    if (m_screen && !m_selectionSet.isEmpty())
     {
-        for (const ObjectId& id : m_selection)
+        // One pass over the screen: looking each id up would be quadratic.
+        for (const auto& owned : m_screen->objects())
         {
-            const HmiObject* object = m_screen->object(id);
-            if (!object)
+            const HmiObject* object = owned.get();
+            const ObjectId id = object->id();
+            if (!m_selectionSet.contains(id))
                 continue;
             const Preview preview = m_preview.value(id);
             const QRectF geometry = preview.geometry.value_or(object->geometry());
@@ -207,6 +215,12 @@ void CanvasItem::refreshOverlay()
     {
         selectionSize = sceneBounds.size();
         selectionRotation = 0.0;
+    }
+    if (frames.size() > kMaxSelectionFrames)
+    {
+        frames = {{.centre = mapSceneToView(sceneBounds.center()),
+                   .size = sceneBounds.size() * m_zoom,
+                   .rotation = 0.0}};
     }
     if (!sceneBounds.isNull())
         viewBounds = QRectF(mapSceneToView(sceneBounds.topLeft()),

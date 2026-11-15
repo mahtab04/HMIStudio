@@ -60,8 +60,10 @@ qt_add_qml_module(hmi_editor_lib
         qml/Main.qml
         qml/controls/IconButton.qml
         qml/panels/BottomPanel.qml
+        qml/panels/CanvasContextMenu.qml
         qml/panels/CanvasPanel.qml
         qml/panels/PropertiesPanel.qml
+        qml/panels/SelectionToolbar.qml
         qml/panels/StatusBar.qml
         qml/panels/ToolboxPanel.qml
         qml/panels/ToolboxTile.qml
@@ -81,6 +83,18 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/undo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/redo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/zoom-fit.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-down.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-left.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-right.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-up.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/bring-forward.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/duplicate.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/group.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/more.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/send-backward.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/snap.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/ungroup.svg"
 )
 
 target_include_directories(hmi_editor_lib PUBLIC "${PROJECT_SOURCE_DIR}/src")

@@ -43,6 +43,7 @@ hmi_add_test(TextBoxTest SOURCES core/objects/TextBoxTest.cpp core/objects/Objec
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
 hmi_add_test(GestureRecognizerTest SOURCES quick/GestureRecognizerTest.cpp LIBS hmi_quick)
 hmi_add_test(CanvasItemTest SOURCES quick/CanvasItemTest.cpp LIBS hmi_quick)
+hmi_add_test(LargeScreenTest SOURCES quick/LargeScreenTest.cpp LIBS hmi_quick)
 
 # Editor
 set(_hmiEditorTestSupport editor/FakeCanvas.h editor/GestureFactory.h)

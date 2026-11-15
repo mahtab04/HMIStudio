@@ -36,7 +36,10 @@ public:
     [[nodiscard]] ObjectItem* objectItem(ObjectId id) const { return m_items.value(id); }
     [[nodiscard]] int objectItemCount() const { return int(m_items.size()); }
 
-    void setRenderScale(double scale);
+    // Texture scale for objects that intersect `sharpArea` (scene
+    // coordinates); objects further away render at no more than 1:1, so a
+    // deep zoom does not hold full-resolution textures for the whole screen.
+    void setRenderScale(double scale, const QRectF& sharpArea);
 
     void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
     void clearPreview();
@@ -52,12 +55,14 @@ private:
     void syncZOrder();
     void syncScreen();
     void onPropertyChanged(ObjectId id);
+    [[nodiscard]] double renderScaleFor(const ObjectItem& item) const;
 
     const Screen* m_screen = nullptr;
     DocumentNotifier* m_notifier = nullptr;
     QHash<ObjectId, ObjectItem*> m_items;
     QList<ObjectId> m_previewed;
     double m_renderScale = 1.0;
+    QRectF m_sharpArea;
 };
 
 } // namespace hmi

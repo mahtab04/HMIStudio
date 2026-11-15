@@ -31,6 +31,12 @@ bool HitTester::hits(const HmiObject& object, QPointF scenePos, double tolerance
 
     const QPointF local = toLocal.map(scenePos);
     const QPainterPath shape = object.hitShape();
+    // Most objects are nowhere near the point; the bounds test spares them
+    // the expensive stroke below.
+    if (!shape.controlPointRect()
+             .adjusted(-tolerance, -tolerance, tolerance, tolerance)
+             .contains(local))
+        return false;
     if (shape.contains(local))
         return true;
     if (tolerance <= 0.0)

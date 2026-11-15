@@ -82,7 +82,7 @@ void ScreenItem::addItem(ObjectId id)
     if (!object || m_items.contains(id))
         return;
     auto* item = new ObjectItem(object, this);
-    item->setRenderScale(m_renderScale);
+    item->setRenderScale(renderScaleFor(*item));
     m_items.insert(id, item);
     syncZOrder();
 }
@@ -129,11 +129,20 @@ void ScreenItem::onPropertyChanged(ObjectId id)
     }
 }
 
-void ScreenItem::setRenderScale(double scale)
+void ScreenItem::setRenderScale(double scale, const QRectF& sharpArea)
 {
     m_renderScale = scale;
+    m_sharpArea = sharpArea;
     for (ObjectItem* item : std::as_const(m_items))
-        item->setRenderScale(scale);
+        item->setRenderScale(renderScaleFor(*item));
+}
+
+double ScreenItem::renderScaleFor(const ObjectItem& item) const
+{
+    if (m_sharpArea.isNull() || m_renderScale <= 1.0)
+        return m_renderScale;
+    const QRectF bounds = item.mapRectToItem(this, item.boundingRect());
+    return bounds.intersects(m_sharpArea) ? m_renderScale : 1.0;
 }
 
 void ScreenItem::showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation)

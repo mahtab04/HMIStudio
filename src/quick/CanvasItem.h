@@ -9,6 +9,7 @@
 #include <QColor>
 #include <QHash>
 #include <QQuickItem>
+#include <QSet>
 #include <QTimer>
 #include <qqmlintegration.h>
 
@@ -60,6 +61,12 @@ public:
     static constexpr double kMaxZoom = 8.0;
     static constexpr int kZoomSettleMs = 150;
     static constexpr double kFitMargin = 24.0;
+    // Above this many selected objects the overlay draws one frame around
+    // them all instead of one per object (ARCHITECTURE.md section 14.5).
+    static constexpr std::size_t kMaxSelectionFrames = 200;
+    // Objects this far outside the view (in view pixels) still get sharp
+    // textures, so short pans do not show blurry edges.
+    static constexpr double kSharpMargin = 256.0;
 
     explicit CanvasItem(QQuickItem* parent = nullptr);
     ~CanvasItem() override;
@@ -176,6 +183,7 @@ private:
     };
 
     std::vector<ObjectId> m_selection;
+    QSet<ObjectId> m_selectionSet;
     QHash<ObjectId, Preview> m_preview;
     std::optional<QRectF> m_rubberBand;
     std::vector<QLineF> m_guides;

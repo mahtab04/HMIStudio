@@ -36,6 +36,7 @@ class Theme : public QObject
     Q_PROPERTY(QColor handleFill MEMBER m_handleFill CONSTANT)
     Q_PROPERTY(QColor rubberBand MEMBER m_rubberBand CONSTANT)
     Q_PROPERTY(QColor grid MEMBER m_grid CONSTANT)
+    Q_PROPERTY(QColor guide MEMBER m_guide CONSTANT)
     Q_PROPERTY(QColor rulerBackground MEMBER m_rulerBackground CONSTANT)
     Q_PROPERTY(QColor rulerTick MEMBER m_rulerTick CONSTANT)
     Q_PROPERTY(QColor good MEMBER m_good CONSTANT)
@@ -115,6 +116,7 @@ private:
     QColor m_handleFill{Qt::white};
     QColor m_rubberBand{0x4C, 0x8D, 0xFF, 0x30};
     QColor m_grid{0x00, 0x00, 0x00, 0x14};
+    QColor m_guide{0xFF, 0x3D, 0x7F};
     QColor m_rulerBackground{0x16, 0x19, 0x1D};
     QColor m_rulerTick{0x4A, 0x50, 0x58};
     QColor m_good{0x22, 0xC5, 0x5E};
