@@ -93,6 +93,22 @@ add_library(hmi_core_impl STATIC
     objects/Conveyor.h
     objects/Sensor.cpp
     objects/Sensor.h
+    objects/AlarmView.cpp
+    objects/AlarmView.h
+    objects/RecipeView.cpp
+    objects/RecipeView.h
+    objects/DiagnosticsView.cpp
+    objects/DiagnosticsView.h
+    objects/TrendView.cpp
+    objects/TrendView.h
+    objects/FxTrendView.cpp
+    objects/FxTrendView.h
+    objects/ScreenWindow.cpp
+    objects/ScreenWindow.h
+    objects/Browser.cpp
+    objects/Browser.h
+    objects/MediaPlayer.cpp
+    objects/MediaPlayer.h
     objects/TextBox.cpp
     objects/TextBox.h
 

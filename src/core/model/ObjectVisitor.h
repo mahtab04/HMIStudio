@@ -5,6 +5,14 @@ namespace hmi
 
 class Ellipse;
 class GroupObject;
+class MediaPlayer;
+class Browser;
+class ScreenWindow;
+class FxTrendView;
+class TrendView;
+class DiagnosticsView;
+class RecipeView;
+class AlarmView;
 class Sensor;
 class Conveyor;
 class Exchanger;
@@ -78,6 +86,14 @@ public:
     virtual void visit(Exchanger& /*object*/) {}
     virtual void visit(Conveyor& /*object*/) {}
     virtual void visit(Sensor& /*object*/) {}
+    virtual void visit(AlarmView& /*object*/) {}
+    virtual void visit(RecipeView& /*object*/) {}
+    virtual void visit(DiagnosticsView& /*object*/) {}
+    virtual void visit(TrendView& /*object*/) {}
+    virtual void visit(FxTrendView& /*object*/) {}
+    virtual void visit(ScreenWindow& /*object*/) {}
+    virtual void visit(Browser& /*object*/) {}
+    virtual void visit(MediaPlayer& /*object*/) {}
     virtual void visit(GroupObject& /*object*/) {}
     virtual void visit(UnknownObject& /*object*/) {}
 };

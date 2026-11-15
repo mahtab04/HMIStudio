@@ -81,6 +81,19 @@ private Q_SLOTS:
             QVERIFY(tile.toMap().value(u"key"_s).toString() != u"group"_s);
     }
 
+    void offersTheFullObjectSet()
+    {
+        // PLAN.md phase 5: 8 basic objects, 12 elements, 8 controls and 8
+        // process symbols.
+        ToolboxModel model;
+        QCOMPARE(model.entryCount(), 36);
+        QCOMPARE(model.rowCount(), 4);
+        const int expected[] = {8, 12, 8, 8};
+        for (int i = 0; i < 4; ++i)
+            QCOMPARE(model.data(model.index(i), ToolboxModel::TilesRole).toList().size(),
+                     expected[i]);
+    }
+
     void filterNarrowsAndDropsEmptySections()
     {
         ToolboxModel model;

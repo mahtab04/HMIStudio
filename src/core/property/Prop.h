@@ -54,6 +54,17 @@ inline constexpr PropertyId Flowing{"flowing"};
 inline constexpr PropertyId FlowColor{"flowColor"};
 inline constexpr PropertyId SensorKind{"sensorKind"};
 
+// Controls
+inline constexpr PropertyId Columns{"columns"};
+inline constexpr PropertyId RowCount{"rowCount"};
+inline constexpr PropertyId ShowToolbar{"showToolbar"};
+inline constexpr PropertyId TimeRange{"timeRange"};
+inline constexpr PropertyId ScreenName{"screenName"};
+inline constexpr PropertyId Url{"url"};
+inline constexpr PropertyId Source{"source"};
+inline constexpr PropertyId ShowControls{"showControls"};
+inline constexpr PropertyId RecipeName{"recipeName"};
+
 // Graphics
 inline constexpr PropertyId Asset{"asset"};
 inline constexpr PropertyId FitMode{"fitMode"};
