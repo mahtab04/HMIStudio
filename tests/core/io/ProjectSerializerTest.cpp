@@ -372,6 +372,35 @@ private Q_SLOTS:
         const auto loaded = ProjectSerializer::load(dir.path());
         QCOMPARE(loaded.error().code, ErrorCode::BadFormat);
     }
+
+    void everyToolboxTypeSurvivesSaveAndReload()
+    {
+        // PLAN.md phase 5: every toolbox entry can be saved and reloaded.
+        Project project(u"All objects"_s);
+        auto screen = std::make_unique<Screen>(u"All"_s);
+        int count = 0;
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (!info.inToolbox)
+                continue;
+            auto object = info.create(ObjectId::create());
+            QVERIFY(object->setProperty(Prop::X, 10.0 * count));
+            QVERIFY(object->setProperty(Prop::Name, info.key));
+            QVERIFY(screen->insertObject(std::move(object)));
+            ++count;
+        }
+        QCOMPARE(count, 36);
+        (void)project.insertScreen(std::move(screen));
+
+        QTemporaryDir first;
+        QTemporaryDir second;
+        QVERIFY(ProjectSerializer::save(project, first.path()));
+        auto loaded = ProjectSerializer::load(first.path());
+        QVERIFY(loaded);
+        QVERIFY(sameProject(**loaded, project));
+        QVERIFY(ProjectSerializer::save(**loaded, second.path()));
+        QCOMPARE(filesIn(second.path()), filesIn(first.path()));
+    }
 };
 
 QTEST_MAIN(ProjectSerializerTest)
