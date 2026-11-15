@@ -13,6 +13,8 @@ qt_add_qml_module(hmi_editor_lib
     SOURCES
         app/AppContext.cpp
         app/AppContext.h
+        app/EditActions.cpp
+        app/EditActions.h
         app/EditorController.cpp
         app/EditorController.h
         app/SampleProject.cpp
@@ -21,10 +23,20 @@ qt_add_qml_module(hmi_editor_lib
         app/Theme.h
         commands/AddObjectCommand.cpp
         commands/AddObjectCommand.h
+        commands/GroupObjectsCommand.cpp
+        commands/GroupObjectsCommand.h
         commands/MoveObjectsCommand.cpp
         commands/MoveObjectsCommand.h
+        commands/RemoveObjectsCommand.cpp
+        commands/RemoveObjectsCommand.h
+        commands/ReorderCommand.cpp
+        commands/ReorderCommand.h
         commands/ResizeObjectCommand.cpp
         commands/ResizeObjectCommand.h
+        commands/SetPropertyCommand.cpp
+        commands/SetPropertyCommand.h
+        commands/UngroupCommand.cpp
+        commands/UngroupCommand.h
         models/SelectionModel.cpp
         models/SelectionModel.h
         models/ToolboxDragController.cpp
@@ -48,8 +60,10 @@ qt_add_qml_module(hmi_editor_lib
         qml/Main.qml
         qml/controls/IconButton.qml
         qml/panels/BottomPanel.qml
+        qml/panels/CanvasContextMenu.qml
         qml/panels/CanvasPanel.qml
         qml/panels/PropertiesPanel.qml
+        qml/panels/SelectionToolbar.qml
         qml/panels/StatusBar.qml
         qml/panels/ToolboxPanel.qml
         qml/panels/ToolboxTile.qml
@@ -69,6 +83,18 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/undo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/redo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/zoom-fit.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-down.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-left.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-right.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/arrow-up.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/bring-forward.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/delete.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/duplicate.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/group.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/more.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/send-backward.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/snap.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/ungroup.svg"
 )
 
 target_include_directories(hmi_editor_lib PUBLIC "${PROJECT_SOURCE_DIR}/src")

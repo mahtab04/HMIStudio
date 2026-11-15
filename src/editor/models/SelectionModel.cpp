@@ -12,7 +12,7 @@ SelectionModel::SelectionModel(QObject* parent)
 
 bool SelectionModel::contains(ObjectId id) const
 {
-    return std::ranges::find(m_ids, id) != m_ids.end();
+    return m_set.contains(id);
 }
 
 void SelectionModel::set(std::vector<ObjectId> ids)
@@ -20,14 +20,20 @@ void SelectionModel::set(std::vector<ObjectId> ids)
     // Drop duplicates, keeping the first occurrence.
     std::vector<ObjectId> unique;
     unique.reserve(ids.size());
+    QSet<ObjectId> seen;
+    seen.reserve(qsizetype(ids.size()));
     for (const ObjectId& id : ids)
     {
-        if (std::ranges::find(unique, id) == unique.end())
+        if (!seen.contains(id))
+        {
+            seen.insert(id);
             unique.push_back(id);
+        }
     }
     if (unique == m_ids)
         return;
     m_ids = std::move(unique);
+    m_set = std::move(seen);
     Q_EMIT changed();
 }
 
@@ -41,6 +47,7 @@ void SelectionModel::add(ObjectId id)
     if (contains(id))
         return;
     m_ids.push_back(id);
+    m_set.insert(id);
     Q_EMIT changed();
 }
 
@@ -54,9 +61,10 @@ void SelectionModel::toggle(ObjectId id)
 
 void SelectionModel::remove(ObjectId id)
 {
-    const auto removed = std::erase(m_ids, id);
-    if (removed > 0)
-        Q_EMIT changed();
+    if (!m_set.remove(id))
+        return;
+    std::erase(m_ids, id);
+    Q_EMIT changed();
 }
 
 void SelectionModel::clear()
@@ -64,6 +72,7 @@ void SelectionModel::clear()
     if (m_ids.empty())
         return;
     m_ids.clear();
+    m_set.clear();
     Q_EMIT changed();
 }
 

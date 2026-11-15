@@ -5,15 +5,12 @@
 #include "core/model/Screen.h"
 #include "quick/ObjectItem.h"
 
-#include <QSGSimpleRectNode>
-
 namespace hmi
 {
 
 ScreenItem::ScreenItem(QQuickItem* parent)
     : QQuickItem(parent)
 {
-    setFlag(ItemHasContents);
     setTransformOrigin(QQuickItem::TopLeft);
     setAcceptedMouseButtons(Qt::NoButton);
 }
@@ -85,7 +82,7 @@ void ScreenItem::addItem(ObjectId id)
     if (!object || m_items.contains(id))
         return;
     auto* item = new ObjectItem(object, this);
-    item->setRenderScale(m_renderScale);
+    item->setRenderScale(renderScaleFor(*item));
     m_items.insert(id, item);
     syncZOrder();
 }
@@ -119,16 +116,7 @@ void ScreenItem::syncZOrder()
 
 void ScreenItem::syncScreen()
 {
-    if (m_screen)
-    {
-        setSize(m_screen->size());
-        m_background = m_screen->backgroundColor();
-    }
-    else
-    {
-        setSize(QSizeF());
-    }
-    update();
+    setSize(m_screen ? m_screen->size() : QSizeF());
     Q_EMIT contentChanged();
 }
 
@@ -141,18 +129,27 @@ void ScreenItem::onPropertyChanged(ObjectId id)
     }
 }
 
-void ScreenItem::setRenderScale(double scale)
+void ScreenItem::setRenderScale(double scale, const QRectF& sharpArea)
 {
     m_renderScale = scale;
+    m_sharpArea = sharpArea;
     for (ObjectItem* item : std::as_const(m_items))
-        item->setRenderScale(scale);
+        item->setRenderScale(renderScaleFor(*item));
 }
 
-void ScreenItem::showPreview(ObjectId id, const QRectF& sceneGeometry)
+double ScreenItem::renderScaleFor(const ObjectItem& item) const
+{
+    if (m_sharpArea.isNull() || m_renderScale <= 1.0)
+        return m_renderScale;
+    const QRectF bounds = item.mapRectToItem(this, item.boundingRect());
+    return bounds.intersects(m_sharpArea) ? m_renderScale : 1.0;
+}
+
+void ScreenItem::showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation)
 {
     if (ObjectItem* item = m_items.value(id))
     {
-        item->showPreview(sceneGeometry);
+        item->showPreview(sceneGeometry, rotation);
         if (!m_previewed.contains(id))
             m_previewed.append(id);
     }
@@ -166,16 +163,6 @@ void ScreenItem::clearPreview()
             item->syncFromModel();
     }
     m_previewed.clear();
-}
-
-QSGNode* ScreenItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
-{
-    auto* node = static_cast<QSGSimpleRectNode*>(oldNode);
-    if (!node)
-        node = new QSGSimpleRectNode();
-    node->setRect(boundingRect());
-    node->setColor(m_background);
-    return node;
 }
 
 } // namespace hmi

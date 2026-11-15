@@ -44,10 +44,10 @@ const ObjectTypeInfo* ObjectRegistry::findByKey(QStringView key) const noexcept
     return it == m_types.end() ? nullptr : &*it;
 }
 
-std::unique_ptr<HmiObject> ObjectRegistry::create(ObjectTypeId id) const
+std::unique_ptr<HmiObject> ObjectRegistry::create(ObjectTypeId id, ObjectId objectId) const
 {
     const ObjectTypeInfo* info = find(id);
-    return info ? info->create() : nullptr;
+    return info ? info->create(objectId) : nullptr;
 }
 
 std::vector<const ObjectTypeInfo*> ObjectRegistry::types(ObjectCategory category) const

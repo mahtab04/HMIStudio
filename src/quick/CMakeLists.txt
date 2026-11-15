@@ -23,6 +23,8 @@ qt_add_qml_module(hmi_quick
         input/PointerGesture.h
         overlays/GridItem.cpp
         overlays/GridItem.h
+        overlays/GuideOverlay.cpp
+        overlays/GuideOverlay.h
         overlays/RulerItem.cpp
         overlays/RulerItem.h
         overlays/SceneGraphShapes.cpp

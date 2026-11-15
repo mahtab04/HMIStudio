@@ -140,6 +140,28 @@ Done when: every operation undoes and redoes to an identical model (tested),
 all operations are reachable without a keyboard, and the 2,000-object screen
 pans and zooms smoothly within the memory budget you set.
 
+Status: implemented on `feat/phase-3-editing`. `CommandsTest` and
+`EditActionsTest` check that each command and editing operation undoes
+and redoes to an identical model; the context menu and the touch selection
+toolbar reach every operation without a keyboard. The memory budget is
+64 MiB of object textures per screen; `LargeScreenTest` measures 2,000
+objects and the fallback it called for (sharp textures only near the view)
+is in place (ARCHITECTURE.md section 14.5). Choices made here:
+
+- `SetPropertyCommand` does not merge yet; the property panel's sliders in
+  phase 4 will need it.
+- "Same size" uses the first selected object as the reference; a
+  single-object "align" aligns to the screen.
+- Paste offsets each repeated paste by 16 units; the first paste after a
+  cut goes back in place.
+- Ungrouping a rotated child of an unevenly scaled group keeps the child a
+  rectangle, so its shape changes slightly; everything else is exact.
+- A group's hidden children are not drawn (the editor's dimming of hidden
+  objects applies to top-level objects only).
+
+Still open: trying the touch toolbar and rotation handle on a real touch
+screen.
+
 ## Phase 4 — Properties, layers, persistence
 
 - `PropertyModel` built from the selection's descriptors, with mixed-value

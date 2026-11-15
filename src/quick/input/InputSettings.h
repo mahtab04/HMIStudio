@@ -24,6 +24,14 @@ struct InputSettings
     double touchHandleHitSize = 44.0;
     double penHandleHitSize = 20.0;
 
+    // How close an edge or centre must come to a snap target to jump to it.
+    double mouseSnapDistance = 6.0;
+    double touchSnapDistance = 12.0;
+    double penSnapDistance = 8.0;
+
+    // Distance of the rotation handle above the selection frame.
+    double rotationHandleOffset = 28.0;
+
     int longPressMs = 500;
     int doubleTapMs = 400;
     double doubleTapDistance = 24.0;
@@ -39,6 +47,11 @@ struct InputSettings
     [[nodiscard]] constexpr double handleHitSize(PointerDevice device) const noexcept
     {
         return pick(device, mouseHandleHitSize, touchHandleHitSize, penHandleHitSize);
+    }
+
+    [[nodiscard]] constexpr double snapDistance(PointerDevice device) const noexcept
+    {
+        return pick(device, mouseSnapDistance, touchSnapDistance, penSnapDistance);
     }
 
 private:

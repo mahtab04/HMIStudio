@@ -2,6 +2,8 @@
 
 #include "core/model/DocumentNotifier.h"
 
+#include <QHash>
+
 #include <algorithm>
 
 namespace hmi
@@ -148,6 +150,47 @@ Result<void> Screen::moveObject(ObjectId id, std::size_t newIndex)
     else
         std::rotate(from, from + 1, to + 1);
 
+    if (m_notifier)
+        Q_EMIT m_notifier->objectsReordered(m_id);
+    return {};
+}
+
+Result<void> Screen::setOrder(std::span<const ObjectId> order)
+{
+    if (order.size() != m_objects.size())
+    {
+        return makeError(ErrorCode::InvalidArgument,
+                         QStringLiteral("Order names %1 objects, screen '%2' has %3")
+                             .arg(order.size())
+                             .arg(m_name)
+                             .arg(m_objects.size()));
+    }
+    QHash<ObjectId, std::size_t> current;
+    current.reserve(qsizetype(m_objects.size()));
+    for (std::size_t i = 0; i < m_objects.size(); ++i)
+        current.insert(m_objects[i]->id(), i);
+
+    std::vector<std::size_t> from;
+    from.reserve(order.size());
+    std::vector<bool> used(m_objects.size(), false);
+    for (const ObjectId& id : order)
+    {
+        const auto it = current.constFind(id);
+        if (it == current.cend() || used[*it])
+        {
+            return makeError(ErrorCode::NotFound,
+                             QStringLiteral("Object %1 is not on screen '%2' or named twice")
+                                 .arg(id.toString(), m_name));
+        }
+        used[*it] = true;
+        from.push_back(*it);
+    }
+
+    std::vector<std::unique_ptr<HmiObject>> sorted;
+    sorted.reserve(m_objects.size());
+    for (const std::size_t index : from)
+        sorted.push_back(std::move(m_objects[index]));
+    m_objects = std::move(sorted);
     if (m_notifier)
         Q_EMIT m_notifier->objectsReordered(m_id);
     return {};

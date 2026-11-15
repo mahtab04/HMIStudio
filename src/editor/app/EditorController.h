@@ -13,14 +13,16 @@ class QUndoStack;
 namespace hmi
 {
 
+class EditActions;
 class SelectionModel;
 class ToolContext;
 class ToolController;
 class ToolboxDragController;
 
 // The single object the QML shell talks to for editing (Facade): tool
-// switching, zoom, undo and redo, plus display state for the toolbar and
-// status bar. Text shown in QML is formatted here so QML only binds.
+// switching, zoom, undo and redo, the editing actions (EditActions), plus
+// display state for the toolbar, context menu, selection toolbar and status
+// bar. Text shown in QML is formatted here so QML only binds.
 class EditorController : public QObject
 {
     Q_OBJECT
@@ -42,12 +44,52 @@ class EditorController : public QObject
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY undoStateChanged)
     Q_PROPERTY(QString undoText READ undoText NOTIFY undoStateChanged)
     Q_PROPERTY(QString redoText READ redoText NOTIFY undoStateChanged)
+    Q_PROPERTY(bool hasSelection READ hasSelection NOTIFY editStateChanged)
+    Q_PROPERTY(bool canGroup READ canGroup NOTIFY editStateChanged)
+    Q_PROPERTY(bool canUngroup READ canUngroup NOTIFY editStateChanged)
+    Q_PROPERTY(bool canPaste READ canPaste NOTIFY editStateChanged)
+    Q_PROPERTY(bool canAlign READ canAlign NOTIFY editStateChanged)
+    Q_PROPERTY(bool canDistribute READ canDistribute NOTIFY editStateChanged)
+    Q_PROPERTY(bool canMatchSize READ canMatchSize NOTIFY editStateChanged)
+    Q_PROPERTY(bool snapEnabled READ snapEnabled WRITE setSnapEnabled NOTIFY snapEnabledChanged)
+    Q_PROPERTY(QString sizeText READ sizeText NOTIFY sizeTextChanged)
 
 public:
+    enum Alignment
+    {
+        AlignLeft,
+        AlignHorizontalCentre,
+        AlignRight,
+        AlignTop,
+        AlignVerticalCentre,
+        AlignBottom,
+    };
+    Q_ENUM(Alignment)
+
+    enum Order
+    {
+        BringForward,
+        SendBackward,
+        BringToFront,
+        SendToBack,
+    };
+    Q_ENUM(Order)
+
+    enum SizeMatch
+    {
+        SameWidth,
+        SameHeight,
+        SameSize,
+    };
+    Q_ENUM(SizeMatch)
+
+    // Arrow keys move by one unit, with Shift by kLargeNudge.
+    static constexpr double kLargeNudge = 10.0;
+
     static constexpr double kZoomStep = 1.25;
     static constexpr double kGridSpacing = 8.0;
 
-    EditorController(ToolContext& context, ToolboxDragController& toolboxDrag,
+    EditorController(ToolContext& context, EditActions& actions, ToolboxDragController& toolboxDrag,
                      QObject* parent = nullptr);
     ~EditorController() override;
     EditorController(const EditorController&) = delete;
@@ -72,6 +114,23 @@ public:
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
 
+    Q_INVOKABLE void selectAll();
+    Q_INVOKABLE void deleteSelection();
+    Q_INVOKABLE void duplicate();
+    Q_INVOKABLE void cut();
+    Q_INVOKABLE void copy();
+    Q_INVOKABLE void paste();
+    Q_INVOKABLE void group();
+    Q_INVOKABLE void ungroup();
+    Q_INVOKABLE void nudge(double dx, double dy);
+    Q_INVOKABLE void align(hmi::EditorController::Alignment alignment);
+    Q_INVOKABLE void distribute(Qt::Orientation orientation);
+    Q_INVOKABLE void matchSize(hmi::EditorController::SizeMatch match);
+    Q_INVOKABLE void reorder(hmi::EditorController::Order order);
+
+    // Keys the canvas tools did not use: arrows nudge, Delete removes.
+    bool handleKey(int key, Qt::KeyboardModifiers modifiers);
+
     [[nodiscard]] QString projectTitle() const;
     [[nodiscard]] QString screenTitle() const;
     [[nodiscard]] QString zoomText() const;
@@ -87,6 +146,16 @@ public:
     [[nodiscard]] bool canRedo() const;
     [[nodiscard]] QString undoText() const;
     [[nodiscard]] QString redoText() const;
+    [[nodiscard]] bool hasSelection() const;
+    [[nodiscard]] bool canGroup() const;
+    [[nodiscard]] bool canUngroup() const;
+    [[nodiscard]] bool canPaste() const;
+    [[nodiscard]] bool canAlign() const;
+    [[nodiscard]] bool canDistribute() const;
+    [[nodiscard]] bool canMatchSize() const;
+    [[nodiscard]] bool snapEnabled() const;
+    void setSnapEnabled(bool enabled);
+    [[nodiscard]] QString sizeText() const { return m_sizeText; }
 
     [[nodiscard]] ToolController& tools() const noexcept { return *m_tools; }
 
@@ -98,15 +167,23 @@ Q_SIGNALS:
     void toolChanged();
     void multiSelectChanged();
     void undoStateChanged();
+    void editStateChanged();
+    void snapEnabledChanged();
+    void sizeTextChanged();
+    // Right-click on the canvas; `viewPos` is in canvas coordinates.
+    void contextMenuRequested(QPointF viewPos);
 
 private:
     void onPointerMoved(QPointF scenePos);
+    void updateSizeText();
 
     ToolContext& m_context;
+    EditActions& m_actions;
     ToolboxDragController& m_toolboxDrag;
     ToolController* m_tools = nullptr;
     QPointer<CanvasItem> m_canvas;
     QPointF m_cursor;
+    QString m_sizeText;
 };
 
 } // namespace hmi

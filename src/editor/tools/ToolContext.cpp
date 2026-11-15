@@ -35,6 +35,17 @@ double ToolContext::sceneHandleHitSize(const PointerGesture& gesture) const
     return m_input.handleHitSize(gesture.device) / zoom();
 }
 
+double ToolContext::sceneSnapDistance(const PointerGesture& gesture) const
+{
+    return m_input.snapDistance(gesture.device) / zoom();
+}
+
+void ToolContext::requestContextMenu(QPointF viewPos) const
+{
+    if (m_contextMenuRequest)
+        m_contextMenuRequest(viewPos);
+}
+
 void ToolContext::requestSelectTool() const
 {
     if (m_selectToolRequest)

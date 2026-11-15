@@ -30,8 +30,13 @@ HmiObject::~HmiObject() = default;
 std::unique_ptr<HmiObject> HmiObject::cloneWithNewId() const
 {
     std::unique_ptr<HmiObject> copy = clone();
-    copy->m_id = ObjectId::create();
+    copy->renewIds();
     return copy;
+}
+
+void HmiObject::renewIds()
+{
+    m_id = ObjectId::create();
 }
 
 QPainterPath HmiObject::hitShape() const
@@ -81,7 +86,20 @@ Result<void> HmiObject::setProperty(PropertyId id, const PropertyValue& value)
 
 bool HmiObject::hasSameProperties(const HmiObject& other) const
 {
-    return typeId() == other.typeId() && m_values == other.m_values;
+    if (typeId() != other.typeId() || m_values != other.m_values)
+        return false;
+    const auto mine = children();
+    const auto theirs = other.children();
+    return std::ranges::equal(mine, theirs, [](const auto& a, const auto& b)
+                              { return a->hasSameProperties(*b); });
+}
+
+Result<void> HmiObject::setChildren(std::vector<std::unique_ptr<HmiObject>> children)
+{
+    if (children.empty())
+        return {};
+    return makeError(ErrorCode::InvalidArgument,
+                     QStringLiteral("Object type %1 cannot have children").arg(typeId().value()));
 }
 
 QString HmiObject::name() const

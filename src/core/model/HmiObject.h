@@ -44,8 +44,28 @@ public:
     // Exact copy including the id; used for undo snapshots and comparisons.
     [[nodiscard]] virtual std::unique_ptr<HmiObject> clone() const = 0;
 
-    // Copy with a fresh id; used for paste and duplicate.
+    // Copy with a fresh id (and fresh ids for any children); used for paste
+    // and duplicate.
     [[nodiscard]] std::unique_ptr<HmiObject> cloneWithNewId() const;
+
+    // Objects owned by this one (Composite). Empty except for groups. Child
+    // geometry is in the parent's coordinate system, not the screen's.
+    [[nodiscard]] virtual std::span<const std::unique_ptr<HmiObject>> children() const noexcept
+    {
+        return {};
+    }
+
+    // Replaces the children of a composite type (used when reading a file or
+    // the clipboard). Fails for types that cannot have children unless
+    // `children` is empty.
+    virtual Result<void> setChildren(std::vector<std::unique_ptr<HmiObject>> children);
+
+    // Copies of the children converted to screen coordinates, for ungrouping.
+    // Empty for types without children.
+    [[nodiscard]] virtual std::vector<std::unique_ptr<HmiObject>> ungroupedChildren() const
+    {
+        return {};
+    }
 
     // Paints in local coordinates. Runs on the render thread: reads only this
     // object's data and changes nothing.
@@ -78,8 +98,9 @@ public:
     // Validates and stores a value; notifies only if the value changed.
     Result<void> setProperty(PropertyId id, const PropertyValue& value);
 
-    // True when both objects have the same type and property values. Ids are
-    // not compared.
+    // True when both objects have the same type and property values, and
+    // their children (if any) compare the same, in order. Ids are not
+    // compared.
     [[nodiscard]] bool hasSameProperties(const HmiObject& other) const;
 
     [[nodiscard]] ObjectId id() const noexcept { return m_id; }
@@ -104,6 +125,9 @@ protected:
 
     // For clone(): copies id and values, but not the document attachment.
     HmiObject(const HmiObject& other);
+
+    // Gives this object a fresh id; types with children renew theirs too.
+    virtual void renewIds();
 
 private:
     friend class Screen;

@@ -122,8 +122,8 @@ hmi-studio/
 │  │  ├─ property/           # PropertyValue, PropertyDescriptor
 │  │  ├─ tags/               # Tag, TagDatabase, Binding, Dynamization
 │  │  ├─ events/             # Action, EventHandler
-│  │  ├─ io/                 # ProjectSerializer, migrations
-│  │  ├─ spatial/            # HitTester, snapping
+│  │  ├─ io/                 # ObjectJson; ProjectSerializer, migrations (phase 4)
+│  │  ├─ spatial/            # HitTester, Snapper and snap strategies
 │  │  └─ registry/           # ObjectRegistry (factory)
 │  ├─ render/
 │  ├─ comm/
@@ -134,12 +134,12 @@ hmi-studio/
 │  │  ├─ ICanvasView.h       # what tools may ask of the canvas
 │  │  ├─ ScreenItem.*        # one screen, parent of ObjectItems
 │  │  ├─ ObjectItem.*        # QQuickPaintedItem per HmiObject
-│  │  ├─ overlays/           # SelectionOverlay, GridItem, RulerItem,
-│  │  │                      # SelectionGeometry, SceneGraphShapes
-│  │  │                      # (GuideOverlay in phase 3)
+│  │  ├─ overlays/           # SelectionOverlay, GuideOverlay, GridItem,
+│  │  │                      # RulerItem, SelectionGeometry, SceneGraphShapes
 │  │  └─ input/              # GestureRecognizer, PointerGesture, InputSettings
 │  └─ editor/
-│     ├─ app/                # main.cpp, AppContext, EditorController, Theme
+│     ├─ app/                # main.cpp, AppContext, EditorController,
+│     │                      # EditActions, Theme
 │     ├─ tools/              # ITool, ToolController, ToolContext, SelectTool,
 │     │                      # CreateTool, PanTool (PipeTool in phase 5)
 │     ├─ commands/           # QUndoCommand subclasses
@@ -204,7 +204,7 @@ Each type passes its static descriptor table to the `HmiObject` constructor,
 which stores the values in table order. While an object belongs to a
 `Screen` inside a `Project`, `setProperty()` emits
 `DocumentNotifier::propertyChanged`; a detached object (fixture, undo
-snapshot, clipboard) changes silently. Z-order is the object's index in its
+snapshot, clipboard, group child) changes silently. Z-order is the object's index in its
 `Screen` (index 0 at the bottom), not a property. `PropertyId` and
 `ObjectTypeId` are
 compile-time FNV-1a hashes of their file keys; `ObjectId` and `ScreenId` are
@@ -223,6 +223,21 @@ HmiObject
 ├─ SymbolObject     Tank, Pump, Valve, Motor, Pipe, Exchanger, Conveyor, Sensor
 └─ GroupObject      Composite: owns child HmiObjects
 ```
+
+`GroupObject` keeps its children in its own coordinates, exactly as they
+were when grouped, and maps the rectangle around them onto its geometry.
+Moving, resizing or rotating a group therefore changes only the group's
+properties, never the children's, which keeps undo exact.
+`ungroupedChildren()` bakes the group's transform into copies of the
+children. `HmiObject` carries the composite interface (`children()`,
+`setChildren()`, `ungroupedChildren()`), so commands and the serializer
+never test for the group type. Groups are registered as an internal type:
+files and the clipboard can contain them, the toolbox does not offer them.
+
+`ObjectJson` writes objects as JSON from their descriptors (section 10).
+The clipboard uses it now, under the MIME type
+`application/x-hmistudio-objects`; the project serializer reuses it in
+phase 4.
 
 ### 5.2 Property system
 
@@ -309,21 +324,22 @@ with hidden state.
 
 ```
 CanvasItem : QQuickItem            viewport; owns zoom and pan; receives all input
-├─ ScreenItem : QQuickItem         one Screen and its background; scaled and
-│  │                               translated by CanvasItem
+├─ GridItem : QQuickItem           screen background and grid lines
+├─ ScreenItem : QQuickItem         one Screen; scaled and translated by CanvasItem
 │  └─ ObjectItem : QQuickPaintedItem   one per HmiObject, z from its index
-├─ GridItem : QQuickItem           grid lines over the screen area
-└─ SelectionOverlay : QQuickItem   frames, eight handles, rubber band
-                                   (rotation handle and size label: phase 3)
+├─ GuideOverlay : QQuickItem       snap guides while moving or resizing
+└─ SelectionOverlay : QQuickItem   frames, eight handles, rotation handle,
+                                   rubber band
 
 RulerItem ×2 : QQuickPaintedItem   QML siblings of the canvas, bound to it
                                    through their `canvas` property
-GuideOverlay : QQuickItem          snap guides (phase 3)
 ```
 
-`CanvasItem` creates its children in C++ in this order, so the grid is drawn
-over the objects. It is faint; it moves below them when snapping arrives in
-phase 3.
+`CanvasItem` creates its children in C++ in this order, so the grid lies
+between the screen background and the objects. It exposes the selection's
+view rectangle (`selectionBounds`) and whether a tool preview is running
+(`previewActive`); QML places the size label and the touch selection
+toolbar from them, and `EditorController` formats the label text.
 
 - `ScreenItem` listens to `DocumentNotifier` and creates or removes
   `ObjectItem`s. It is the Qt Quick counterpart of a scene.
@@ -339,12 +355,14 @@ phase 3.
   nodes an overlay marks its item transform node dirty: the software
   renderer otherwise places nodes added to an already rendered subtree with
   a stale transform.
-- Tools preview by moving `ObjectItem`s (`ICanvasView::setPreviewGeometry`)
-  and drawing on the overlay (`setRubberBand`); the model changes once,
+- Tools preview by moving and turning `ObjectItem`s
+  (`ICanvasView::setPreviewGeometry`, `setPreviewRotation`) and drawing on
+  the overlays (`setRubberBand`, `setGuides`); the model changes once,
   through a command, when the gesture ends. During a resize preview the item
   stretches the model's drawing to the preview size.
-- `SelectionGeometry` computes frames, handle positions, handle hits and
-  resize results (opposite edge fixed, also when rotated). The overlay and
+- `SelectionGeometry` computes frames, handle positions, handle hits,
+  the rotation handle and resize results (opposite edge fixed, also when
+  rotated). The overlay and
   `SelectTool` both use it, so what is drawn is what can be hit.
 - When an object is removed, `ScreenItem` detaches its `ObjectItem` before
   deleting it, so the render thread never paints a destroyed object.
@@ -382,13 +400,14 @@ not reliable.
 | Rubber-band select | Drag on empty area; dragging right selects enclosed objects, dragging left also touched ones | Long-press on empty area, then drag |
 | Move object | Drag object | Drag object |
 | Resize | Drag handle | Drag handle (44 px touch target) |
-| Rotate | Rotation handle (phase 3) | Rotation handle (phase 3) |
+| Rotate | Drag the rotation handle; Shift for 15° steps | Drag the rotation handle |
 | Pan | Wheel, Space+drag, middle button, Pan tool | Two-finger drag; one-finger drag on empty area; Pan tool |
 | Zoom | Ctrl+wheel; toolbar − and +; Ctrl+0 fit; Ctrl+1 100 % | Pinch, centred between the fingers; toolbar |
-| Context menu | Right-click (phase 3) | "More" button in the selection toolbar (phase 3); long-press is used for multi-select |
+| Context menu | Right-click | "More" button in the selection toolbar; long-press is used for multi-select |
 | Place new object | Drag from toolbox, or click a tile then click or drag on canvas | Drag from toolbox, or tap a tile then tap or drag on canvas |
 | Cancel | Escape | A second finger landing during a drag |
-| Nudge | Arrow keys (phase 3) | Arrow buttons in the selection toolbar (phase 3) |
+| Nudge | Arrow keys (Shift: 10 units); consecutive nudges are one undo step | Arrow buttons in the selection toolbar |
+| Snap | On by default (top bar toggle); Alt suspends it while dragging | Toggle in the top bar |
 
 Thresholds come from `InputSettings`, in view pixels:
 
@@ -401,9 +420,20 @@ Thresholds come from `InputSettings`, in view pixels:
 A long press is 500 ms (touch and pen only; the mouse uses right-click). A
 double tap must follow within 400 ms and 24 px.
 
+Snapping (`Snapper`, Strategy pattern) moves an edge or centre of the
+dragged rectangle onto the grid or onto another object's or the screen's
+edges and centres, within 6 view pixels for the mouse and 12 for touch.
+Object targets win ties with the grid and draw guides. Targets are collected
+and sorted once when a drag starts, so each move is a binary search.
+Rotation snaps to 45° within 3°, and to 15° steps with Shift.
+
+When the rotation handle and a resize handle are both under a finger, the
+nearer one wins.
+
 Touch additions outside the canvas: a floating selection toolbar (delete,
-duplicate, group, bring forward) near the selection, undo and redo always
-visible, numeric fields that open an on-screen keypad, and all controls at
+duplicate, group or ungroup, bring forward, send backward, nudge arrows and
+"more" for the context menu) above the selection, shown in the touch
+layout, undo and redo always visible, numeric fields that open an on-screen keypad, and all controls at
 least 44 px high when the UI is in touch density. `Theme` exposes a density
 setting (compact for mouse, comfortable for touch): comfortable when a touch
 screen is attached at start-up, switchable with the Input button in the top
@@ -427,10 +457,15 @@ Every panel is a C++ model plus a short QML view.
 | Output | `MessageModel` filled by `ValidationVisitor` | `ListView` |
 
 `EditorController` exposes actions as invokables (`undo`, `redo`,
-`selectTool`, `panTool`, `createTool(key)`, zoom actions; later `copy`,
-`align…`, `simulate`) and display state as properties (`canUndo`,
-`zoomText`, `cursorText`, `selectionText`, one `…ToolActive` bool per tool,
-`createType`). Text is formatted in C++ so QML only binds. `Main.qml` lays
+`selectTool`, `panTool`, `createTool(key)`, zoom actions, and the editing
+actions `cut`, `copy`, `paste`, `duplicate`, `deleteSelection`, `group`,
+`ungroup`, `nudge`, `align`, `distribute`, `matchSize`, `reorder`; later
+`simulate`) and display state as properties (`canUndo`, `canGroup`,
+`canPaste` and the other `can…` flags, `zoomText`, `cursorText`,
+`selectionText`, `sizeText`, one `…ToolActive` bool per tool,
+`createType`). The editing actions live in `EditActions`, a plain C++ class
+that each pushes one undo step, so keyboard shortcuts, the context menu and
+the touch toolbar run the same code. Text is formatted in C++ so QML only binds. `Main.qml` lays
 the panels out in a `SplitView` and sets the Controls palette from `Theme`.
 Collapsing panels and saving their sizes comes in phase 4.
 
@@ -569,7 +604,7 @@ Not used: C++20 modules (tooling with moc is still awkward) and coroutines.
 |---|---|
 | Scope: a WinCC-class editor is years of work | PLAN.md delivers a usable editor with a small object set first |
 | The canvas (selection, hit testing, handles, gestures) is all custom code | It is the largest item in phases 2 and 3, with its own tests; logic sits in `hmi_core` and tools, not in items |
-| One texture per `QQuickPaintedItem` uses a lot of GPU memory on large screens | Measure at 2,000 objects in phase 3; fallbacks in section 14.5 |
+| One texture per `QQuickPaintedItem` uses a lot of GPU memory on large screens | Measured at 2,000 objects (`LargeScreenTest`); only objects near the view render above 1:1 (section 14.5) |
 | Blurry objects after zooming, since painted items are textures | Re-render at the new scale when zoom settles (section 14.5) |
 | Logic leaking into QML over time | Rules in section 2.1, `qmllint`, review checklist in SKILL.md |
 | Fine editing with fingers is imprecise | Larger hit tolerance, numeric fields, nudge buttons, zoom-to-selection |
@@ -658,14 +693,18 @@ composites. Consequences and how they are handled:
   is scaled.
 - **Repaint cost.** Only items whose model changed call `update()`. Panning
   and zooming move textures without repainting anything.
-- **Memory with many objects.** If the 2,000-object test shows a problem,
-  three fallbacks exist, in order of effort: lower the texture scale for
-  off-screen items and release textures of items outside the viewport; draw
-  basic shapes (rectangle, line, ellipse) with scene-graph nodes in
-  `updatePaintNode` instead of textures, keeping the painted path for the
-  software renderer, which cannot draw custom geometry; evaluate Qt Canvas
-  Painter, the GPU-accelerated painter added in Qt 6.12, as a replacement
-  painter.
+- **Memory with many objects.** Only objects within 256 view pixels of the
+  view get textures above 1:1 when the view settles; the rest render at
+  scene size. Panning restarts the settle timer, so objects brought into
+  view sharpen 150 ms after the view stops. `LargeScreenTest` (2,000
+  objects, 1280 × 800, software renderer) measured, before and after:
+  object textures at 800 % 293 MiB → 11 MiB (budget 64 MiB); at 100 %
+  5 MiB; pan and zoom frames about 15 ms; selecting all 2,000 objects
+  1.5 ms and a 19 ms frame (the overlay draws one frame around a selection
+  of more than 200 objects); a hit test about 1 ms. If a later object type
+  needs more, two further fallbacks remain: draw basic shapes with
+  scene-graph nodes instead of textures (keeping the painted path for the
+  software renderer), or evaluate Qt Canvas Painter (Qt 6.12).
 - **Antialiasing.** `setAntialiasing(true)` on painted items; overlay lines
   are axis-aligned one-pixel rectangles snapped to whole pixels.
 - **Level of detail.** `PaintContext` carries the current zoom; below a

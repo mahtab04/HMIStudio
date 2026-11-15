@@ -28,9 +28,12 @@ endfunction()
 hmi_add_test(IdsTest SOURCES core/model/IdsTest.cpp)
 hmi_add_test(ScreenTest SOURCES core/model/ScreenTest.cpp)
 hmi_add_test(ProjectTest SOURCES core/model/ProjectTest.cpp)
+hmi_add_test(GroupObjectTest SOURCES core/model/GroupObjectTest.cpp core/objects/ObjectContract.h)
+hmi_add_test(ObjectJsonTest SOURCES core/io/ObjectJsonTest.cpp)
 hmi_add_test(PropertyDescriptorTest SOURCES core/property/PropertyDescriptorTest.cpp)
 hmi_add_test(ObjectRegistryTest SOURCES core/registry/ObjectRegistryTest.cpp)
 hmi_add_test(HitTesterTest SOURCES core/spatial/HitTesterTest.cpp)
+hmi_add_test(SnapperTest SOURCES core/spatial/SnapperTest.cpp)
 hmi_add_test(RectangleTest SOURCES core/objects/RectangleTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(EllipseTest SOURCES core/objects/EllipseTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(LineTest SOURCES core/objects/LineTest.cpp core/objects/ObjectContract.h)
@@ -40,10 +43,12 @@ hmi_add_test(TextBoxTest SOURCES core/objects/TextBoxTest.cpp core/objects/Objec
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
 hmi_add_test(GestureRecognizerTest SOURCES quick/GestureRecognizerTest.cpp LIBS hmi_quick)
 hmi_add_test(CanvasItemTest SOURCES quick/CanvasItemTest.cpp LIBS hmi_quick)
+hmi_add_test(LargeScreenTest SOURCES quick/LargeScreenTest.cpp LIBS hmi_quick)
 
 # Editor
 set(_hmiEditorTestSupport editor/FakeCanvas.h editor/GestureFactory.h)
 hmi_add_test(CommandsTest SOURCES editor/CommandsTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(EditActionsTest SOURCES editor/EditActionsTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(SelectToolTest SOURCES editor/SelectToolTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(CreateToolTest SOURCES editor/CreateToolTest.cpp ${_hmiEditorTestSupport}

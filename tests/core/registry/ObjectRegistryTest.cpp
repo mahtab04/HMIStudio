@@ -22,8 +22,9 @@ private Q_SLOTS:
         QStringList keys;
         for (const ObjectTypeInfo* info : basics)
             keys << info->key;
-        QCOMPARE(keys, (QStringList{QStringLiteral("ellipse"), QStringLiteral("line"),
-                                    QStringLiteral("rectangle"), QStringLiteral("textBox")}));
+        QCOMPARE(keys, (QStringList{QStringLiteral("ellipse"), QStringLiteral("group"),
+                                    QStringLiteral("line"), QStringLiteral("rectangle"),
+                                    QStringLiteral("textBox")}));
     }
 
     void entriesHaveToolboxMetadata()
@@ -31,7 +32,8 @@ private Q_SLOTS:
         for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
         {
             QVERIFY(info.displayName && *info.displayName);
-            QVERIFY(info.iconPath.startsWith(u":/icons/"));
+            // Internal types (groups) are not in the toolbox and need no icon.
+            QVERIFY(!info.inToolbox || info.iconPath.startsWith(u":/icons/"));
             QCOMPARE(ObjectTypeId::fromKey(info.key), info.id);
         }
     }
@@ -40,7 +42,7 @@ private Q_SLOTS:
     {
         for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
         {
-            const auto object = info.create();
+            const auto object = info.create(ObjectId::create());
             QVERIFY(object);
             QCOMPARE(object->typeId(), info.id);
             QVERIFY(!object->id().isNull());
@@ -71,14 +73,14 @@ private Q_SLOTS:
         QVERIFY(!registry.add({.id = Rectangle::kTypeId,
                                .key = QStringLiteral("rectangle"),
                                .displayName = "Again",
-                               .create = [] { return std::unique_ptr<HmiObject>(); }}));
+                               .create = [](ObjectId) { return std::unique_ptr<HmiObject>(); }}));
 
         QTest::ignoreMessage(QtWarningMsg,
                              QRegularExpression(QStringLiteral("rejected type 'other'")));
         QVERIFY(!registry.add({.id = ObjectTypeId{"something"},
                                .key = QStringLiteral("other"),
                                .displayName = "Mismatch",
-                               .create = [] { return std::unique_ptr<HmiObject>(); }}));
+                               .create = [](ObjectId) { return std::unique_ptr<HmiObject>(); }}));
 
         QCOMPARE(registry.types().size(), before);
     }

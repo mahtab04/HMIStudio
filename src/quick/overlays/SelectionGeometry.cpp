@@ -81,6 +81,30 @@ std::optional<SelectionHandle> handleAt(const QRectF& geometry, double rotation,
     return best;
 }
 
+QPointF rotationHandle(const QRectF& geometry, double rotation, double offset)
+{
+    return HmiObject::sceneTransform(geometry, rotation)
+        .map(QPointF(geometry.width() / 2.0, -offset));
+}
+
+bool hitsRotationHandle(const QRectF& geometry, double rotation, double offset, QPointF scenePos,
+                        double hitSize)
+{
+    const QPointF d = scenePos - rotationHandle(geometry, rotation, offset);
+    return std::abs(d.x()) <= hitSize / 2.0 && std::abs(d.y()) <= hitSize / 2.0;
+}
+
+double rotationTowards(const QRectF& geometry, QPointF scenePos)
+{
+    // The handle points up (-y) at rotation 0 and y grows downwards, so the
+    // clockwise angle from "up" is atan2(dx, -dy).
+    const QPointF d = scenePos - geometry.center();
+    double degrees = qRadiansToDegrees(std::atan2(d.x(), -d.y()));
+    if (degrees <= -180.0)
+        degrees += 360.0;
+    return degrees;
+}
+
 QRectF resized(const QRectF& geometry, double rotation, SelectionHandle handle, QPointF sceneDelta,
                double minimumSize)
 {

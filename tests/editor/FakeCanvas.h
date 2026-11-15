@@ -18,6 +18,8 @@ public:
     double zoomValue = 1.0;
     QPointF pan;
     QHash<ObjectId, QRectF> preview;
+    QHash<ObjectId, double> previewRotation;
+    std::vector<QLineF> guides;
     std::optional<QRectF> rubberBand;
     Qt::CursorShape cursor = Qt::ArrowCursor;
     int zoomCalls = 0;
@@ -28,6 +30,8 @@ public:
         zoomValue = 1.0;
         pan = {};
         preview.clear();
+        previewRotation.clear();
+        guides.clear();
         rubberBand.reset();
         cursor = Qt::ArrowCursor;
         zoomCalls = 0;
@@ -45,9 +49,15 @@ public:
     {
         preview.insert(id, sceneGeometry);
     }
+    void setPreviewRotation(ObjectId id, double rotation) override
+    {
+        previewRotation.insert(id, rotation);
+    }
+    void setGuides(std::vector<QLineF> sceneLines) override { guides = std::move(sceneLines); }
     void clearPreview() override
     {
         preview.clear();
+        previewRotation.clear();
         ++clearPreviewCalls;
     }
     void setRubberBand(const std::optional<QRectF>& sceneRect) override { rubberBand = sceneRect; }

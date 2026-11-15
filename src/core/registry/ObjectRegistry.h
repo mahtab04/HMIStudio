@@ -33,7 +33,10 @@ struct ObjectTypeInfo
     const char* displayName = nullptr;
     ObjectCategory category = ObjectCategory::BasicObjects;
     QString iconPath;
-    std::function<std::unique_ptr<HmiObject>()> create;
+    // False for types created only by editing operations (groups).
+    bool inToolbox = true;
+    // Creates an object with default properties and the given id.
+    std::function<std::unique_ptr<HmiObject>(ObjectId)> create;
 };
 
 // Factory for HMI object types (Factory Method / registry pattern). Each type
@@ -52,7 +55,9 @@ public:
     [[nodiscard]] const ObjectTypeInfo* findByKey(QStringView key) const noexcept;
 
     // New object of the type with default properties, or nullptr if unknown.
-    [[nodiscard]] std::unique_ptr<HmiObject> create(ObjectTypeId id) const;
+    // `objectId` is kept when reading a file; new objects get a fresh one.
+    [[nodiscard]] std::unique_ptr<HmiObject> create(ObjectTypeId id,
+                                                    ObjectId objectId = ObjectId::create()) const;
 
     // All types, sorted by category then key, so the order does not depend
     // on static initialization order.
@@ -75,15 +80,26 @@ private:
 // bottom of the type's .cpp file, inside no namespace. `Class::kTypeId` must
 // be built from the same key.
 #define HMI_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath)                           \
+    HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, true)
+
+// Registers a type that files and the clipboard can contain but that the
+// toolbox does not offer (a group is made by grouping, not placed).
+#define HMI_REGISTER_INTERNAL_OBJECT(Class, Key, DisplayName)                                      \
+    HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, ::hmi::ObjectCategory::BasicObjects, "",   \
+                               false)
+
+#define HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, InToolbox)         \
     static_assert(Class::kTypeId == ::hmi::ObjectTypeId{Key}, "kTypeId must match the key");       \
     namespace                                                                                      \
     {                                                                                              \
-    [[maybe_unused]] const bool HMI_DETAIL_CONCAT(                                                 \
-        hmiRegistered, __LINE__) = ::hmi::ObjectRegistry::instance().add(::hmi::ObjectTypeInfo{    \
-        .id = Class::kTypeId,                                                                      \
-        .key = QStringLiteral(Key),                                                                \
-        .displayName = DisplayName,                                                                \
-        .category = Category,                                                                      \
-        .iconPath = QStringLiteral(IconPath),                                                      \
-        .create = [] { return std::unique_ptr<::hmi::HmiObject>(std::make_unique<Class>()); }});   \
+    [[maybe_unused]] const bool HMI_DETAIL_CONCAT(hmiRegistered, __LINE__) =                       \
+        ::hmi::ObjectRegistry::instance().add(::hmi::ObjectTypeInfo{                               \
+            .id = Class::kTypeId,                                                                  \
+            .key = QStringLiteral(Key),                                                            \
+            .displayName = DisplayName,                                                            \
+            .category = Category,                                                                  \
+            .iconPath = QStringLiteral(IconPath),                                                  \
+            .inToolbox = InToolbox,                                                                \
+            .create = [](::hmi::ObjectId objectId)                                                 \
+            { return std::unique_ptr<::hmi::HmiObject>(std::make_unique<Class>(objectId)); }});    \
     }

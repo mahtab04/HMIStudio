@@ -1,8 +1,11 @@
 #pragma once
 
 #include "core/model/Ids.h"
+#include "core/spatial/Snapper.h"
 #include "quick/input/InputSettings.h"
 #include "quick/input/PointerGesture.h"
+
+#include <QPointF>
 
 #include <functional>
 
@@ -51,6 +54,23 @@ public:
         m_selectToolRequest = std::move(request);
     }
 
+    // Asks the shell to open the context menu for the selection at a view
+    // position (right-click).
+    void requestContextMenu(QPointF viewPos) const;
+    void setContextMenuRequest(std::function<void(QPointF)> request)
+    {
+        m_contextMenuRequest = std::move(request);
+    }
+
+    // Snapping while moving and resizing. Off, or with Alt held, objects
+    // follow the pointer to the whole scene unit.
+    [[nodiscard]] bool snapEnabled() const noexcept { return m_snapEnabled; }
+    void setSnapEnabled(bool enabled) noexcept { m_snapEnabled = enabled; }
+    [[nodiscard]] const Snapper::Settings& snapSettings() const noexcept { return m_snapSettings; }
+    void setSnapSettings(const Snapper::Settings& settings) { m_snapSettings = settings; }
+    // Snap distance for the gesture's device in scene units.
+    [[nodiscard]] double sceneSnapDistance(const PointerGesture& gesture) const;
+
 private:
     Project& m_project;
     QUndoStack& m_undoStack;
@@ -59,6 +79,9 @@ private:
     ICanvasView* m_canvas = nullptr;
     ScreenId m_screenId;
     std::function<void()> m_selectToolRequest;
+    std::function<void(QPointF)> m_contextMenuRequest;
+    Snapper::Settings m_snapSettings;
+    bool m_snapEnabled = true;
 };
 
 } // namespace hmi

@@ -113,6 +113,50 @@ ApplicationWindow {
         onActivated: root.editor.zoomToActualSize()
     }
     Shortcut {
+        sequences: [StandardKey.Copy]
+        onActivated: root.editor.copy()
+    }
+    Shortcut {
+        sequences: [StandardKey.Cut]
+        onActivated: root.editor.cut()
+    }
+    Shortcut {
+        sequences: [StandardKey.Paste]
+        onActivated: root.editor.paste()
+    }
+    Shortcut {
+        sequence: "Ctrl+D"
+        onActivated: root.editor.duplicate()
+    }
+    Shortcut {
+        sequences: [StandardKey.SelectAll]
+        onActivated: root.editor.selectAll()
+    }
+    Shortcut {
+        sequence: "Ctrl+G"
+        onActivated: root.editor.group()
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+G"
+        onActivated: root.editor.ungroup()
+    }
+    Shortcut {
+        sequence: "Ctrl+]"
+        onActivated: root.editor.reorder(EditorController.BringForward)
+    }
+    Shortcut {
+        sequence: "Ctrl+["
+        onActivated: root.editor.reorder(EditorController.SendBackward)
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+]"
+        onActivated: root.editor.reorder(EditorController.BringToFront)
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+["
+        onActivated: root.editor.reorder(EditorController.SendToBack)
+    }
+    Shortcut {
         sequence: "V"
         onActivated: root.editor.selectTool()
     }

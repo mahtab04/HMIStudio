@@ -2,9 +2,11 @@
 
 #include "core/model/HmiObject.h"
 #include "core/model/Screen.h"
+#include "core/property/Prop.h"
 #include "core/spatial/HitTester.h"
 #include "editor/commands/MoveObjectsCommand.h"
 #include "editor/commands/ResizeObjectCommand.h"
+#include "editor/commands/SetPropertyCommand.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
 #include "quick/ICanvasView.h"
@@ -22,6 +24,20 @@ namespace
 QRectF roundedRect(const QRectF& r)
 {
     return {std::round(r.x()), std::round(r.y()), std::round(r.width()), std::round(r.height())};
+}
+
+bool isAxisAligned(double rotation)
+{
+    return qFuzzyIsNull(std::remainder(rotation, 360.0));
+}
+
+Snapper::Edges movingEdges(SelectionHandle h)
+{
+    using H = SelectionHandle;
+    return {.left = h == H::TopLeft || h == H::Left || h == H::BottomLeft,
+            .top = h == H::TopLeft || h == H::Top || h == H::TopRight,
+            .right = h == H::TopRight || h == H::Right || h == H::BottomRight,
+            .bottom = h == H::BottomLeft || h == H::Bottom || h == H::BottomRight};
 }
 
 } // namespace
@@ -49,10 +65,11 @@ void SelectTool::handleGesture(const PointerGesture& gesture)
         longPress(gesture);
         break;
     case Kind::ContextMenu:
-        // The context menu itself arrives in phase 3; make sure the object
-        // under the pointer is part of the selection it will act on.
+        // The menu acts on the selection, so the object under the pointer
+        // joins it first; on empty space the selection is kept.
         if (HmiObject* hit = objectAt(gesture); hit && !m_context.selection().contains(hit->id()))
             m_context.selection().selectOnly(hit->id());
+        m_context.requestContextMenu(gesture.viewPos);
         break;
     case Kind::DragBegin:
         dragBegin(gesture);
@@ -136,9 +153,33 @@ void SelectTool::dragBegin(const PointerGesture& gesture)
         const HmiObject* selected = screen->object(selection.ids().front());
         if (selected && !selected->isLocked())
         {
-            const auto handle = SelectionGeometry::handleAt(selected->geometry(),
-                                                            selected->rotation(), gesture.scenePos,
-                                                            m_context.sceneHandleHitSize(gesture));
+            const QRectF geometry = selected->geometry();
+            const double rotation = selected->rotation();
+            const double hitSize = m_context.sceneHandleHitSize(gesture);
+            const auto handle =
+                SelectionGeometry::handleAt(geometry, rotation, gesture.scenePos, hitSize);
+
+            // The rotation handle sits close to the top handle; with touch
+            // their hit areas overlap, and the nearer one wins.
+            const double offset = m_context.input().rotationHandleOffset / m_context.zoom();
+            const QPointF rotationHandle =
+                SelectionGeometry::rotationHandle(geometry, rotation, offset);
+            const auto distance = [&](QPointF p)
+            {
+                return QLineF(gesture.scenePos, p).length();
+            };
+            if (SelectionGeometry::hitsRotationHandle(geometry, rotation, offset, gesture.scenePos,
+                                                      hitSize) &&
+                (!handle ||
+                 distance(rotationHandle) < distance(SelectionGeometry::handles(
+                                                geometry, rotation)[std::size_t(*handle)])))
+            {
+                m_mode = Mode::Rotate;
+                m_resizeId = selected->id();
+                m_resizeRotation = rotation;
+                m_startGeometry.insert(m_resizeId, geometry);
+                return;
+            }
             if (handle)
             {
                 m_mode = Mode::Resize;
@@ -146,6 +187,7 @@ void SelectTool::dragBegin(const PointerGesture& gesture)
                 m_resizeId = selected->id();
                 m_resizeRotation = selected->rotation();
                 m_startGeometry.insert(m_resizeId, selected->geometry());
+                startSnapper();
                 return;
             }
         }
@@ -160,13 +202,20 @@ void SelectTool::dragBegin(const PointerGesture& gesture)
             else
                 selection.selectOnly(hit->id());
         }
+        m_moveBounds = QRectF();
         for (const ObjectId& id : selection.ids())
         {
             const HmiObject* object = screen->object(id);
             if (object && !object->isLocked())
+            {
                 m_startGeometry.insert(id, object->geometry());
+                const QRectF bounds = object->sceneBoundingRect();
+                m_moveBounds = m_moveBounds.isNull() ? bounds : m_moveBounds.united(bounds);
+            }
         }
         m_mode = m_startGeometry.isEmpty() ? Mode::None : Mode::Move;
+        if (m_mode == Mode::Move)
+            startSnapper();
         return;
     }
 
@@ -187,10 +236,15 @@ void SelectTool::dragUpdate(const PointerGesture& gesture)
         const QPointF delta = moveDelta(gesture);
         for (auto it = m_startGeometry.cbegin(); it != m_startGeometry.cend(); ++it)
             canvas->setPreviewGeometry(it.key(), it.value().translated(delta));
+        canvas->setGuides(m_guides);
         break;
     }
     case Mode::Resize:
         canvas->setPreviewGeometry(m_resizeId, resizedGeometry(gesture));
+        canvas->setGuides(m_guides);
+        break;
+    case Mode::Rotate:
+        canvas->setPreviewRotation(m_resizeId, rotationFor(gesture));
         break;
     case Mode::RubberBand:
         canvas->setRubberBand(rubberBand(gesture));
@@ -235,6 +289,16 @@ void SelectTool::dragEnd(const PointerGesture& gesture)
         }
         break;
     }
+    case Mode::Rotate:
+    {
+        const double rotation = rotationFor(gesture);
+        if (!qFuzzyCompare(rotation, m_resizeRotation))
+        {
+            m_context.undoStack().push(new SetPropertyCommand(
+                m_context.project(), m_context.screenId(), {m_resizeId}, Prop::Rotation, rotation));
+        }
+        break;
+    }
     case Mode::RubberBand:
         if (const Screen* screen = m_context.screen())
         {
@@ -266,22 +330,94 @@ void SelectTool::cancel()
     {
         canvas->clearPreview();
         canvas->setRubberBand(std::nullopt);
+        canvas->setGuides({});
     }
     m_mode = Mode::None;
     m_startGeometry.clear();
+    m_snapper.reset();
+    m_guides.clear();
+}
+
+bool SelectTool::snapping(const PointerGesture& gesture) const
+{
+    return m_snapper && !gesture.modifiers.testFlag(Qt::AltModifier);
+}
+
+void SelectTool::startSnapper()
+{
+    m_snapper.reset();
+    const Screen* screen = m_context.screen();
+    if (!screen || !m_context.snapEnabled())
+        return;
+    std::vector<ObjectId> moving(m_startGeometry.keyBegin(), m_startGeometry.keyEnd());
+    m_snapper.emplace(*screen, moving, m_context.snapSettings());
 }
 
 QPointF SelectTool::moveDelta(const PointerGesture& gesture) const
 {
-    const QPointF delta = gesture.scenePos - gesture.startScenePos;
-    return {std::round(delta.x()), std::round(delta.y())};
+    const QPointF raw = gesture.scenePos - gesture.startScenePos;
+    QPointF delta(std::round(raw.x()), std::round(raw.y()));
+    m_guides.clear();
+    if (snapping(gesture))
+    {
+        const SnapResult snap = m_snapper->snapMove(m_moveBounds.translated(delta),
+                                                    m_context.sceneSnapDistance(gesture));
+        delta += snap.offset;
+        m_guides = snap.guides;
+    }
+    return delta;
 }
 
 QRectF SelectTool::resizedGeometry(const PointerGesture& gesture) const
 {
     const QRectF start = m_startGeometry.value(m_resizeId);
-    return roundedRect(SelectionGeometry::resized(start, m_resizeRotation, m_handle,
-                                                  gesture.scenePos - gesture.startScenePos));
+    QRectF result = roundedRect(SelectionGeometry::resized(
+        start, m_resizeRotation, m_handle, gesture.scenePos - gesture.startScenePos));
+    m_guides.clear();
+    // Edges of a rotated object do not line up with anything axis-aligned.
+    if (snapping(gesture) && isAxisAligned(m_resizeRotation))
+    {
+        const Snapper::Edges edges = movingEdges(m_handle);
+        const SnapResult snap =
+            m_snapper->snapResize(result, edges, m_context.sceneSnapDistance(gesture));
+        QRectF snapped = result;
+        if (edges.left)
+            snapped.setLeft(snapped.left() + snap.offset.x());
+        if (edges.right)
+            snapped.setRight(snapped.right() + snap.offset.x());
+        if (edges.top)
+            snapped.setTop(snapped.top() + snap.offset.y());
+        if (edges.bottom)
+            snapped.setBottom(snapped.bottom() + snap.offset.y());
+        // Never snap an object inside out or to nothing.
+        if (snapped.width() >= 1.0 && snapped.height() >= 1.0)
+        {
+            result = snapped;
+            m_guides = snap.guides;
+        }
+    }
+    return result;
+}
+
+double SelectTool::rotationFor(const PointerGesture& gesture) const
+{
+    const QRectF geometry = m_startGeometry.value(m_resizeId);
+    const double raw = SelectionGeometry::rotationTowards(geometry, gesture.scenePos);
+    double rotation = std::round(raw);
+    if (gesture.modifiers.testFlag(Qt::ShiftModifier))
+    {
+        rotation = std::round(raw / kRotationStep) * kRotationStep;
+    }
+    else if (m_context.snapEnabled())
+    {
+        const double nearest = std::round(raw / 45.0) * 45.0;
+        if (std::abs(raw - nearest) <= kRotationSnap)
+            rotation = nearest;
+    }
+    // Keep the value in (-180, 180] so the same angle is stored the same way.
+    if (rotation <= -180.0)
+        rotation += 360.0;
+    return rotation == 0.0 ? 0.0 : rotation; // no negative zero
 }
 
 QRectF SelectTool::rubberBand(const PointerGesture& gesture) const

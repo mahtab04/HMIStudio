@@ -56,6 +56,14 @@ ToolBar {
             onClicked: bar.editor.toggleMultiSelect()
         }
 
+        IconButton {
+            theme: bar.theme
+            label: qsTr("Snap to grid and objects")
+            icon.source: "qrc:/icons/snap.svg"
+            checked: bar.editor.snapEnabled
+            onClicked: bar.editor.snapEnabled = !bar.editor.snapEnabled
+        }
+
         ToolSeparator {}
 
         IconButton {
