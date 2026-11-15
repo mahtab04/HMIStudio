@@ -30,6 +30,7 @@ hmi_add_test(ScreenTest SOURCES core/model/ScreenTest.cpp)
 hmi_add_test(ProjectTest SOURCES core/model/ProjectTest.cpp)
 hmi_add_test(GroupObjectTest SOURCES core/model/GroupObjectTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(ObjectJsonTest SOURCES core/io/ObjectJsonTest.cpp)
+hmi_add_test(ProjectSerializerTest SOURCES core/io/ProjectSerializerTest.cpp)
 hmi_add_test(PropertyDescriptorTest SOURCES core/property/PropertyDescriptorTest.cpp)
 hmi_add_test(ObjectRegistryTest SOURCES core/registry/ObjectRegistryTest.cpp)
 hmi_add_test(HitTesterTest SOURCES core/spatial/HitTesterTest.cpp)
@@ -56,5 +57,8 @@ hmi_add_test(CreateToolTest SOURCES editor/CreateToolTest.cpp ${_hmiEditorTestSu
 hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(LayerModelTest SOURCES editor/LayerModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(DocumentControllerTest SOURCES editor/DocumentControllerTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(EditorShellTest SOURCES editor/EditorShellTest.cpp
              LIBS hmi_editor_lib hmi_editor_libplugin)

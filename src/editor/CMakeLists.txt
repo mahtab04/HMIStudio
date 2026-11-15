@@ -13,6 +13,10 @@ qt_add_qml_module(hmi_editor_lib
     SOURCES
         app/AppContext.cpp
         app/AppContext.h
+        app/AppSettings.cpp
+        app/AppSettings.h
+        app/DocumentController.cpp
+        app/DocumentController.h
         app/EditActions.cpp
         app/EditActions.h
         app/EditorController.cpp
@@ -33,10 +37,18 @@ qt_add_qml_module(hmi_editor_lib
         commands/ReorderCommand.h
         commands/ResizeObjectCommand.cpp
         commands/ResizeObjectCommand.h
+        commands/ScreenCommands.cpp
+        commands/ScreenCommands.h
         commands/SetPropertyCommand.cpp
         commands/SetPropertyCommand.h
         commands/UngroupCommand.cpp
         commands/UngroupCommand.h
+        models/LayerModel.cpp
+        models/LayerModel.h
+        models/PropertyModel.cpp
+        models/PropertyModel.h
+        models/ScreenListModel.cpp
+        models/ScreenListModel.h
         models/SelectionModel.cpp
         models/SelectionModel.h
         models/ToolboxDragController.cpp

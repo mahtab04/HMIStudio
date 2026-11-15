@@ -6,6 +6,8 @@ add_library(hmi_core_impl STATIC
 
     io/ObjectJson.cpp
     io/ObjectJson.h
+    io/ProjectSerializer.cpp
+    io/ProjectSerializer.h
 
     model/DocumentNotifier.cpp
     model/DocumentNotifier.h
@@ -23,6 +25,8 @@ add_library(hmi_core_impl STATIC
     model/ScreenBuilder.cpp
     model/ScreenBuilder.h
     model/ShapeObject.h
+    model/UnknownObject.cpp
+    model/UnknownObject.h
 
     objects/Ellipse.cpp
     objects/Ellipse.h

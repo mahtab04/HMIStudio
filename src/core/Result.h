@@ -20,6 +20,9 @@ enum class ErrorCode
     UnknownType,
     NotFound,
     Duplicate,
+    Io,        // a file could not be read or written
+    BadFormat, // a file is not valid JSON or lacks required data
+    TooNew,    // a file was written by a newer version
 };
 
 struct Error

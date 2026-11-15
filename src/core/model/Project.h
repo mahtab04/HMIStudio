@@ -5,6 +5,7 @@
 #include "core/model/Ids.h"
 #include "core/model/Screen.h"
 
+#include <QJsonObject>
 #include <QString>
 
 #include <memory>
@@ -31,6 +32,17 @@ public:
     [[nodiscard]] const QString& name() const noexcept { return m_name; }
     void setName(QString name) { m_name = std::move(name); }
 
+    // project.json data this version does not understand; written back as is.
+    [[nodiscard]] const QJsonObject& preservedJson() const noexcept { return m_preserved; }
+    void setPreservedJson(QJsonObject json) { m_preserved = std::move(json); }
+
+    // Replaces name, screens and preserved data with those of `other` (new
+    // project, open). This object, and so its notifier, stays the same, so
+    // everything holding a Project& keeps working. Emits
+    // DocumentNotifier::projectReset; the old screens are destroyed only
+    // after the signal, when views have moved to the new ones.
+    void replaceContents(Project&& other);
+
     [[nodiscard]] DocumentNotifier& notifier() const noexcept { return *m_notifier; }
 
     [[nodiscard]] std::size_t screenCount() const noexcept { return m_screens.size(); }
@@ -51,6 +63,7 @@ public:
 
 private:
     QString m_name;
+    QJsonObject m_preserved;
     std::unique_ptr<DocumentNotifier> m_notifier;
     std::vector<std::unique_ptr<Screen>> m_screens;
 };

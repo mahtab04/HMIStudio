@@ -2,6 +2,7 @@
 
 #include "core/model/GroupObject.h"
 #include "core/model/HmiObject.h"
+#include "core/model/UnknownObject.h"
 #include "core/objects/Line.h"
 #include "core/objects/Rectangle.h"
 #include "core/objects/TextBox.h"
@@ -73,8 +74,8 @@ private Q_SLOTS:
 
     void rejectsBadInput()
     {
-        QCOMPARE(ObjectJson::read(QJsonObject{{u"type"_s, u"gauge"_s}}).error().code,
-                 ErrorCode::UnknownType);
+        QCOMPARE(ObjectJson::read(QJsonObject{{u"id"_s, u"x"_s}}).error().code,
+                 ErrorCode::InvalidArgument); // no type at all
 
         QJsonObject json = ObjectJson::write(Rectangle());
         QJsonObject props = json.value(u"props").toObject();
@@ -99,6 +100,25 @@ private Q_SLOTS:
         props.insert(u"futureThing"_s, 42);
         json.insert(u"props"_s, props);
         QVERIFY(ObjectJson::read(json));
+    }
+
+    void unknownTypeIsKeptWhole()
+    {
+        const QJsonObject gauge{
+            {u"type"_s, u"gauge"_s},
+            {u"id"_s, u"6a1e9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c"_s},
+            {u"props"_s, QJsonObject{{u"x"_s, 5}, {u"y"_s, 6}, {u"needle"_s, u"red"_s}}},
+        };
+        auto object = ObjectJson::read(gauge);
+        QVERIFY(object);
+        QCOMPARE((*object)->typeId(), UnknownObject::kTypeId);
+        QCOMPARE((*object)->geometry().topLeft(), QPointF(5, 6));
+        const QJsonObject back = ObjectJson::write(**object);
+        QCOMPARE(back.value(u"type").toString(), u"gauge"_s);
+        QCOMPARE(back.value(u"props").toObject().value(u"needle").toString(), u"red"_s);
+        // Copies (paste) keep it too, with a new id.
+        const auto copy = (*object)->cloneWithNewId();
+        QCOMPARE(ObjectJson::write(*copy).value(u"type").toString(), u"gauge"_s);
     }
 
     void missingIdGetsFreshOne()

@@ -1,18 +1,26 @@
 #include "editor/app/AppContext.h"
 
 #include "core/model/Project.h"
+#include "editor/app/AppSettings.h"
+#include "editor/app/DocumentController.h"
 #include "editor/app/EditActions.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/LayerModel.h"
+#include "editor/models/PropertyModel.h"
+#include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "editor/tools/ToolContext.h"
 
+#include <QDir>
+#include <QStandardPaths>
+
 namespace hmi
 {
 
-AppContext::AppContext(std::unique_ptr<Project> project)
+AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     : m_project(std::move(project))
     , m_theme(std::make_unique<Theme>())
     , m_selection(std::make_unique<SelectionModel>())
@@ -22,9 +30,35 @@ AppContext::AppContext(std::unique_ptr<Project> project)
     , m_toolboxDrag(std::make_unique<ToolboxDragController>(*m_toolContext))
     , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag))
     , m_toolbox(std::make_unique<ToolboxModel>())
+    , m_settings(std::make_unique<AppSettings>(paths.settingsFile))
 {
     Q_ASSERT(m_project && m_project->screenCount() > 0);
     m_toolContext->setScreenId(m_project->screens().front()->id());
+
+    const QString autosave =
+        !paths.autosaveFolder.isEmpty()
+            ? paths.autosaveFolder
+            : QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
+                  .filePath(QStringLiteral("autosave"));
+    m_document =
+        std::make_unique<DocumentController>(*m_project, m_undoStack, *m_settings, autosave);
+    m_properties = std::make_unique<PropertyModel>(*m_toolContext);
+    m_layers = std::make_unique<LayerModel>(*m_toolContext);
+    m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
+
+    // Models follow the screen the editor shows.
+    QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_properties.get(),
+                     &PropertyModel::refresh);
+    QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_layers.get(),
+                     &LayerModel::refresh);
+    QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_screens.get(),
+                     &ScreenListModel::currentChanged);
+
+    // The input density chosen last time, else the one the hardware suggests.
+    if (const int density = m_settings->density(); density >= 0)
+        m_theme->setDensity(static_cast<Theme::Density>(density));
+    QObject::connect(m_theme.get(), &Theme::densityChanged, m_settings.get(),
+                     [this] { m_settings->setDensity(int(m_theme->density())); });
 
     // Objects removed by undo or a later delete leave the selection.
     QObject::connect(&m_project->notifier(), &DocumentNotifier::objectRemoved, m_selection.get(),
@@ -35,6 +69,11 @@ AppContext::AppContext(std::unique_ptr<Project> project)
 AppContext::~AppContext()
 {
     m_undoStack.clear();
+    // Models listen to the project; they go before it.
+    m_screens.reset();
+    m_layers.reset();
+    m_properties.reset();
+    m_document.reset();
 }
 
 } // namespace hmi

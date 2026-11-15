@@ -31,6 +31,8 @@ class EditorController : public QObject
 
     Q_PROPERTY(QString projectTitle READ projectTitle CONSTANT)
     Q_PROPERTY(QString screenTitle READ screenTitle NOTIFY screenChanged)
+    Q_PROPERTY(int currentScreenIndex READ currentScreenIndex NOTIFY screenChanged)
+    Q_PROPERTY(bool canRemoveScreen READ canRemoveScreen NOTIFY screenChanged)
     Q_PROPERTY(QString zoomText READ zoomText NOTIFY zoomChanged)
     Q_PROPERTY(QString gridText READ gridText CONSTANT)
     Q_PROPERTY(QString cursorText READ cursorText NOTIFY cursorChanged)
@@ -101,6 +103,14 @@ public:
     // its gestures and keys, mirrors the selection.
     Q_INVOKABLE void attachCanvas(hmi::CanvasItem* canvas);
 
+    // Screens: switch, add, duplicate, delete, rename. Index is the
+    // screen's position in the project.
+    Q_INVOKABLE void setCurrentScreen(int index);
+    Q_INVOKABLE void addScreen();
+    Q_INVOKABLE void duplicateScreen(int index);
+    Q_INVOKABLE void removeScreen(int index);
+    Q_INVOKABLE void renameScreen(int index, const QString& name);
+
     Q_INVOKABLE void selectTool();
     Q_INVOKABLE void panTool();
     Q_INVOKABLE void createTool(const QString& typeKey);
@@ -133,6 +143,8 @@ public:
 
     [[nodiscard]] QString projectTitle() const;
     [[nodiscard]] QString screenTitle() const;
+    [[nodiscard]] int currentScreenIndex() const;
+    [[nodiscard]] bool canRemoveScreen() const;
     [[nodiscard]] QString zoomText() const;
     [[nodiscard]] QString gridText() const;
     [[nodiscard]] QString cursorText() const;
@@ -161,6 +173,8 @@ public:
 
 Q_SIGNALS:
     void screenChanged();
+    // Another screen is now shown (switch, open, delete of the current one).
+    void currentScreenChanged();
     void zoomChanged();
     void cursorChanged();
     void selectionChanged();
@@ -175,6 +189,9 @@ Q_SIGNALS:
 
 private:
     void onPointerMoved(QPointF scenePos);
+    // Shows the screen on the canvas and makes the tools work on it.
+    void showScreen(ScreenId id);
+    void onScreenRemoved(ScreenId id);
     void updateSizeText();
 
     ToolContext& m_context;
@@ -183,6 +200,7 @@ private:
     ToolController* m_tools = nullptr;
     QPointer<CanvasItem> m_canvas;
     QPointF m_cursor;
+    std::size_t m_lastScreenIndex = 0;
     QString m_sizeText;
 };
 

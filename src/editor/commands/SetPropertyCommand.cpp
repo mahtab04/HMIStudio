@@ -10,12 +10,13 @@ namespace hmi
 
 SetPropertyCommand::SetPropertyCommand(Project& project, ScreenId screen,
                                        std::vector<ObjectId> objects, PropertyId property,
-                                       PropertyValue value, QUndoCommand* parent)
+                                       PropertyValue value, int editSession, QUndoCommand* parent)
     : QUndoCommand(parent)
     , m_project(project)
     , m_screen(screen)
     , m_property(property)
     , m_value(std::move(value))
+    , m_editSession(editSession)
 {
     const Screen* s = m_project.screen(m_screen);
     QString name;
@@ -34,6 +35,32 @@ SetPropertyCommand::SetPropertyCommand(Project& project, ScreenId screen,
         }
     }
     setText(QCoreApplication::translate("hmi::Commands", "Change %1").arg(name));
+}
+
+namespace
+{
+constexpr int kSetPropertyId = 0x50524F50; // "PROP"
+} // namespace
+
+int SetPropertyCommand::id() const
+{
+    return m_editSession != 0 ? kSetPropertyId : -1;
+}
+
+bool SetPropertyCommand::mergeWith(const QUndoCommand* other)
+{
+    const auto* next = dynamic_cast<const SetPropertyCommand*>(other);
+    if (!next || next->m_editSession != m_editSession || next->m_screen != m_screen ||
+        next->m_property != m_property || next->m_changes.size() != m_changes.size())
+        return false;
+    for (std::size_t i = 0; i < m_changes.size(); ++i)
+    {
+        if (next->m_changes[i].object != m_changes[i].object)
+            return false;
+    }
+    // Keep this command's old values and take the newest value.
+    m_value = next->m_value;
+    return true;
 }
 
 void SetPropertyCommand::redo()

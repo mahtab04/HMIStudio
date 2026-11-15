@@ -8,6 +8,7 @@ class GroupObject;
 class Line;
 class Rectangle;
 class TextBox;
+class UnknownObject;
 
 // Visitor over the concrete object types, for validation, export and "where
 // is this tag used". Every visit defaults to doing nothing, so a visitor
@@ -30,6 +31,7 @@ public:
     // Does not descend into the children; a visitor that needs them walks
     // GroupObject::children() itself.
     virtual void visit(GroupObject& /*object*/) {}
+    virtual void visit(UnknownObject& /*object*/) {}
 };
 
 } // namespace hmi

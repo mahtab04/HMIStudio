@@ -5,6 +5,7 @@
 #include "core/model/Ids.h"
 
 #include <QColor>
+#include <QJsonObject>
 #include <QSizeF>
 #include <QString>
 
@@ -37,6 +38,14 @@ public:
 
     // Deep copy with the same screen and object ids.
     [[nodiscard]] std::unique_ptr<Screen> clone() const;
+
+    // Deep copy with a new screen id and new object ids, for "duplicate
+    // screen".
+    [[nodiscard]] std::unique_ptr<Screen> cloneWithNewIds(const QString& name) const;
+
+    // Screen-file data this version does not understand; written back as is.
+    [[nodiscard]] const QJsonObject& preservedJson() const noexcept { return m_preserved; }
+    void setPreservedJson(QJsonObject json) { m_preserved = std::move(json); }
 
     [[nodiscard]] ScreenId id() const noexcept { return m_id; }
 
@@ -82,6 +91,7 @@ private:
     QString m_name;
     QSizeF m_size;
     QColor m_background{0xE6, 0xE8, 0xEB};
+    QJsonObject m_preserved;
     std::vector<std::unique_ptr<HmiObject>> m_objects;
     DocumentNotifier* m_notifier = nullptr;
 };

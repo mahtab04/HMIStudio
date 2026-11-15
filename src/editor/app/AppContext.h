@@ -2,6 +2,7 @@
 
 #include "quick/input/InputSettings.h"
 
+#include <QString>
 #include <QUndoStack>
 
 #include <memory>
@@ -9,7 +10,12 @@
 namespace hmi
 {
 
+class AppSettings;
+class DocumentController;
 class EditActions;
+class LayerModel;
+class PropertyModel;
+class ScreenListModel;
 class EditorController;
 class Project;
 class SelectionModel;
@@ -24,8 +30,16 @@ class ToolboxModel;
 class AppContext
 {
 public:
+    // Where settings and autosave copies go. Empty means the platform's
+    // standard locations; tests pass temporary ones.
+    struct Paths
+    {
+        QString settingsFile;
+        QString autosaveFolder;
+    };
+
     // Takes the document to edit; it must have at least one screen.
-    explicit AppContext(std::unique_ptr<Project> project);
+    explicit AppContext(std::unique_ptr<Project> project, const Paths& paths = {});
     ~AppContext();
     AppContext(const AppContext&) = delete;
     AppContext& operator=(const AppContext&) = delete;
@@ -42,6 +56,11 @@ public:
     [[nodiscard]] EditorController& editor() const noexcept { return *m_editor; }
     [[nodiscard]] ToolboxModel& toolbox() const noexcept { return *m_toolbox; }
     [[nodiscard]] ToolboxDragController& toolboxDrag() const noexcept { return *m_toolboxDrag; }
+    [[nodiscard]] AppSettings& settings() const noexcept { return *m_settings; }
+    [[nodiscard]] DocumentController& document() const noexcept { return *m_document; }
+    [[nodiscard]] PropertyModel& properties() const noexcept { return *m_properties; }
+    [[nodiscard]] LayerModel& layers() const noexcept { return *m_layers; }
+    [[nodiscard]] ScreenListModel& screens() const noexcept { return *m_screens; }
 
 private:
     InputSettings m_inputSettings;
@@ -54,6 +73,11 @@ private:
     std::unique_ptr<ToolboxDragController> m_toolboxDrag;
     std::unique_ptr<EditorController> m_editor;
     std::unique_ptr<ToolboxModel> m_toolbox;
+    std::unique_ptr<AppSettings> m_settings;
+    std::unique_ptr<DocumentController> m_document;
+    std::unique_ptr<PropertyModel> m_properties;
+    std::unique_ptr<LayerModel> m_layers;
+    std::unique_ptr<ScreenListModel> m_screens;
 };
 
 } // namespace hmi
