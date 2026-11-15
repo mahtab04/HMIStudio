@@ -31,6 +31,21 @@ inline constexpr PropertyId Points{"points"};
 inline constexpr PropertyId Value{"value"};
 inline constexpr PropertyId Minimum{"minimum"};
 inline constexpr PropertyId Maximum{"maximum"};
+inline constexpr PropertyId Decimals{"decimals"};
+inline constexpr PropertyId Unit{"unit"};
+inline constexpr PropertyId IoMode{"ioMode"};
+inline constexpr PropertyId Checked{"checked"};
+inline constexpr PropertyId Items{"items"};
+inline constexpr PropertyId SelectedIndex{"selectedIndex"};
+inline constexpr PropertyId Orientation{"orientation"};
+inline constexpr PropertyId OnText{"onText"};
+inline constexpr PropertyId OffText{"offText"};
+inline constexpr PropertyId OnColor{"onColor"};
+inline constexpr PropertyId OffColor{"offColor"};
+inline constexpr PropertyId BackgroundColor{"backgroundColor"};
+inline constexpr PropertyId AccentColor{"accentColor"};
+inline constexpr PropertyId ShowScale{"showScale"};
+inline constexpr PropertyId ClockMode{"clockMode"};
 
 // Graphics
 inline constexpr PropertyId Asset{"asset"};

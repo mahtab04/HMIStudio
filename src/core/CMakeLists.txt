@@ -53,6 +53,30 @@ add_library(hmi_core_impl STATIC
     objects/Rectangle.h
     objects/GraphicView.cpp
     objects/GraphicView.h
+    objects/IoField.cpp
+    objects/IoField.h
+    objects/Button.cpp
+    objects/Button.h
+    objects/Switch.cpp
+    objects/Switch.h
+    objects/CheckBox.cpp
+    objects/CheckBox.h
+    objects/RadioGroup.cpp
+    objects/RadioGroup.h
+    objects/ListBox.cpp
+    objects/ListBox.h
+    objects/SymbolicIoField.cpp
+    objects/SymbolicIoField.h
+    objects/Bar.cpp
+    objects/Bar.h
+    objects/Slider.cpp
+    objects/Slider.h
+    objects/Gauge.cpp
+    objects/Gauge.h
+    objects/Clock.cpp
+    objects/Clock.h
+    objects/TouchArea.cpp
+    objects/TouchArea.h
     objects/TextBox.cpp
     objects/TextBox.h
 

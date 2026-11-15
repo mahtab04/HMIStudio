@@ -173,4 +173,39 @@ PropertyDescriptor points(const PointList& value, int minimumCount)
             .constraint = {.minimum = double(minimumCount)}};
 }
 
+namespace
+{
+constexpr EnumOption kOrientationOptions[] = {
+    {.value = kHorizontal,
+     .key = "horizontal",
+     .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Horizontal")},
+    {.value = kVertical,
+     .key = "vertical",
+     .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Vertical")},
+};
+} // namespace
+
+PropertyDescriptor orientation(int value)
+{
+    return choice(Prop::Orientation, "orientation",
+                  QT_TRANSLATE_NOOP("hmi::Property", "Orientation"), Layout, value,
+                  kOrientationOptions);
+}
+
+PropertyDescriptor items(const QString& value)
+{
+    return string(Prop::Items, "items", QT_TRANSLATE_NOOP("hmi::Property", "Entries (a;b;c)"),
+                  Behaviour, value, true);
+}
+
+QStringList splitItems(const QString& items)
+{
+    QStringList list;
+    for (const QString& item : items.split(u';'))
+        list << item.trimmed();
+    if (list.size() == 1 && list.front().isEmpty())
+        list.clear();
+    return list;
+}
+
 } // namespace hmi::Describe

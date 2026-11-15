@@ -190,7 +190,7 @@ private Q_SLOTS:
         rect.insert(u"props"_s, props);
         objects[0] = rect;
         const QJsonObject tank{
-            {u"type"_s, u"tank"_s},
+            {u"type"_s, u"fluxCapacitor"_s},
             {u"id"_s, u"6a1e9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c"_s},
             {u"props"_s, QJsonObject{{u"x"_s, 50},
                                      {u"y"_s, 60},
@@ -228,7 +228,7 @@ private Q_SLOTS:
         QVERIFY(savedRect.contains(u"bindings"));
         QCOMPARE(savedRect.value(u"props").toObject().value(u"blink"), QJsonValue(true));
         const QJsonObject savedTank = savedObjects[1].toObject();
-        QCOMPARE(savedTank.value(u"type").toString(), u"tank"_s);
+        QCOMPARE(savedTank.value(u"type").toString(), u"fluxCapacitor"_s);
         QCOMPARE(savedTank.value(u"events").toArray(), QJsonArray{u"press"_s});
         QCOMPARE(savedTank.value(u"props").toObject().value(u"level").toDouble(), 0.5);
         QCOMPARE(savedTank.value(u"props").toObject().value(u"x").toDouble(), 55.0);

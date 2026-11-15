@@ -1,6 +1,9 @@
 // The object contract (ObjectContract.h) for every registered toolbox type,
 // so a new type is checked as soon as it registers: defaults, clone,
 // rejections, painting, hit shape, and a JSON round trip.
+//
+// Set HMI_OBJECT_SHEET=<file.png> to save every type at its default size
+// on one sheet, for a visual check.
 
 #include "core/io/ObjectJson.h"
 #include "core/model/HmiObject.h"
@@ -94,6 +97,42 @@ private Q_SLOTS:
         QVERIFY(back);
         QCOMPARE((*back)->id(), object->id());
         QVERIFY((*back)->hasSameProperties(*object));
+    }
+
+    void contactSheet()
+    {
+        const QString path = qEnvironmentVariable("HMI_OBJECT_SHEET");
+        if (path.isEmpty())
+            QSKIP("Set HMI_OBJECT_SHEET to save the sheet");
+        constexpr int kCell = 180;
+        constexpr int kColumns = 6;
+        std::vector<const ObjectTypeInfo*> types;
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (info.inToolbox)
+                types.push_back(&info);
+        }
+        const int rows = int((types.size() + kColumns - 1) / kColumns);
+        QImage sheet(kColumns * kCell, rows * kCell, QImage::Format_ARGB32_Premultiplied);
+        sheet.fill(QColor(0xE6, 0xE8, 0xEB));
+        QPainter painter(&sheet);
+        painter.setRenderHint(QPainter::Antialiasing);
+        for (std::size_t i = 0; i < types.size(); ++i)
+        {
+            const auto object = types[i]->create(ObjectId::create());
+            const QSizeF size = object->geometry().size();
+            const QPointF cell(double(i % kColumns) * kCell, double(i / kColumns) * kCell);
+            painter.save();
+            painter.translate(
+                cell + QPointF((kCell - size.width()) / 2.0, (kCell - 20 - size.height()) / 2.0));
+            object->paint(painter, PaintContext{});
+            painter.restore();
+            painter.setPen(Qt::black);
+            painter.drawText(QRectF(cell.x(), cell.y() + kCell - 20, kCell, 18), Qt::AlignCenter,
+                             types[i]->key);
+        }
+        painter.end();
+        QVERIFY(sheet.save(path));
     }
 };
 

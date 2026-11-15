@@ -62,9 +62,9 @@ private Q_SLOTS:
 
     void unknownTypeGivesNothing()
     {
-        QVERIFY(ObjectRegistry::instance().create(ObjectTypeId{"gauge"}) == nullptr);
-        QVERIFY(ObjectRegistry::instance().find(ObjectTypeId{"gauge"}) == nullptr);
-        QVERIFY(ObjectRegistry::instance().findByKey(u"gauge") == nullptr);
+        QVERIFY(ObjectRegistry::instance().create(ObjectTypeId{"teleporter"}) == nullptr);
+        QVERIFY(ObjectRegistry::instance().find(ObjectTypeId{"teleporter"}) == nullptr);
+        QVERIFY(ObjectRegistry::instance().findByKey(u"teleporter") == nullptr);
     }
 
     void rejectsDuplicateAndMismatchedEntries()

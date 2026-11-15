@@ -5,6 +5,18 @@ namespace hmi
 
 class Ellipse;
 class GroupObject;
+class TouchArea;
+class Clock;
+class Gauge;
+class Slider;
+class Bar;
+class SymbolicIoField;
+class ListBox;
+class RadioGroup;
+class CheckBox;
+class Switch;
+class Button;
+class IoField;
 class GraphicView;
 class Circle;
 class Polygon;
@@ -38,6 +50,18 @@ public:
     virtual void visit(Polygon& /*object*/) {}
     virtual void visit(Circle& /*object*/) {}
     virtual void visit(GraphicView& /*object*/) {}
+    virtual void visit(IoField& /*object*/) {}
+    virtual void visit(Button& /*object*/) {}
+    virtual void visit(Switch& /*object*/) {}
+    virtual void visit(CheckBox& /*object*/) {}
+    virtual void visit(RadioGroup& /*object*/) {}
+    virtual void visit(ListBox& /*object*/) {}
+    virtual void visit(SymbolicIoField& /*object*/) {}
+    virtual void visit(Bar& /*object*/) {}
+    virtual void visit(Slider& /*object*/) {}
+    virtual void visit(Gauge& /*object*/) {}
+    virtual void visit(Clock& /*object*/) {}
+    virtual void visit(TouchArea& /*object*/) {}
     virtual void visit(GroupObject& /*object*/) {}
     virtual void visit(UnknownObject& /*object*/) {}
 };

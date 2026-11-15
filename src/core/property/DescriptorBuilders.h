@@ -3,6 +3,7 @@
 #include "core/property/PropertyDescriptor.h"
 
 #include <QColor>
+#include <QStringList>
 
 #include <optional>
 #include <span>
@@ -49,5 +50,14 @@ namespace hmi::Describe
                                         const char* category, int value,
                                         std::span<const EnumOption> options, bool bindable = false);
 [[nodiscard]] PropertyDescriptor points(const PointList& value, int minimumCount);
+
+// Horizontal (0) or vertical (1), for bars and sliders.
+inline constexpr int kHorizontal = 0;
+inline constexpr int kVertical = 1;
+[[nodiscard]] PropertyDescriptor orientation(int value);
+
+// A list of texts separated by ";" (radio buttons, list entries, states).
+[[nodiscard]] PropertyDescriptor items(const QString& value);
+[[nodiscard]] QStringList splitItems(const QString& items);
 
 } // namespace hmi::Describe
