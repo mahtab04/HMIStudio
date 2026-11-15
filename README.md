@@ -16,6 +16,14 @@ properties, tag binding, simulation), written in C++20 with Qt 6 Qt Quick.
   window, a canvas with zoom, pan, grid, rulers and selection handles, one
   gesture path for mouse, touch and pen, and Select, Create and Pan tools. The
   toolbox supports tap-to-place and drag and drop. Every change is undoable.
+- Phase 3, editing: cut, copy, paste, duplicate, delete, group, align,
+  distribute, same size, z-order, nudging, rotation handle, snapping with
+  guides, a context menu and a touch selection toolbar. Checked with 2,000
+  objects on one screen.
+- Phase 4, properties and files: a properties panel with an editor per
+  value type (touch keypad for numbers), a layers panel, screen tabs, and
+  projects saved as folders of JSON files (new, open, recent, save, save
+  as, autosave and recovery). Settings remember the layout.
 
 Run `HmiStudio` from the build folder. Mouse: click and Shift+click to
 select, drag to move or rubber-band select, drag handles to resize, wheel to

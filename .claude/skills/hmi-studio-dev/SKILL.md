@@ -147,8 +147,9 @@ Example: a `Gauge`.
    `hmi_add_test` in `tests/CMakeLists.txt`. The checks in
    `tests/core/objects/ObjectContract.h` (`checkDefaults`, `checkClone`,
    `checkRejections`, `checkRegistered`) cover defaults, clone equality,
-   constraint rejection and registration; add hit shape, painting and, from
-   phase 4, a save and load round trip.
+   constraint rejection and registration; add hit shape, painting, and a
+   save and load round trip (`ObjectJsonTest` already round-trips every
+   registered type with default values).
 8. Do not write a new `QQuickItem` or QML for the object, and do not touch
    the toolbox, property panel or serializer. `ObjectItem` hosts every type.
    If that is not enough, the descriptor system is missing something; extend
@@ -257,29 +258,40 @@ the context menu and the touch toolbar all offer.
 
 1. Write the data side in C++ under `src/editor/models/`: a
    `QAbstractListModel`, `QAbstractTableModel` or `QAbstractItemModel` with
-   named roles, plus invokables for actions. Edits go through `setData`,
-   which pushes a command.
+   named roles, plus invokables for actions (`PropertyModel::setValue`,
+   `LayerModel::rename`). Every edit pushes a command. `DocumentNotifier`
+   reports changes after they happen, so a model that cannot announce rows
+   in advance resets instead; it also follows
+   `EditorController::currentScreenChanged` and `projectReset`.
 2. Own it in `AppContext` and pass it to `Main.qml` as a required property
    (`setInitialProperties` in `main.cpp` and `EditorShellTest`).
-3. Write the QML view under `src/editor/qml/panels/`: `ListView`,
-   `TableView` or `TreeView` with a delegate. Bindings and one-line calls
-   only.
+3. Write the QML view under `src/editor/qml/panels/`: `ListView` or
+   `TableView` with a delegate. Bindings and one-line calls only. Popups
+   declared in a layout must not use anchors or x/y (qmllint); put them
+   under a non-layout item and centre with `anchors.centerIn:
+   Overlay.overlay`. Give a `Dialog` with wrapped text an explicit width.
 4. All sizes, colours and fonts come from `Theme`; rows are at least
    `Theme.touchTarget` high in comfortable density.
-5. Add the panel to the `SplitView` in `Main.qml` (and, from phase 4, its
-   collapse state to settings).
-6. Test the model in C++ without loading any QML.
+5. Add the panel to the `SplitView` in `Main.qml`, with its visibility
+   from `AppSettings`.
+6. Test the model in C++ without loading any QML, with
+   `QAbstractItemModelTester` attached.
 
-## Recipe: add a property editor type (from phase 4)
+## Recipe: add a property editor type
 
-1. Add the alternative to `PropertyValue` and extend JSON conversion in
-   `PropertyJson.cpp` in both directions.
-2. Add an editor role value in `PropertyModel` and a QML delegate in
-   `qml/panels/properties/`, selected with `DelegateChooser`.
-3. The delegate calls `model.setValue(...)` only; the model creates the
-   command.
-4. Support the mixed-value state for multi-selection and a touch-friendly
-   input (keypad, picker) in comfortable density.
+1. Add the alternative to `PropertyValue` and extend `writeValue` and
+   `readValue` in `core/io/ObjectJson.cpp`.
+2. In `PropertyModel.cpp`, map the kind to an `editor` name (`editorFor`),
+   convert both ways (`toVariant`, `fromVariant`) and give it display text
+   (`displayText`).
+3. Add a QML editor in `qml/panels/properties/` (a row with a
+   `PropertyLabel`) and a `DelegateChoice` for it in `PropertiesPanel.qml`.
+4. The editor calls `properties.setValue(index, …)` only; the model checks
+   the value and creates the command. Continuous input (held buttons,
+   sliders) brackets its calls with `beginEdit()` and `endEdit()`.
+5. Support the mixed state (`mixed` role) and a touch-friendly input in
+   comfortable density (keypad, picker, dialog).
+6. Test in `tests/editor/PropertyModelTest.cpp`.
 
 ## Recipe: add a tag driver (from phase 6)
 
@@ -294,13 +306,17 @@ the context menu and the touch toolbar all offer.
 6. Add the library to `cmake/Dependencies.cmake` (FetchContent, pinned
    version and hash) and to the table in ARCHITECTURE.md with its licence.
 
-## Recipe: change the file format (from phase 4)
+## Recipe: change the file format
 
-1. Increase `kCurrentFormatVersion`.
-2. Add `migrateV<n>ToV<n+1>(QJsonObject&)` and append it to the chain.
-3. Add a sample file of the old version under `tests/data/` and a test that
-   loads it.
-4. Keep unknown keys when reading and write them back.
+1. Increase `ProjectSerializer::kCurrentFormatVersion`.
+2. Add `migrateV<n>ToV<n+1>(QJsonObject&)` in `ProjectSerializer.cpp` and
+   append it to `kMigrations` (a `static_assert` checks the chain is
+   complete). Every kind of file goes through it; check which file it is
+   by its keys.
+3. Add a sample project of the old version under `tests/data/` and a test
+   in `ProjectSerializerTest` that loads it.
+4. Keep unknown keys when reading and write them back
+   (`preservedJson()`); `unknownDataIsKept` checks it.
 
 ## UI and touch rules
 
