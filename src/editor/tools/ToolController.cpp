@@ -1,7 +1,9 @@
 #include "editor/tools/ToolController.h"
 
+#include "core/registry/ObjectRegistry.h"
 #include "editor/tools/CreateTool.h"
 #include "editor/tools/PanTool.h"
+#include "editor/tools/PathTool.h"
 #include "editor/tools/SelectTool.h"
 #include "editor/tools/ToolContext.h"
 #include "quick/ICanvasView.h"
@@ -17,6 +19,7 @@ ToolController::ToolController(ToolContext& context, QObject* parent)
     , m_select(std::make_unique<SelectTool>(context))
     , m_pan(std::make_unique<PanTool>(context))
     , m_create(std::make_unique<CreateTool>(context))
+    , m_path(std::make_unique<PathTool>(context))
 {
     m_context.setSelectToolRequest([this] { setTool(Tool::Select); });
 }
@@ -34,6 +37,8 @@ ITool& ToolController::current() const
         return *m_pan;
     case Tool::Create:
         return *m_create;
+    case Tool::Path:
+        return *m_path;
     case Tool::Select:
         break;
     }
@@ -53,16 +58,22 @@ void ToolController::setTool(Tool tool)
 
 void ToolController::createObjects(ObjectTypeId type)
 {
-    m_create->setType(type);
-    if (m_tool == Tool::Create)
+    const ObjectTypeInfo* info = ObjectRegistry::instance().find(type);
+    const bool byPoints = info && info->placement != Placement::Rectangle;
+    const Tool wanted = byPoints ? Tool::Path : Tool::Create;
+    if (byPoints)
+        m_path->setType(type);
+    else
+        m_create->setType(type);
+    if (m_tool == wanted)
         Q_EMIT toolChanged();
     else
-        setTool(Tool::Create);
+        setTool(wanted);
 }
 
 ObjectTypeId ToolController::createType() const
 {
-    return m_create->type();
+    return m_tool == Tool::Path ? m_path->type() : m_create->type();
 }
 
 void ToolController::applyCursor()

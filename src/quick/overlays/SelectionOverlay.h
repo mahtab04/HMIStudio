@@ -48,6 +48,8 @@ public:
     void setShapes(std::vector<Frame> frames, std::vector<QPointF> handles,
                    std::optional<RotationHandle> rotationHandle, std::optional<QRectF> rubberBand);
     void setColors(const QColor& accent, const QColor& handleFill, const QColor& rubberFill);
+    // A path being drawn (view coordinates): its segments and points.
+    void setPath(std::vector<QPointF> viewPoints);
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
@@ -57,6 +59,7 @@ private:
     std::vector<QPointF> m_handles;
     std::optional<RotationHandle> m_rotationHandle;
     std::optional<QRectF> m_rubberBand;
+    std::vector<QPointF> m_path;
     QColor m_accent{0x4C, 0x8D, 0xFF};
     QColor m_handleFill{Qt::white};
     QColor m_rubberFill{0x4C, 0x8D, 0xFF, 0x30};

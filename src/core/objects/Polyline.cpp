@@ -66,5 +66,6 @@ void Polyline::accept(ObjectVisitor& visitor)
 
 } // namespace hmi
 
-HMI_REGISTER_OBJECT(hmi::Polyline, "polyline", QT_TRANSLATE_NOOP("hmi::ObjectRegistry", "Polyline"),
-                    hmi::ObjectCategory::BasicObjects, ":/icons/polyline.svg")
+HMI_REGISTER_PATH_OBJECT(hmi::Polyline, "polyline",
+                         QT_TRANSLATE_NOOP("hmi::ObjectRegistry", "Polyline"),
+                         hmi::ObjectCategory::BasicObjects, ":/icons/polyline.svg", Points)

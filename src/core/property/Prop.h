@@ -47,6 +47,13 @@ inline constexpr PropertyId AccentColor{"accentColor"};
 inline constexpr PropertyId ShowScale{"showScale"};
 inline constexpr PropertyId ClockMode{"clockMode"};
 
+// Process symbols
+inline constexpr PropertyId Running{"running"};
+inline constexpr PropertyId Open{"open"};
+inline constexpr PropertyId Flowing{"flowing"};
+inline constexpr PropertyId FlowColor{"flowColor"};
+inline constexpr PropertyId SensorKind{"sensorKind"};
+
 // Graphics
 inline constexpr PropertyId Asset{"asset"};
 inline constexpr PropertyId FitMode{"fitMode"};

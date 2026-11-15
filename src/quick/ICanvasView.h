@@ -39,6 +39,9 @@ public:
     virtual void setPreviewRotation(ObjectId id, double rotation) = 0;
     virtual void clearPreview() = 0;
 
+    // A path being drawn point by point (scene coordinates); empty hides it.
+    virtual void setPathPreview(const std::vector<QPointF>& scenePoints) = 0;
+
     // Snap guides, axis-aligned lines in scene coordinates; empty hides them.
     virtual void setGuides(std::vector<QLineF> sceneLines) = 0;
 

@@ -69,5 +69,6 @@ void Polygon::accept(ObjectVisitor& visitor)
 
 } // namespace hmi
 
-HMI_REGISTER_OBJECT(hmi::Polygon, "polygon", QT_TRANSLATE_NOOP("hmi::ObjectRegistry", "Polygon"),
-                    hmi::ObjectCategory::BasicObjects, ":/icons/polygon.svg")
+HMI_REGISTER_PATH_OBJECT(hmi::Polygon, "polygon",
+                         QT_TRANSLATE_NOOP("hmi::ObjectRegistry", "Polygon"),
+                         hmi::ObjectCategory::BasicObjects, ":/icons/polygon.svg", Points)

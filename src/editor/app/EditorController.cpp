@@ -443,7 +443,8 @@ bool EditorController::panToolActive() const
 
 bool EditorController::createToolActive() const
 {
-    return m_tools->tool() == ToolController::Tool::Create;
+    return m_tools->tool() == ToolController::Tool::Create ||
+           m_tools->tool() == ToolController::Tool::Path;
 }
 
 QString EditorController::createType() const

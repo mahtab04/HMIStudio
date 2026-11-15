@@ -58,6 +58,8 @@ hmi_add_test(SelectToolTest SOURCES editor/SelectToolTest.cpp ${_hmiEditorTestSu
              LIBS hmi_editor_lib)
 hmi_add_test(CreateToolTest SOURCES editor/CreateToolTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
+hmi_add_test(PathToolTest SOURCES editor/PathToolTest.cpp ${_hmiEditorTestSupport}
+             LIBS hmi_editor_lib)
 hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)

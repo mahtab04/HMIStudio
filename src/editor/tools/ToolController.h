@@ -13,6 +13,7 @@ namespace hmi
 class CreateTool;
 class ITool;
 class PanTool;
+class PathTool;
 class SelectTool;
 class ToolContext;
 
@@ -29,6 +30,7 @@ public:
         Select,
         Pan,
         Create,
+        Path, // placing a type point by point
     };
 
     // Wheel zoom per angle unit: one notch (120) zooms by about 20 %.
@@ -45,7 +47,8 @@ public:
     [[nodiscard]] Tool tool() const noexcept { return m_tool; }
     void setTool(Tool tool);
 
-    // Switches to the create tool for `type`.
+    // Switches to the tool that places `type`: the create tool, or the path
+    // tool for types placed point by point.
     void createObjects(ObjectTypeId type);
     [[nodiscard]] ObjectTypeId createType() const;
 
@@ -66,6 +69,7 @@ private:
     std::unique_ptr<SelectTool> m_select;
     std::unique_ptr<PanTool> m_pan;
     std::unique_ptr<CreateTool> m_create;
+    std::unique_ptr<PathTool> m_path;
     Tool m_tool = Tool::Select;
 };
 

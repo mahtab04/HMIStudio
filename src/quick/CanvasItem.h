@@ -114,6 +114,7 @@ public:
     void setPreviewRotation(ObjectId id, double rotation) override;
     void clearPreview() override;
     void setGuides(std::vector<QLineF> sceneLines) override;
+    void setPathPreview(const std::vector<QPointF>& scenePoints) override;
     void setRubberBand(const std::optional<QRectF>& sceneRect) override;
     void setToolCursor(Qt::CursorShape shape) override;
 
@@ -190,6 +191,7 @@ private:
     QHash<ObjectId, Preview> m_preview;
     std::optional<QRectF> m_rubberBand;
     std::vector<QLineF> m_guides;
+    std::vector<QPointF> m_pathPreview;
     QRectF m_selectionBounds;
     QSizeF m_selectionSize;
     double m_selectionRotation = 0.0;

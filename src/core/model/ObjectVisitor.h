@@ -5,6 +5,14 @@ namespace hmi
 
 class Ellipse;
 class GroupObject;
+class Sensor;
+class Conveyor;
+class Exchanger;
+class Pipe;
+class Motor;
+class Valve;
+class Pump;
+class Tank;
 class TouchArea;
 class Clock;
 class Gauge;
@@ -62,6 +70,14 @@ public:
     virtual void visit(Gauge& /*object*/) {}
     virtual void visit(Clock& /*object*/) {}
     virtual void visit(TouchArea& /*object*/) {}
+    virtual void visit(Tank& /*object*/) {}
+    virtual void visit(Pump& /*object*/) {}
+    virtual void visit(Valve& /*object*/) {}
+    virtual void visit(Motor& /*object*/) {}
+    virtual void visit(Pipe& /*object*/) {}
+    virtual void visit(Exchanger& /*object*/) {}
+    virtual void visit(Conveyor& /*object*/) {}
+    virtual void visit(Sensor& /*object*/) {}
     virtual void visit(GroupObject& /*object*/) {}
     virtual void visit(UnknownObject& /*object*/) {}
 };

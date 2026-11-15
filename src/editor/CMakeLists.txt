@@ -62,6 +62,8 @@ qt_add_qml_module(hmi_editor_lib
         tools/ObjectPlacement.h
         tools/PanTool.cpp
         tools/PanTool.h
+        tools/PathTool.cpp
+        tools/PathTool.h
         tools/SelectTool.cpp
         tools/SelectTool.h
         tools/ToolContext.cpp
@@ -107,6 +109,14 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/undo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/redo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/zoom-fit.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/sensor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/conveyor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/exchanger.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/pipe.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/motor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/valve.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/pump.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/tank.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/touch-area.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/clock.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/gauge.svg"

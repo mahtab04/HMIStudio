@@ -41,6 +41,14 @@ void SelectionOverlay::setShapes(std::vector<Frame> frames, std::vector<QPointF>
     update();
 }
 
+void SelectionOverlay::setPath(std::vector<QPointF> viewPoints)
+{
+    if (viewPoints == m_path)
+        return;
+    m_path = std::move(viewPoints);
+    update();
+}
+
 void SelectionOverlay::setColors(const QColor& accent, const QColor& handleFill,
                                  const QColor& rubberFill)
 {
@@ -120,6 +128,22 @@ QSGNode* SelectionOverlay::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData
         SceneGraphShapes::addRect(handleNode, w, r.adjusted(1, 1, -1, -1), m_handleFill);
         root->appendChildNode(handleNode);
     }
+
+    // Path preview: each segment a thin rotated rectangle, each point a
+    // small square.
+    for (std::size_t i = 1; i < m_path.size(); ++i)
+    {
+        const QLineF segment(m_path[i - 1], m_path[i]);
+        auto* node = new QSGTransformNode();
+        QMatrix4x4 matrix;
+        matrix.translate(float(segment.x1()), float(segment.y1()));
+        matrix.rotate(float(-segment.angle()), 0.0f, 0.0f, 1.0f);
+        node->setMatrix(matrix);
+        SceneGraphShapes::addRect(node, w, QRectF(0.0, -1.0, segment.length(), 2.0), m_accent);
+        root->appendChildNode(node);
+    }
+    for (const QPointF& p : m_path)
+        SceneGraphShapes::addRect(root, w, handleRect(p), m_accent);
 
     for (const QPointF& h : m_handles)
     {

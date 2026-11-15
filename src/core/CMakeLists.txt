@@ -77,6 +77,22 @@ add_library(hmi_core_impl STATIC
     objects/Clock.h
     objects/TouchArea.cpp
     objects/TouchArea.h
+    objects/Tank.cpp
+    objects/Tank.h
+    objects/Pump.cpp
+    objects/Pump.h
+    objects/Valve.cpp
+    objects/Valve.h
+    objects/Motor.cpp
+    objects/Motor.h
+    objects/Pipe.cpp
+    objects/Pipe.h
+    objects/Exchanger.cpp
+    objects/Exchanger.h
+    objects/Conveyor.cpp
+    objects/Conveyor.h
+    objects/Sensor.cpp
+    objects/Sensor.h
     objects/TextBox.cpp
     objects/TextBox.h
 

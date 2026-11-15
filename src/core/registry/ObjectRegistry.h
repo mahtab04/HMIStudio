@@ -23,6 +23,14 @@ enum class ObjectCategory
     ProcessSymbols,
 };
 
+// How a new object of the type is drawn out on the canvas.
+enum class Placement
+{
+    Rectangle,        // drag a rectangle, or tap for the default size
+    Points,           // tap points one after another (polyline, polygon)
+    OrthogonalPoints, // as Points, with right-angled segments (pipe)
+};
+
 // What the registry knows about one object type: how to create it and how to
 // show it in the toolbox. `displayName` is translated in the
 // "hmi::ObjectRegistry" context.
@@ -35,6 +43,7 @@ struct ObjectTypeInfo
     QString iconPath;
     // False for types created only by editing operations (groups).
     bool inToolbox = true;
+    Placement placement = Placement::Rectangle;
     // Creates an object with default properties and the given id.
     std::function<std::unique_ptr<HmiObject>(ObjectId)> create;
 };
@@ -80,15 +89,23 @@ private:
 // bottom of the type's .cpp file, inside no namespace. `Class::kTypeId` must
 // be built from the same key.
 #define HMI_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath)                           \
-    HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, true)
+    HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, true,                  \
+                               ::hmi::Placement::Rectangle)
+
+// Registers a type that is placed by tapping points (`How` is Points or
+// OrthogonalPoints); the type has a Prop::Points property.
+#define HMI_REGISTER_PATH_OBJECT(Class, Key, DisplayName, Category, IconPath, How)                 \
+    HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, true,                  \
+                               ::hmi::Placement::How)
 
 // Registers a type that files and the clipboard can contain but that the
 // toolbox does not offer (a group is made by grouping, not placed).
 #define HMI_REGISTER_INTERNAL_OBJECT(Class, Key, DisplayName)                                      \
     HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, ::hmi::ObjectCategory::BasicObjects, "",   \
-                               false)
+                               false, ::hmi::Placement::Rectangle)
 
-#define HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, InToolbox)         \
+#define HMI_DETAIL_REGISTER_OBJECT(Class, Key, DisplayName, Category, IconPath, InToolbox,         \
+                                   PlacementValue)                                                 \
     static_assert(Class::kTypeId == ::hmi::ObjectTypeId{Key}, "kTypeId must match the key");       \
     namespace                                                                                      \
     {                                                                                              \
@@ -100,6 +117,7 @@ private:
             .category = Category,                                                                  \
             .iconPath = QStringLiteral(IconPath),                                                  \
             .inToolbox = InToolbox,                                                                \
+            .placement = PlacementValue,                                                           \
             .create = [](::hmi::ObjectId objectId)                                                 \
             { return std::unique_ptr<::hmi::HmiObject>(std::make_unique<Class>(objectId)); }});    \
     }
