@@ -200,7 +200,8 @@ For canvas parts such as overlays, rulers or a new viewport feature.
    `activate`, `deactivate` (must drop any preview) and `keyPress` as needed.
    Hit tolerances in scene units come from `ToolContext::sceneHitTolerance()`
    and `sceneHandleHitSize()`.
-3. Preview through `ICanvasView` (`setPreviewGeometry`, `setRubberBand`);
+3. Preview through `ICanvasView` (`setPreviewGeometry`,
+   `setPreviewRotation`, `setRubberBand`, `setGuides`);
    change the model only when the gesture ends, with a single command (or a
    macro). Navigation gestures never reach tools; `ToolController` handles
    them.
@@ -217,17 +218,40 @@ For canvas parts such as overlays, rulers or a new viewport feature.
 1. Create `src/editor/commands/<Verb><Noun>Command.h/.cpp` deriving from
    `QUndoCommand`.
 2. Store `Project&`, the `ScreenId` and object ids, never pointers to model
-   objects, plus the old and new values. A command that removes an object
-   owns it while undone.
+   objects, plus the old and new values. Whatever is out of the screen is
+   owned by the command: an adding command owns its object while undone, a
+   removing or grouping command owns the removed objects while done.
+   Remember z-indices so undo puts objects back in place, and make redo
+   rebuild the same model every time (same ids, for example the group id).
+   Use `Screen::setOrder` for z-order changes: one notification instead of
+   one per object.
 3. `redo()` applies, `undo()` restores. The first `redo()` is called by
    `push()`, so do not apply the change before pushing.
 4. For continuous edits (dragging, sliders) implement `id()` and
    `mergeWith()`.
 5. Set a translated text:
    `setText(QCoreApplication::translate("hmi::Commands", "Move %n object(s)", nullptr, count))`.
-6. Test in `tests/editor/CommandsTest.cpp`: build a fixture with
-   `ScreenBuilder`, clone the screen, push, compare; undo, compare with the
-   original; redo, compare again.
+6. Test in `tests/editor/CommandsTest.cpp` with `checkRoundTrip()`: it
+   pushes the command and checks that undo restores the model exactly and
+   redo reproduces it, twice over, including group children and ids.
+7. Several commands that form one user action go in one step: a parent
+   `QUndoCommand` with the commands as children, or
+   `beginMacro()`/`endMacro()` on the stack.
+
+## Recipe: add an editing action
+
+For an action on the selection (like align or group) that the keyboard,
+the context menu and the touch toolbar all offer.
+
+1. Add a method to `EditActions` that returns false when there is nothing
+   to do, and pushes exactly one undo step otherwise. Leave locked objects
+   in place for anything that moves or resizes. Add a `can…()` query if the
+   action is not always available.
+2. Expose it on `EditorController` as an invokable (with a `Q_ENUM` for
+   variants) and the query as a property notified by `editStateChanged`.
+3. Add it to `CanvasContextMenu.qml`, a shortcut in `Main.qml` if it has
+   one, and the touch `SelectionToolbar.qml` if it is frequent.
+4. Test in `tests/editor/EditActionsTest.cpp` with `checkUndoable()`.
 
 ## Recipe: add a panel
 
