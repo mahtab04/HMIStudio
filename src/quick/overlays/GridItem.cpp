@@ -17,13 +17,14 @@ GridItem::GridItem(QQuickItem* parent)
 }
 
 void GridItem::setGrid(const QRectF& screenViewRect, double zoom, double spacing,
-                       const QColor& color)
+                       const QColor& color, const QColor& background)
 {
     if (screenViewRect == m_screenViewRect && qFuzzyCompare(zoom, m_zoom) &&
-        qFuzzyCompare(spacing, m_spacing) && color == m_color)
+        qFuzzyCompare(spacing, m_spacing) && color == m_color && background == m_background)
     {
         return;
     }
+    m_background = background;
     m_screenViewRect = screenViewRect;
     m_zoom = zoom;
     m_spacing = spacing;
@@ -39,6 +40,8 @@ QSGNode* GridItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data)
 
     // Visible part of the screen only.
     const QRectF area = m_screenViewRect.intersected(boundingRect());
+    if (window() && !area.isEmpty() && m_background.alpha() > 0)
+        SceneGraphShapes::addRect(root, window(), area, m_background);
     double step = m_spacing * m_zoom;
     if (!window() || step <= 0.0 || area.isEmpty() || m_color.alpha() == 0)
     {

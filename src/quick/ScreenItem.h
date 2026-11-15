@@ -2,7 +2,6 @@
 
 #include "core/model/Ids.h"
 
-#include <QColor>
 #include <QHash>
 #include <QQuickItem>
 
@@ -13,10 +12,11 @@ class DocumentNotifier;
 class ObjectItem;
 class Screen;
 
-// Qt Quick counterpart of one Screen: draws the background and keeps one
-// ObjectItem per object, in z-order, in step with the document through the
-// DocumentNotifier. Positioned and scaled by CanvasItem; scene coordinates
-// are its local coordinates.
+// Qt Quick counterpart of one Screen: keeps one ObjectItem per object, in
+// z-order, in step with the document through the DocumentNotifier.
+// Positioned and scaled by CanvasItem; scene coordinates are its local
+// coordinates. GridItem draws the background below it, so the grid can sit
+// between the background and the objects.
 class ScreenItem : public QQuickItem
 {
     Q_OBJECT
@@ -38,15 +38,12 @@ public:
 
     void setRenderScale(double scale);
 
-    void showPreview(ObjectId id, const QRectF& sceneGeometry);
+    void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
     void clearPreview();
 
 Q_SIGNALS:
     // The screen's objects, z-order or geometry changed; overlays refresh.
     void contentChanged();
-
-protected:
-    QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 
 private:
     void rebuild();
@@ -61,7 +58,6 @@ private:
     QHash<ObjectId, ObjectItem*> m_items;
     QList<ObjectId> m_previewed;
     double m_renderScale = 1.0;
-    QColor m_background;
 };
 
 } // namespace hmi

@@ -47,6 +47,7 @@ hmi_add_test(CanvasItemTest SOURCES quick/CanvasItemTest.cpp LIBS hmi_quick)
 # Editor
 set(_hmiEditorTestSupport editor/FakeCanvas.h editor/GestureFactory.h)
 hmi_add_test(CommandsTest SOURCES editor/CommandsTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(EditActionsTest SOURCES editor/EditActionsTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(SelectToolTest SOURCES editor/SelectToolTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(CreateToolTest SOURCES editor/CreateToolTest.cpp ${_hmiEditorTestSupport}

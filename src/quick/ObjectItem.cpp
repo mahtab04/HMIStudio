@@ -42,10 +42,11 @@ void ObjectItem::syncFromModel()
     update();
 }
 
-void ObjectItem::showPreview(const QRectF& sceneGeometry)
+void ObjectItem::showPreview(const QRectF& sceneGeometry, double rotation)
 {
     setPosition(sceneGeometry.topLeft());
     setSize(sceneGeometry.size());
+    setRotation(rotation);
     updateTextureSize();
     update();
 }

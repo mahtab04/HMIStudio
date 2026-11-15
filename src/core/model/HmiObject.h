@@ -60,6 +60,13 @@ public:
     // `children` is empty.
     virtual Result<void> setChildren(std::vector<std::unique_ptr<HmiObject>> children);
 
+    // Copies of the children converted to screen coordinates, for ungrouping.
+    // Empty for types without children.
+    [[nodiscard]] virtual std::vector<std::unique_ptr<HmiObject>> ungroupedChildren() const
+    {
+        return {};
+    }
+
     // Paints in local coordinates. Runs on the render thread: reads only this
     // object's data and changes nothing.
     virtual void paint(QPainter& painter, const PaintContext& context) const = 0;

@@ -2,10 +2,12 @@
 
 #include "core/model/Ids.h"
 
+#include <QLineF>
 #include <QPointF>
 #include <QRectF>
 
 #include <optional>
+#include <vector>
 
 namespace hmi
 {
@@ -33,7 +35,12 @@ public:
     // Shows an object at `sceneGeometry` instead of its model geometry until
     // clearPreview(). The model is not touched.
     virtual void setPreviewGeometry(ObjectId id, const QRectF& sceneGeometry) = 0;
+    // Shows an object turned to `rotation` degrees until clearPreview().
+    virtual void setPreviewRotation(ObjectId id, double rotation) = 0;
     virtual void clearPreview() = 0;
+
+    // Snap guides, axis-aligned lines in scene coordinates; empty hides them.
+    virtual void setGuides(std::vector<QLineF> sceneLines) = 0;
 
     // Rubber band or placement rectangle in scene coordinates; nullopt hides it.
     virtual void setRubberBand(const std::optional<QRectF>& sceneRect) = 0;

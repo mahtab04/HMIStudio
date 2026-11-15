@@ -54,7 +54,7 @@ public:
     // Exact unless a rotated child is scaled unevenly, which a rectangle
     // cannot represent; then the child keeps its own proportions as closely
     // as possible.
-    [[nodiscard]] std::vector<std::unique_ptr<HmiObject>> ungroupedChildren() const;
+    [[nodiscard]] std::vector<std::unique_ptr<HmiObject>> ungroupedChildren() const override;
 
 protected:
     void renewIds() override;

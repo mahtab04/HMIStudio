@@ -30,9 +30,9 @@ public:
     // Copies position, size, rotation and visibility from the object.
     void syncFromModel();
 
-    // Shows the object at another geometry (tool preview). The painting is
-    // stretched to fit until the next syncFromModel().
-    void showPreview(const QRectF& sceneGeometry);
+    // Shows the object at another geometry and rotation (tool preview). The
+    // painting is stretched to fit until the next syncFromModel().
+    void showPreview(const QRectF& sceneGeometry, double rotation);
 
     // Pixels per scene unit the texture is rendered at (zoom times device
     // pixel ratio). Applied when the zoom settles, so the result is sharp.

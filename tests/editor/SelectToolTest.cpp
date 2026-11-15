@@ -65,6 +65,9 @@ private Q_SLOTS:
         m_context = std::make_unique<ToolContext>(*m_project, m_stack, m_selection, m_input);
         m_context->setScreenId(m_screen->id());
         m_context->setCanvas(&m_canvas);
+        // Most cases check exact pointer movement; the snapping cases turn
+        // it back on.
+        m_context->setSnapEnabled(false);
         m_tool = std::make_unique<SelectTool>(*m_context);
         m_gestures = {};
     }
@@ -258,6 +261,99 @@ private Q_SLOTS:
         run(m_gestures.drag({0, 0}, {150, 100}, 3, true));
         QCOMPARE(m_canvas.pan, QPointF());
         QCOMPARE(m_selection.ids(), std::vector{m_a});
+    }
+
+    void moveSnapsToObjectEdgesWithGuides_data() { test::addDeviceRows(); }
+    void moveSnapsToObjectEdgesWithGuides()
+    {
+        QFETCH(PointerDevice, device);
+        m_gestures.device = device;
+        m_context->setSnapEnabled(true);
+        m_context->setSnapSettings({.toGrid = false, .toObjects = true, .gridSpacing = 8.0});
+
+        // Right edge of A (110) moved by 87 lands 3 short of B's left edge
+        // (200), and its top 2 below B's top: both snap.
+        const auto sequence = m_gestures.drag({50, 30}, {137, 32});
+        for (std::size_t i = 0; i + 1 < sequence.size(); ++i)
+            m_tool->handleGesture(sequence[i]);
+        QCOMPARE(m_canvas.preview.value(m_a), QRectF(100, 10, 100, 50));
+        QVERIFY(!m_canvas.guides.empty());
+        m_tool->handleGesture(sequence.back());
+        QCOMPARE(geometryOf(m_a), QRectF(100, 10, 100, 50));
+        QVERIFY(m_canvas.guides.empty());
+    }
+
+    void altSuspendsSnapping()
+    {
+        m_context->setSnapEnabled(true);
+        m_gestures.modifiers = Qt::AltModifier;
+        run(m_gestures.drag({50, 30}, {137, 32}));
+        QCOMPARE(geometryOf(m_a), QRectF(97, 12, 100, 50));
+    }
+
+    void resizeSnapsToGrid()
+    {
+        m_context->setSnapEnabled(true);
+        m_context->setSnapSettings({.toGrid = true, .toObjects = false, .gridSpacing = 8.0});
+        m_tool->handleGesture(m_gestures.tap({50, 30}));
+        // Bottom-right handle at (110, 60) dragged to (123, 63): the edges
+        // snap to the grid lines at 120 and 64.
+        run(m_gestures.drag({110, 60}, {123, 63}));
+        QCOMPARE(geometryOf(m_a), QRectF(10, 10, 110, 54));
+    }
+
+    void rotationHandleRotates_data() { test::addDeviceRows(); }
+    void rotationHandleRotates()
+    {
+        QFETCH(PointerDevice, device);
+        m_gestures.device = device;
+        m_tool->handleGesture(m_gestures.tap({50, 30}));
+        // A is (10, 10, 100, 50): centre (60, 35), rotation handle 28 px
+        // above the top edge at (60, -18). Dragging it level with the centre,
+        // to the right, turns the object a quarter clockwise.
+        const QPointF handle(60, 10 - m_input.rotationHandleOffset);
+        const auto sequence = m_gestures.drag(handle, {160, 35});
+        for (std::size_t i = 0; i + 1 < sequence.size(); ++i)
+            m_tool->handleGesture(sequence[i]);
+        QCOMPARE(m_canvas.previewRotation.value(m_a), 90.0);
+        QCOMPARE(m_screen->object(m_a)->rotation(), 0.0);
+        m_tool->handleGesture(sequence.back());
+        QCOMPARE(m_screen->object(m_a)->rotation(), 90.0);
+        QCOMPARE(geometryOf(m_a), QRectF(10, 10, 100, 50));
+        QCOMPARE(m_stack.count(), 1);
+        m_stack.undo();
+        QCOMPARE(m_screen->object(m_a)->rotation(), 0.0);
+    }
+
+    void rotationSnapsToSteps()
+    {
+        m_tool->handleGesture(m_gestures.tap({50, 30}));
+        const QPointF handle(60, 10 - m_input.rotationHandleOffset);
+        // atan2(100, 30) is about 73.3 degrees.
+        run(m_gestures.drag(handle, {160, 5}));
+        QCOMPARE(m_screen->object(m_a)->rotation(), 73.0);
+
+        // With Shift, 15 degree steps.
+        m_stack.undo();
+        m_gestures.modifiers = Qt::ShiftModifier;
+        run(m_gestures.drag(handle, {160, 5}));
+        QCOMPARE(m_screen->object(m_a)->rotation(), 75.0);
+
+        // Close to 45 degrees snaps there while snapping is on.
+        m_stack.undo();
+        m_gestures.modifiers = Qt::NoModifier;
+        m_context->setSnapEnabled(true);
+        run(m_gestures.drag(handle, {160, -62})); // atan2(100, 97) is about 45.9
+        QCOMPARE(m_screen->object(m_a)->rotation(), 45.0);
+    }
+
+    void contextMenuSelectsAndAsks()
+    {
+        std::optional<QPointF> requested;
+        m_context->setContextMenuRequest([&](QPointF pos) { requested = pos; });
+        m_tool->handleGesture(m_gestures.make(Kind::ContextMenu, {250, 30}, {250, 30}));
+        QCOMPARE(m_selection.ids(), std::vector{m_b});
+        QCOMPARE(requested, std::optional(QPointF(250, 30)));
     }
 };
 

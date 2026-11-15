@@ -7,7 +7,7 @@
 namespace hmi
 {
 
-// Grid lines over the screen area, drawn with scene-graph geometry in view
+// The screen's background and grid lines, below the objects, drawn in view
 // coordinates so lines stay one pixel wide at every zoom. When the grid would
 // be denser than kMinimumViewSpacing, every second line is dropped until it
 // is not. Owned and configured by CanvasItem.
@@ -21,7 +21,8 @@ public:
     explicit GridItem(QQuickItem* parent = nullptr);
 
     // `screenViewRect` is the screen's rectangle in view coordinates.
-    void setGrid(const QRectF& screenViewRect, double zoom, double spacing, const QColor& color);
+    void setGrid(const QRectF& screenViewRect, double zoom, double spacing, const QColor& color,
+                 const QColor& background);
 
 protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
@@ -31,6 +32,7 @@ private:
     double m_zoom = 1.0;
     double m_spacing = 8.0;
     QColor m_color;
+    QColor m_background;
 };
 
 } // namespace hmi

@@ -40,6 +40,19 @@ namespace SelectionGeometry
 [[nodiscard]] std::optional<SelectionHandle> handleAt(const QRectF& geometry, double rotation,
                                                       QPointF scenePos, double hitSize);
 
+// The rotation handle: `offset` scene units above the middle of the top
+// edge, turning with the object.
+[[nodiscard]] QPointF rotationHandle(const QRectF& geometry, double rotation, double offset);
+
+// True when `scenePos` is within the square hit area around the rotation
+// handle.
+[[nodiscard]] bool hitsRotationHandle(const QRectF& geometry, double rotation, double offset,
+                                      QPointF scenePos, double hitSize);
+
+// Rotation in degrees that points the rotation handle from the object's
+// centre towards `scenePos`, normalised to (-180, 180].
+[[nodiscard]] double rotationTowards(const QRectF& geometry, QPointF scenePos);
+
 // New geometry after dragging `handle` by `sceneDelta`. The opposite edge or
 // corner stays fixed in the scene, also for rotated objects. Sizes do not go
 // below `minimumSize` (or zero when the start size is already zero).

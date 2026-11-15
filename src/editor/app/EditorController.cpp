@@ -3,12 +3,15 @@
 #include "core/model/Project.h"
 #include "core/model/Screen.h"
 #include "core/registry/ObjectRegistry.h"
+#include "editor/app/EditActions.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/tools/ToolContext.h"
 #include "editor/tools/ToolController.h"
 #include "quick/CanvasItem.h"
 
+#include <QClipboard>
+#include <QGuiApplication>
 #include <QUndoStack>
 
 #include <cmath>
@@ -16,10 +19,11 @@
 namespace hmi
 {
 
-EditorController::EditorController(ToolContext& context, ToolboxDragController& toolboxDrag,
-                                   QObject* parent)
+EditorController::EditorController(ToolContext& context, EditActions& actions,
+                                   ToolboxDragController& toolboxDrag, QObject* parent)
     : QObject(parent)
     , m_context(context)
+    , m_actions(actions)
     , m_toolboxDrag(toolboxDrag)
     , m_tools(new ToolController(context, this))
 {
@@ -33,9 +37,24 @@ EditorController::EditorController(ToolContext& context, ToolboxDragController& 
     connect(&stack, &QUndoStack::canUndoChanged, this, &EditorController::undoStateChanged);
     connect(&stack, &QUndoStack::canRedoChanged, this, &EditorController::undoStateChanged);
     connect(&stack, &QUndoStack::indexChanged, this, &EditorController::undoStateChanged);
+
+    // What the editing actions can do depends on the selection, the model
+    // (undo and redo change it) and the clipboard.
+    connect(&m_context.selection(), &SelectionModel::changed, this,
+            &EditorController::editStateChanged);
+    connect(&stack, &QUndoStack::indexChanged, this, &EditorController::editStateChanged);
+    if (QClipboard* clipboard = QGuiApplication::clipboard())
+        connect(clipboard, &QClipboard::dataChanged, this, &EditorController::editStateChanged);
+
+    m_context.setSnapSettings({.toGrid = true, .toObjects = true, .gridSpacing = kGridSpacing});
+    m_context.setContextMenuRequest([this](QPointF viewPos)
+                                    { Q_EMIT contextMenuRequested(viewPos); });
 }
 
-EditorController::~EditorController() = default;
+EditorController::~EditorController()
+{
+    m_context.setContextMenuRequest({});
+}
 
 void EditorController::attachCanvas(CanvasItem* canvas)
 {
@@ -53,13 +72,20 @@ void EditorController::attachCanvas(CanvasItem* canvas)
     canvas->setSelection(m_context.selection().ids());
 
     connect(canvas, &CanvasItem::gesture, m_tools, &ToolController::handleGesture);
-    connect(canvas, &CanvasItem::keyPressed, m_tools, &ToolController::keyPress);
+    connect(canvas, &CanvasItem::keyPressed, this,
+            [this](int key, Qt::KeyboardModifiers modifiers)
+            {
+                if (!m_tools->keyPress(key, modifiers))
+                    handleKey(key, modifiers);
+            });
+    connect(canvas, &CanvasItem::selectionGeometryChanged, this, &EditorController::updateSizeText);
     connect(canvas, &CanvasItem::viewChanged, this, &EditorController::zoomChanged);
     connect(canvas, &CanvasItem::pointerMoved, this, &EditorController::onPointerMoved);
     connect(&m_context.selection(), &SelectionModel::changed, canvas,
             [this, canvas] { canvas->setSelection(m_context.selection().ids()); });
 
     m_tools->applyCursor();
+    updateSizeText();
     Q_EMIT screenChanged();
     Q_EMIT zoomChanged();
 }
@@ -123,6 +149,127 @@ void EditorController::undo()
 void EditorController::redo()
 {
     m_context.undoStack().redo();
+}
+
+void EditorController::selectAll()
+{
+    m_actions.selectAll();
+}
+
+void EditorController::deleteSelection()
+{
+    m_actions.deleteSelection();
+}
+
+void EditorController::duplicate()
+{
+    m_actions.duplicate();
+}
+
+void EditorController::cut()
+{
+    m_actions.cut();
+}
+
+void EditorController::copy()
+{
+    m_actions.copy();
+}
+
+void EditorController::paste()
+{
+    m_actions.paste();
+}
+
+void EditorController::group()
+{
+    m_actions.group();
+}
+
+void EditorController::ungroup()
+{
+    m_actions.ungroup();
+}
+
+void EditorController::nudge(double dx, double dy)
+{
+    m_actions.nudge({dx, dy});
+}
+
+void EditorController::align(Alignment alignment)
+{
+    static constexpr EditActions::Alignment kMap[] = {
+        EditActions::Alignment::Left,           EditActions::Alignment::HorizontalCentre,
+        EditActions::Alignment::Right,          EditActions::Alignment::Top,
+        EditActions::Alignment::VerticalCentre, EditActions::Alignment::Bottom,
+    };
+    if (int(alignment) >= 0 && int(alignment) < int(std::size(kMap)))
+        m_actions.align(kMap[int(alignment)]);
+}
+
+void EditorController::distribute(Qt::Orientation orientation)
+{
+    m_actions.distribute(orientation);
+}
+
+void EditorController::matchSize(SizeMatch match)
+{
+    static constexpr EditActions::SizeMatch kMap[] = {
+        EditActions::SizeMatch::Width,
+        EditActions::SizeMatch::Height,
+        EditActions::SizeMatch::Both,
+    };
+    if (int(match) >= 0 && int(match) < int(std::size(kMap)))
+        m_actions.matchSize(kMap[int(match)]);
+}
+
+void EditorController::reorder(Order order)
+{
+    static constexpr EditActions::Order kMap[] = {
+        EditActions::Order::Forward,
+        EditActions::Order::Backward,
+        EditActions::Order::ToFront,
+        EditActions::Order::ToBack,
+    };
+    if (int(order) >= 0 && int(order) < int(std::size(kMap)))
+        m_actions.reorder(kMap[int(order)]);
+}
+
+bool EditorController::handleKey(int key, Qt::KeyboardModifiers modifiers)
+{
+    const double step = modifiers.testFlag(Qt::ShiftModifier) ? kLargeNudge : 1.0;
+    switch (key)
+    {
+    case Qt::Key_Left:
+        return m_actions.nudge({-step, 0});
+    case Qt::Key_Right:
+        return m_actions.nudge({step, 0});
+    case Qt::Key_Up:
+        return m_actions.nudge({0, -step});
+    case Qt::Key_Down:
+        return m_actions.nudge({0, step});
+    case Qt::Key_Delete:
+    case Qt::Key_Backspace:
+        return m_actions.deleteSelection();
+    default:
+        return false;
+    }
+}
+
+void EditorController::updateSizeText()
+{
+    QString text;
+    if (m_canvas && !m_canvas->selectionBounds().isEmpty())
+    {
+        const QSizeF size = m_canvas->selectionSceneSize();
+        text = tr("%1 × %2").arg(std::lround(size.width())).arg(std::lround(size.height()));
+        if (const double rotation = m_canvas->selectionRotation(); rotation != 0.0)
+            text = tr("%1 · %2°").arg(text).arg(rotation);
+    }
+    if (text == m_sizeText)
+        return;
+    m_sizeText = text;
+    Q_EMIT sizeTextChanged();
 }
 
 void EditorController::onPointerMoved(QPointF scenePos)
@@ -212,6 +359,54 @@ QString EditorController::redoText() const
 {
     const QString text = m_context.undoStack().redoText();
     return text.isEmpty() ? tr("Redo") : tr("Redo %1").arg(text);
+}
+
+bool EditorController::hasSelection() const
+{
+    return m_actions.hasSelection();
+}
+
+bool EditorController::canGroup() const
+{
+    return m_actions.canGroup();
+}
+
+bool EditorController::canUngroup() const
+{
+    return m_actions.canUngroup();
+}
+
+bool EditorController::canPaste() const
+{
+    return m_actions.canPaste();
+}
+
+bool EditorController::canAlign() const
+{
+    return m_actions.canAlign();
+}
+
+bool EditorController::canDistribute() const
+{
+    return m_actions.canDistribute();
+}
+
+bool EditorController::canMatchSize() const
+{
+    return m_actions.canMatchSize();
+}
+
+bool EditorController::snapEnabled() const
+{
+    return m_context.snapEnabled();
+}
+
+void EditorController::setSnapEnabled(bool enabled)
+{
+    if (enabled == m_context.snapEnabled())
+        return;
+    m_context.setSnapEnabled(enabled);
+    Q_EMIT snapEnabledChanged();
 }
 
 } // namespace hmi

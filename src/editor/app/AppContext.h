@@ -9,6 +9,7 @@
 namespace hmi
 {
 
+class EditActions;
 class EditorController;
 class Project;
 class SelectionModel;
@@ -37,6 +38,7 @@ public:
     [[nodiscard]] SelectionModel& selection() const noexcept { return *m_selection; }
     [[nodiscard]] Theme& theme() const noexcept { return *m_theme; }
     [[nodiscard]] ToolContext& toolContext() const noexcept { return *m_toolContext; }
+    [[nodiscard]] EditActions& editActions() const noexcept { return *m_editActions; }
     [[nodiscard]] EditorController& editor() const noexcept { return *m_editor; }
     [[nodiscard]] ToolboxModel& toolbox() const noexcept { return *m_toolbox; }
     [[nodiscard]] ToolboxDragController& toolboxDrag() const noexcept { return *m_toolboxDrag; }
@@ -48,6 +50,7 @@ private:
     std::unique_ptr<Theme> m_theme;
     std::unique_ptr<SelectionModel> m_selection;
     std::unique_ptr<ToolContext> m_toolContext;
+    std::unique_ptr<EditActions> m_editActions;
     std::unique_ptr<ToolboxDragController> m_toolboxDrag;
     std::unique_ptr<EditorController> m_editor;
     std::unique_ptr<ToolboxModel> m_toolbox;

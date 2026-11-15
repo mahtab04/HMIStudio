@@ -1,6 +1,7 @@
 #include "editor/app/AppContext.h"
 
 #include "core/model/Project.h"
+#include "editor/app/EditActions.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/Theme.h"
 #include "editor/models/SelectionModel.h"
@@ -17,8 +18,9 @@ AppContext::AppContext(std::unique_ptr<Project> project)
     , m_selection(std::make_unique<SelectionModel>())
     , m_toolContext(
           std::make_unique<ToolContext>(*m_project, m_undoStack, *m_selection, m_inputSettings))
+    , m_editActions(std::make_unique<EditActions>(*m_toolContext))
     , m_toolboxDrag(std::make_unique<ToolboxDragController>(*m_toolContext))
-    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_toolboxDrag))
+    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag))
     , m_toolbox(std::make_unique<ToolboxModel>())
 {
     Q_ASSERT(m_project && m_project->screenCount() > 0);

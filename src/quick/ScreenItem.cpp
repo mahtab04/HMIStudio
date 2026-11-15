@@ -5,15 +5,12 @@
 #include "core/model/Screen.h"
 #include "quick/ObjectItem.h"
 
-#include <QSGSimpleRectNode>
-
 namespace hmi
 {
 
 ScreenItem::ScreenItem(QQuickItem* parent)
     : QQuickItem(parent)
 {
-    setFlag(ItemHasContents);
     setTransformOrigin(QQuickItem::TopLeft);
     setAcceptedMouseButtons(Qt::NoButton);
 }
@@ -119,16 +116,7 @@ void ScreenItem::syncZOrder()
 
 void ScreenItem::syncScreen()
 {
-    if (m_screen)
-    {
-        setSize(m_screen->size());
-        m_background = m_screen->backgroundColor();
-    }
-    else
-    {
-        setSize(QSizeF());
-    }
-    update();
+    setSize(m_screen ? m_screen->size() : QSizeF());
     Q_EMIT contentChanged();
 }
 
@@ -148,11 +136,11 @@ void ScreenItem::setRenderScale(double scale)
         item->setRenderScale(scale);
 }
 
-void ScreenItem::showPreview(ObjectId id, const QRectF& sceneGeometry)
+void ScreenItem::showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation)
 {
     if (ObjectItem* item = m_items.value(id))
     {
-        item->showPreview(sceneGeometry);
+        item->showPreview(sceneGeometry, rotation);
         if (!m_previewed.contains(id))
             m_previewed.append(id);
     }
@@ -166,16 +154,6 @@ void ScreenItem::clearPreview()
             item->syncFromModel();
     }
     m_previewed.clear();
-}
-
-QSGNode* ScreenItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
-{
-    auto* node = static_cast<QSGSimpleRectNode*>(oldNode);
-    if (!node)
-        node = new QSGSimpleRectNode();
-    node->setRect(boundingRect());
-    node->setColor(m_background);
-    return node;
 }
 
 } // namespace hmi

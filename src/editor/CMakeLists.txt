@@ -13,6 +13,8 @@ qt_add_qml_module(hmi_editor_lib
     SOURCES
         app/AppContext.cpp
         app/AppContext.h
+        app/EditActions.cpp
+        app/EditActions.h
         app/EditorController.cpp
         app/EditorController.h
         app/SampleProject.cpp
@@ -21,10 +23,20 @@ qt_add_qml_module(hmi_editor_lib
         app/Theme.h
         commands/AddObjectCommand.cpp
         commands/AddObjectCommand.h
+        commands/GroupObjectsCommand.cpp
+        commands/GroupObjectsCommand.h
         commands/MoveObjectsCommand.cpp
         commands/MoveObjectsCommand.h
+        commands/RemoveObjectsCommand.cpp
+        commands/RemoveObjectsCommand.h
+        commands/ReorderCommand.cpp
+        commands/ReorderCommand.h
         commands/ResizeObjectCommand.cpp
         commands/ResizeObjectCommand.h
+        commands/SetPropertyCommand.cpp
+        commands/SetPropertyCommand.h
+        commands/UngroupCommand.cpp
+        commands/UngroupCommand.h
         models/SelectionModel.cpp
         models/SelectionModel.h
         models/ToolboxDragController.cpp
