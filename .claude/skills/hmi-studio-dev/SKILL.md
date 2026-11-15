@@ -137,6 +137,13 @@ Example: a `Gauge`.
    imported graphic is drawn through `context.graphics`. `paint()` runs on
    the render thread: read only the object's own data, use no shared
    mutable state. Skip fine detail when `context.lowDetail()`.
+   A process symbol that should keep its look at every size adds
+   `Describe::stretchMode()` and draws in `designSize()` coordinates after
+   `painter.setTransform(designTransform(), true)`; its `hitShape()` maps
+   its shape with `designTransform()`. Never derive the number or size of
+   parts from width and height separately: resized out of proportion, the
+   drawing then changes character (`scaledSymbolsKeepTheirLook` checks it;
+   `HMI_RESIZE_SHEET=<file.png>` shows it).
 4. Override `hitShape()` if the object is not rectangular (line, polygon,
    pipe), so tapping empty corners does not select it.
 5. Register the type at the bottom of the `.cpp`:

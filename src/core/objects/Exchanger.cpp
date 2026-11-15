@@ -29,6 +29,7 @@ std::span<const PropertyDescriptor> Exchanger::staticDescriptors()
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {90.0, 90.0}, {
+                          Describe::stretchMode(),
                           Describe::fillColor(QColor(0xC9, 0xCE, 0xD6)),
                           Describe::lineColor(QColor(0x3A, 0x40, 0x48)),
                           Describe::lineWidth(2.0),
@@ -46,7 +47,9 @@ std::unique_ptr<HmiObject> Exchanger::clone() const
 
 void Exchanger::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double side = std::min(size.width(), size.height());
@@ -70,12 +73,17 @@ void Exchanger::paint(QPainter& painter, const PaintContext& context) const
 
 QPainterPath Exchanger::hitShape() const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
-    [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
-    const double side = std::min(size.width(), size.height());
-    QPainterPath path;
-    path.addEllipse(QRectF((size.width() - side) / 2.0, (size.height() - side) / 2.0, side, side));
-    return path;
+    const QPainterPath shape = [this]() -> QPainterPath
+    {
+        [[maybe_unused]] const QSizeF size = designSize();
+        [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
+        const double side = std::min(size.width(), size.height());
+        QPainterPath path;
+        path.addEllipse(
+            QRectF((size.width() - side) / 2.0, (size.height() - side) / 2.0, side, side));
+        return path;
+    }();
+    return designTransform().map(shape);
 }
 
 void Exchanger::accept(ObjectVisitor& visitor)

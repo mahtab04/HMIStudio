@@ -30,6 +30,7 @@ std::span<const PropertyDescriptor> Conveyor::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {180.0, 40.0},
         {
+            Describe::stretchMode(),
             Describe::flag(Prop::Running, "running", QT_TRANSLATE_NOOP("hmi::Property", "Running"),
                            Behaviour, false, true),
             Describe::color(Prop::OnColor, "onColor",
@@ -51,7 +52,9 @@ std::unique_ptr<HmiObject> Conveyor::clone() const
 
 void Conveyor::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double half = value<double>(Prop::LineWidth) / 2.0;
@@ -72,11 +75,15 @@ void Conveyor::paint(QPainter& painter, const PaintContext& context) const
 
 QPainterPath Conveyor::hitShape() const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
-    [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
-    QPainterPath path;
-    path.addRoundedRect(bounds, size.height() / 2.0, size.height() / 2.0);
-    return path;
+    const QPainterPath shape = [this]() -> QPainterPath
+    {
+        [[maybe_unused]] const QSizeF size = designSize();
+        [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
+        QPainterPath path;
+        path.addRoundedRect(bounds, size.height() / 2.0, size.height() / 2.0);
+        return path;
+    }();
+    return designTransform().map(shape);
 }
 
 void Conveyor::accept(ObjectVisitor& visitor)

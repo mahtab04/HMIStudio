@@ -47,6 +47,7 @@ std::span<const PropertyDescriptor> Sensor::staticDescriptors()
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {70.0, 90.0}, {
+                          Describe::stretchMode(),
                           Describe::choice(Prop::SensorKind, "sensorKind",
                                            QT_TRANSLATE_NOOP("hmi::Property", "Measures"),
                                            Behaviour, Temperature, kKindOptions),
@@ -67,7 +68,9 @@ std::unique_ptr<HmiObject> Sensor::clone() const
 
 void Sensor::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double side = std::min(size.width(), size.height() * 0.72);

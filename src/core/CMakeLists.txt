@@ -35,6 +35,7 @@ add_library(hmi_core_impl STATIC
     model/ScreenBuilder.cpp
     model/ScreenBuilder.h
     model/ShapeObject.h
+    model/SymbolObject.cpp
     model/SymbolObject.h
     model/UnknownObject.cpp
     model/UnknownObject.h

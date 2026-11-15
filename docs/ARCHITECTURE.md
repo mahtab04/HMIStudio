@@ -237,6 +237,16 @@ their live behaviour comes in phase 7. Objects that are invisible at
 runtime (touch area, an empty graphic view) draw a marked outline while
 `PaintContext::editing` is set.
 
+Process symbols with a "Stretch mode" property (pump, valve, motor, heat
+exchanger, conveyor, sensor) are pictures, as in the symbol libraries of
+WinCC and other HMI editors: `SymbolObject` draws them at their design
+size (the type's default size) and scales the drawing to the rectangle,
+keeping proportions (centred, the default) or stretched. Line widths and
+text scale with the picture. Tank and pipe lay themselves out in their
+rectangle instead (a taller tank is a taller vessel; a pipe follows its
+points). Elements and controls fill their rectangle and keep their font
+size, as operating elements do in WinCC.
+
 The registry records how a type is placed (`Placement`): by dragging a
 rectangle, or point by point (polyline, polygon) or with right-angled
 segments (pipe), which `ToolController` gives to `PathTool`.

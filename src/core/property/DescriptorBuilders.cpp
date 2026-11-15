@@ -200,6 +200,23 @@ PropertyDescriptor orientation(int value)
                   kOrientationOptions);
 }
 
+namespace
+{
+constexpr EnumOption kStretchOptions[] = {
+    {.value = 0,
+     .key = "keepProportions",
+     .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Keep proportions")},
+    {.value = 1, .key = "stretch", .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Stretch")},
+};
+} // namespace
+
+PropertyDescriptor stretchMode(int value)
+{
+    return choice(Prop::StretchMode, "stretchMode",
+                  QT_TRANSLATE_NOOP("hmi::Property", "Stretch mode"), Layout, value,
+                  kStretchOptions);
+}
+
 PropertyDescriptor items(const QString& value)
 {
     return string(Prop::Items, "items", QT_TRANSLATE_NOOP("hmi::Property", "Entries (a;b;c)"),

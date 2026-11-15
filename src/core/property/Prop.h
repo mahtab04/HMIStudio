@@ -53,6 +53,7 @@ inline constexpr PropertyId Open{"open"};
 inline constexpr PropertyId Flowing{"flowing"};
 inline constexpr PropertyId FlowColor{"flowColor"};
 inline constexpr PropertyId SensorKind{"sensorKind"};
+inline constexpr PropertyId StretchMode{"stretchMode"};
 
 // Controls
 inline constexpr PropertyId Columns{"columns"};

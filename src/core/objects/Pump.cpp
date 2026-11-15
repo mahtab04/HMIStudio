@@ -30,6 +30,7 @@ std::span<const PropertyDescriptor> Pump::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {80.0, 80.0},
         {
+            Describe::stretchMode(),
             Describe::flag(Prop::Running, "running", QT_TRANSLATE_NOOP("hmi::Property", "Running"),
                            Behaviour, false, true),
             Describe::color(Prop::OnColor, "onColor",
@@ -51,7 +52,9 @@ std::unique_ptr<HmiObject> Pump::clone() const
 
 void Pump::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double side = std::min(size.width(), size.height());
@@ -71,12 +74,17 @@ void Pump::paint(QPainter& painter, const PaintContext& context) const
 
 QPainterPath Pump::hitShape() const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
-    [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
-    const double side = std::min(size.width(), size.height());
-    QPainterPath path;
-    path.addEllipse(QRectF((size.width() - side) / 2.0, (size.height() - side) / 2.0, side, side));
-    return path;
+    const QPainterPath shape = [this]() -> QPainterPath
+    {
+        [[maybe_unused]] const QSizeF size = designSize();
+        [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
+        const double side = std::min(size.width(), size.height());
+        QPainterPath path;
+        path.addEllipse(
+            QRectF((size.width() - side) / 2.0, (size.height() - side) / 2.0, side, side));
+        return path;
+    }();
+    return designTransform().map(shape);
 }
 
 void Pump::accept(ObjectVisitor& visitor)

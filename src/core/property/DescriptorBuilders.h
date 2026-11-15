@@ -59,6 +59,10 @@ inline constexpr int kHorizontal = 0;
 inline constexpr int kVertical = 1;
 [[nodiscard]] PropertyDescriptor orientation(int value);
 
+// How a symbol drawn at its design size fills its rectangle: keep
+// proportions (0) or stretch (1); see SymbolObject.
+[[nodiscard]] PropertyDescriptor stretchMode(int value = 0);
+
 // A list of texts separated by ";" (radio buttons, list entries, states).
 [[nodiscard]] PropertyDescriptor items(const QString& value);
 [[nodiscard]] QStringList splitItems(const QString& items);

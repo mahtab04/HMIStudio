@@ -30,6 +30,7 @@ std::span<const PropertyDescriptor> Motor::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {100.0, 64.0},
         {
+            Describe::stretchMode(),
             Describe::flag(Prop::Running, "running", QT_TRANSLATE_NOOP("hmi::Property", "Running"),
                            Behaviour, false, true),
             Describe::color(Prop::OnColor, "onColor",
@@ -53,7 +54,9 @@ std::unique_ptr<HmiObject> Motor::clone() const
 
 void Motor::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double half = value<double>(Prop::LineWidth) / 2.0;

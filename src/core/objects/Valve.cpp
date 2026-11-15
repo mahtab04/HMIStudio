@@ -30,6 +30,7 @@ std::span<const PropertyDescriptor> Valve::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {80.0, 60.0},
         {
+            Describe::stretchMode(),
             Describe::flag(Prop::Open, "open", QT_TRANSLATE_NOOP("hmi::Property", "Open"),
                            Behaviour, true, true),
             Describe::color(Prop::OnColor, "onColor",
@@ -51,7 +52,9 @@ std::unique_ptr<HmiObject> Valve::clone() const
 
 void Valve::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (SymbolObject).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double half = value<double>(Prop::LineWidth) / 2.0;
@@ -72,16 +75,20 @@ void Valve::paint(QPainter& painter, const PaintContext& context) const
 
 QPainterPath Valve::hitShape() const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
-    [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
-    QPainterPath path = bodyPath();
-    path.addRect(QRectF(size.width() * 0.3, 0, size.width() * 0.4, size.height() * 0.35));
-    return path;
+    const QPainterPath shape = [this]() -> QPainterPath
+    {
+        [[maybe_unused]] const QSizeF size = designSize();
+        [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
+        QPainterPath path = bodyPath();
+        path.addRect(QRectF(size.width() * 0.3, 0, size.width() * 0.4, size.height() * 0.35));
+        return path;
+    }();
+    return designTransform().map(shape);
 }
 
 QPainterPath Valve::bodyPath() const
 {
-    const QSizeF size = geometry().size();
+    const QSizeF size = designSize();
     const double top = size.height() * 0.35;
     const double bottom = size.height();
     const double mid = (top + bottom) / 2.0;

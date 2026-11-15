@@ -99,6 +99,75 @@ private Q_SLOTS:
         QVERIFY((*back)->hasSameProperties(*object));
     }
 
+    // Process symbols with a stretch mode are pictures (as in WinCC symbol
+    // libraries): twice the size draws the same picture twice as large, and
+    // a rectangle of another shape keeps the proportions unless "Stretch" is
+    // chosen.
+    void scaledSymbolsKeepTheirLook_data()
+    {
+        QTest::addColumn<ObjectTypeId>("type");
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            const auto object = info.create(ObjectId::create());
+            if (info.inToolbox && findDescriptor(object->descriptors(), Prop::StretchMode))
+                QTest::newRow(qPrintable(info.key)) << info.id;
+        }
+    }
+    void scaledSymbolsKeepTheirLook()
+    {
+        QFETCH(ObjectTypeId, type);
+        auto object = ObjectRegistry::instance().create(type);
+        const QSizeF design = object->geometry().size();
+        // Glyphs are hinted differently at each size; compare the drawing.
+        if (findDescriptor(object->descriptors(), Prop::Text))
+            QVERIFY(object->setProperty(Prop::Text, QString()));
+        const auto render = [&](QSizeF size)
+        {
+            // Sizes from the default are always valid.
+            (void)object->setProperty(Prop::Width, size.width());
+            (void)object->setProperty(Prop::Height, size.height());
+            QImage image(size.toSize(), QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing);
+            object->paint(painter, PaintContext{});
+            painter.end();
+            return image;
+        };
+        const QImage small = render(design);
+        const QImage large =
+            render(design * 2.0)
+                .scaled(small.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        int differing = 0;
+        for (int y = 0; y < small.height(); ++y)
+        {
+            for (int x = 0; x < small.width(); ++x)
+            {
+                const QRgb a = small.pixel(x, y);
+                const QRgb b = large.pixel(x, y);
+                if (std::abs(qAlpha(a) - qAlpha(b)) > 64 || std::abs(qGreen(a) - qGreen(b)) > 64)
+                    ++differing;
+            }
+        }
+        // Edges blur differently; the picture itself must be the same.
+        QVERIFY2(differing < small.width() * small.height() / 25,
+                 qPrintable(QStringLiteral("%1 pixels differ").arg(differing)));
+
+        // A wide, short rectangle: the picture keeps its proportions, centred.
+        QVERIFY(object->setProperty(Prop::Width, design.width() * 4.0));
+        QVERIFY(object->setProperty(Prop::Height, design.height() * 2.0));
+        const QRectF kept = object->hitShape().boundingRect();
+        QCOMPARE(kept.height(), design.height() * 2.0);
+        QCOMPARE(kept.width(), design.width() * 2.0);
+        QCOMPARE(kept.center(), QPointF(design.width() * 2.0, design.height()));
+
+        // Stretched, it fills the rectangle.
+        QVERIFY(object->setProperty(Prop::StretchMode, EnumValue{1}));
+        const QRectF stretched = object->hitShape().boundingRect();
+        QVERIFY(stretched.width() > design.width() * 3.9);
+        QCOMPARE(stretched.height(), design.height() * 2.0);
+    }
+
     void contactSheet()
     {
         const QString path = qEnvironmentVariable("HMI_OBJECT_SHEET");
@@ -130,6 +199,53 @@ private Q_SLOTS:
             painter.setPen(Qt::black);
             painter.drawText(QRectF(cell.x(), cell.y() + kCell - 20, kCell, 18), Qt::AlignCenter,
                              types[i]->key);
+        }
+        painter.end();
+        QVERIFY(sheet.save(path));
+    }
+
+    // Set HMI_RESIZE_SHEET=<file.png> to see each process symbol at its
+    // default size, then resized out of proportion with "Keep proportions",
+    // then with "Stretch".
+    void resizeSheet()
+    {
+        const QString path = qEnvironmentVariable("HMI_RESIZE_SHEET");
+        if (path.isEmpty())
+            QSKIP("Set HMI_RESIZE_SHEET to save the sheet");
+        std::vector<const ObjectTypeInfo*> types;
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (info.category == ObjectCategory::ProcessSymbols)
+                types.push_back(&info);
+        }
+        constexpr double kRow = 200.0;
+        QImage sheet(1100, int(kRow * types.size()), QImage::Format_ARGB32_Premultiplied);
+        sheet.fill(QColor(0xE6, 0xE8, 0xEB));
+        QPainter painter(&sheet);
+        painter.setRenderHint(QPainter::Antialiasing);
+        for (std::size_t i = 0; i < types.size(); ++i)
+        {
+            auto object = types[i]->create(ObjectId::create());
+            const QSizeF design = object->geometry().size();
+            // Wider and much taller, as when only the height is dragged up.
+            const QSizeF resized(std::min(design.width() * 2.1, 380.0),
+                                 std::min(design.height() * 3.2, 180.0));
+            const QRectF cells[] = {QRectF(10, 10, design.width(), design.height()),
+                                    QRectF(260, 10, resized.width(), resized.height()),
+                                    QRectF(680, 10, resized.width(), resized.height())};
+            for (int c = 0; c < 3; ++c)
+            {
+                (void)object->setProperty(Prop::Width, cells[c].width());
+                (void)object->setProperty(Prop::Height, cells[c].height());
+                if (findDescriptor(object->descriptors(), Prop::StretchMode))
+                    (void)object->setProperty(Prop::StretchMode, EnumValue{c == 2 ? 1 : 0});
+                painter.save();
+                painter.translate(cells[c].topLeft() + QPointF(0, kRow * double(i)));
+                painter.setPen(QPen(QColor(0x4C, 0x8D, 0xFF), 1.0, Qt::DashLine));
+                painter.drawRect(QRectF(QPointF(0, 0), cells[c].size()));
+                object->paint(painter, PaintContext{});
+                painter.restore();
+            }
         }
         painter.end();
         QVERIFY(sheet.save(path));
