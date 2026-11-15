@@ -28,20 +28,22 @@ std::span<const PropertyDescriptor> ListBox::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {140.0, 110.0}, {
-                            Describe::items(QStringLiteral("Item 1;Item 2;Item 3;Item 4")),
-                            Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                                              QT_TRANSLATE_NOOP("hmi::Property", "Selected"),
-                                              Behaviour, 0, -1, std::nullopt, true),
-                            Describe::fillColor(QColor(Qt::white),
-                                                QT_TRANSLATE_NOOP("hmi::Property", "Background")),
-                            Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)),
-                            Describe::color(Prop::AccentColor, "accentColor",
-                                            QT_TRANSLATE_NOOP("hmi::Property", "Highlight colour"),
-                                            Appearance, QColor(0xDB, 0xE8, 0xFE)),
-                            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-                            Describe::font(14),
-                        });
+        {140.0, 110.0},
+        {
+            Describe::items(QStringLiteral("Item 1;Item 2;Item 3;Item 4")),
+            Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                              QT_TRANSLATE_NOOP("hmi::Property", "Selected"), Behaviour, 0, -1,
+                              std::nullopt, true),
+            Describe::styled(Describe::fillColor(QColor(Qt::white),
+                                                 QT_TRANSLATE_NOOP("hmi::Property", "Background")),
+                             StyleRole::Face),
+            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
+            Describe::color(Prop::AccentColor, "accentColor",
+                            QT_TRANSLATE_NOOP("hmi::Property", "Highlight colour"), Appearance,
+                            QColor(0xDB, 0xE8, 0xFE)),
+            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
+            Describe::font(14),
+        });
     return table;
 }
 

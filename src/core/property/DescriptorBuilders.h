@@ -20,7 +20,7 @@ namespace hmi::Describe
 [[nodiscard]] PropertyDescriptor lineColor(const QColor& value);
 [[nodiscard]] PropertyDescriptor lineWidth(double value);
 [[nodiscard]] PropertyDescriptor text(const QString& value);
-[[nodiscard]] PropertyDescriptor textColor(const QColor& value);
+[[nodiscard]] PropertyDescriptor textColor(const QColor& value, StyleRole role = StyleRole::Text);
 [[nodiscard]] PropertyDescriptor font(int pixelSize, bool bold = false);
 
 // Value, minimum and maximum of a value display (bar, gauge, slider, ...).
@@ -50,6 +50,9 @@ namespace hmi::Describe
                                         const char* category, int value,
                                         std::span<const EnumOption> options, bool bindable = false);
 [[nodiscard]] PropertyDescriptor points(const PointList& value, int minimumCount);
+
+// The same entry, set by the project style for `role`.
+[[nodiscard]] PropertyDescriptor styled(PropertyDescriptor descriptor, StyleRole role);
 
 // Horizontal (0) or vertical (1), for bars and sliders.
 inline constexpr int kHorizontal = 0;

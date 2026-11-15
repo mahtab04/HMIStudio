@@ -129,6 +129,12 @@ Menu {
         }
     }
 
+    MenuItem {
+        text: qsTr("Apply project style")
+        enabled: contextMenu.editor.hasSelection
+        onTriggered: contextMenu.editor.applyProjectStyle()
+    }
+
     MenuSeparator {}
 
     MenuItem {

@@ -28,17 +28,19 @@ std::span<const PropertyDescriptor> RadioGroup::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {140.0, 90.0}, {
-                           Describe::items(QStringLiteral("Option 1;Option 2;Option 3")),
-                           Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                                             QT_TRANSLATE_NOOP("hmi::Property", "Selected"),
-                                             Behaviour, 0, -1, std::nullopt, true),
-                           Describe::color(Prop::AccentColor, "accentColor",
-                                           QT_TRANSLATE_NOOP("hmi::Property", "Mark colour"),
-                                           Appearance, QColor(0x3B, 0x82, 0xF6)),
-                           Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-                           Describe::font(14),
-                       });
+        {140.0, 90.0},
+        {
+            Describe::items(QStringLiteral("Option 1;Option 2;Option 3")),
+            Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                              QT_TRANSLATE_NOOP("hmi::Property", "Selected"), Behaviour, 0, -1,
+                              std::nullopt, true),
+            Describe::styled(Describe::color(Prop::AccentColor, "accentColor",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Mark colour"),
+                                             Appearance, QColor(0x3B, 0x82, 0xF6)),
+                             StyleRole::Accent),
+            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
+            Describe::font(14),
+        });
     return table;
 }
 

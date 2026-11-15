@@ -40,7 +40,7 @@ std::span<const PropertyDescriptor> Motor::staticDescriptors()
                             QColor(0x9A, 0xA1, 0xAB), true),
             Describe::lineColor(QColor(0x3A, 0x40, 0x48)),
             Describe::lineWidth(2.0),
-            Describe::textColor(QColor(Qt::white)),
+            Describe::textColor(QColor(Qt::white), StyleRole::None),
             Describe::font(18, true),
         });
     return table;

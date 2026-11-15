@@ -28,18 +28,20 @@ std::span<const PropertyDescriptor> Slider::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {160.0, 36.0}, {
-                           Describe::value(50.0),
-                           Describe::minimum(0.0),
-                           Describe::maximum(100.0),
-                           Describe::orientation(Describe::kHorizontal),
-                           Describe::color(Prop::AccentColor, "accentColor",
-                                           QT_TRANSLATE_NOOP("hmi::Property", "Track colour"),
-                                           Appearance, QColor(0x3B, 0x82, 0xF6)),
-                           Describe::color(Prop::BackgroundColor, "backgroundColor",
-                                           QT_TRANSLATE_NOOP("hmi::Property", "Background"),
-                                           Appearance, QColor(0xD1, 0xD5, 0xDB)),
-                       });
+        {160.0, 36.0},
+        {
+            Describe::value(50.0),
+            Describe::minimum(0.0),
+            Describe::maximum(100.0),
+            Describe::orientation(Describe::kHorizontal),
+            Describe::styled(Describe::color(Prop::AccentColor, "accentColor",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Track colour"),
+                                             Appearance, QColor(0x3B, 0x82, 0xF6)),
+                             StyleRole::Accent),
+            Describe::color(Prop::BackgroundColor, "backgroundColor",
+                            QT_TRANSLATE_NOOP("hmi::Property", "Background"), Appearance,
+                            QColor(0xD1, 0xD5, 0xDB)),
+        });
     return table;
 }
 

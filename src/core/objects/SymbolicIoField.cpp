@@ -28,17 +28,19 @@ std::span<const PropertyDescriptor> SymbolicIoField::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {140.0, 36.0}, {
-                           Describe::items(QStringLiteral("Stopped;Running;Fault")),
-                           Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                                             QT_TRANSLATE_NOOP("hmi::Property", "Value"), Behaviour,
-                                             0, 0, std::nullopt, true),
-                           Describe::fillColor(QColor(Qt::white),
-                                               QT_TRANSLATE_NOOP("hmi::Property", "Background")),
-                           Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)),
-                           Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-                           Describe::font(16),
-                       });
+        {140.0, 36.0},
+        {
+            Describe::items(QStringLiteral("Stopped;Running;Fault")),
+            Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                              QT_TRANSLATE_NOOP("hmi::Property", "Value"), Behaviour, 0, 0,
+                              std::nullopt, true),
+            Describe::styled(Describe::fillColor(QColor(Qt::white),
+                                                 QT_TRANSLATE_NOOP("hmi::Property", "Background")),
+                             StyleRole::Face),
+            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
+            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
+            Describe::font(16),
+        });
     return table;
 }
 

@@ -51,14 +51,15 @@ PropertyDescriptor text(const QString& value)
             .bindable = true};
 }
 
-PropertyDescriptor textColor(const QColor& value)
+PropertyDescriptor textColor(const QColor& value, StyleRole role)
 {
     return {.id = Prop::TextColor,
             .key = "textColor",
             .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Text colour"),
             .category = PropertyCategory::Text,
             .defaultValue = value,
-            .bindable = true};
+            .bindable = true,
+            .styleRole = role};
 }
 
 PropertyDescriptor font(int pixelSize, bool bold)
@@ -70,7 +71,8 @@ PropertyDescriptor font(int pixelSize, bool bold)
             .key = "font",
             .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Font"),
             .category = PropertyCategory::Text,
-            .defaultValue = f};
+            .defaultValue = f,
+            .styleRole = StyleRole::Font};
 }
 
 PropertyDescriptor value(double value)
@@ -184,6 +186,12 @@ constexpr EnumOption kOrientationOptions[] = {
      .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Vertical")},
 };
 } // namespace
+
+PropertyDescriptor styled(PropertyDescriptor descriptor, StyleRole role)
+{
+    descriptor.styleRole = role;
+    return descriptor;
+}
 
 PropertyDescriptor orientation(int value)
 {

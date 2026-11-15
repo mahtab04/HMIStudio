@@ -23,6 +23,8 @@ add_library(hmi_core_impl STATIC
     model/GroupObject.h
     model/HmiObject.cpp
     model/HmiObject.h
+    model/HmiStyle.cpp
+    model/HmiStyle.h
     model/Ids.h
     model/ObjectVisitor.h
     model/PaintContext.h

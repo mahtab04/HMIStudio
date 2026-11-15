@@ -6,6 +6,7 @@
 #include "core/property/Prop.h"
 #include "core/property/PropertyDescriptor.h"
 #include "core/registry/ObjectRegistry.h"
+#include "editor/commands/ChangeStyleCommand.h"
 #include "editor/commands/ScreenCommands.h"
 #include "editor/commands/SetPropertyCommand.h"
 #include "editor/models/SelectionModel.h"
@@ -277,6 +278,12 @@ PropertyModel::PropertyModel(ToolContext& context, QObject* parent)
                 Q_EMIT titleChanged();
             });
     connect(&notifier, &DocumentNotifier::projectReset, this, &PropertyModel::refresh);
+    connect(&notifier, &DocumentNotifier::styleChanged, this,
+            [this]
+            {
+                if (!m_rows.empty() && !m_rows.front().descriptor)
+                    Q_EMIT dataChanged(index(0), index(rowCount() - 1), {ValueRole, TextRole});
+            });
     refresh();
 }
 
@@ -305,8 +312,10 @@ void PropertyModel::refresh()
     {
         if (m_context.screen())
         {
-            for (const ScreenField field : {ScreenField::Name, ScreenField::Width,
-                                            ScreenField::Height, ScreenField::Background})
+            for (const ScreenField field :
+                 {ScreenField::Name, ScreenField::Width, ScreenField::Height,
+                  ScreenField::Background, ScreenField::StyleFace, ScreenField::StyleLine,
+                  ScreenField::StyleText, ScreenField::StyleAccent, ScreenField::StyleFont})
                 m_rows.push_back({.descriptor = nullptr, .field = field});
         }
     }
@@ -397,6 +406,16 @@ QVariant PropertyModel::screenValue(ScreenField field) const
         return screen->size().height();
     case ScreenField::Background:
         return screen->backgroundColor();
+    case ScreenField::StyleFace:
+        return m_context.project().style().face;
+    case ScreenField::StyleLine:
+        return m_context.project().style().line;
+    case ScreenField::StyleText:
+        return m_context.project().style().text;
+    case ScreenField::StyleAccent:
+        return m_context.project().style().accent;
+    case ScreenField::StyleFont:
+        return m_context.project().style().fontFamily;
     }
     return {};
 }
@@ -420,9 +439,18 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Width"),
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Height"),
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Background"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Field colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Outline colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Text colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Accent colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Font family"),
         };
-        static constexpr const char* kKeys[] = {"name", "width", "height", "background"};
+        static constexpr const char* kKeys[] = {"name",       "width",       "height",
+                                                "background", "styleFace",   "styleLine",
+                                                "styleText",  "styleAccent", "styleFont"};
         const bool isSize = row.field == ScreenField::Width || row.field == ScreenField::Height;
+        const bool isStyle = int(row.field) >= int(ScreenField::StyleFace);
+        const bool isText = row.field == ScreenField::Name || row.field == ScreenField::StyleFont;
         switch (role)
         {
         case KeyRole:
@@ -430,11 +458,11 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
         case NameRole:
             return QCoreApplication::translate("hmi::PropertyModel", kNames[int(row.field)]);
         case CategoryRole:
-            return tr("Screen");
+            return isStyle ? tr("Project style") : tr("Screen");
         case EditorRole:
-            return row.field == ScreenField::Name         ? QStringLiteral("text")
-                   : row.field == ScreenField::Background ? QStringLiteral("color")
-                                                          : QStringLiteral("number");
+            return isText   ? QStringLiteral("text")
+                   : isSize ? QStringLiteral("number")
+                            : QStringLiteral("color");
         case ValueRole:
             return screenValue(row.field);
         case MixedRole:
@@ -618,11 +646,42 @@ bool PropertyModel::applyScreenValue(ScreenField field, const QVariant& value)
         settings.background = color;
         break;
     }
+    case ScreenField::StyleFace:
+    case ScreenField::StyleLine:
+    case ScreenField::StyleText:
+    case ScreenField::StyleAccent:
+    case ScreenField::StyleFont:
+        return applyStyleValue(field, value);
     }
     if (settings == ChangeScreenCommand::settingsOf(*screen))
         return true;
     m_context.undoStack().push(
         new ChangeScreenCommand(m_context.project(), m_context.screenId(), settings));
+    return true;
+}
+
+bool PropertyModel::applyStyleValue(ScreenField field, const QVariant& value)
+{
+    HmiStyle style = m_context.project().style();
+    if (field == ScreenField::StyleFont)
+    {
+        style.fontFamily = value.toString().trimmed();
+    }
+    else
+    {
+        const QColor color = value.typeId() == QMetaType::QColor
+                                 ? value.value<QColor>()
+                                 : QColor::fromString(value.toString());
+        if (!color.isValid())
+            return reject(tr("“%1” is not a colour.").arg(value.toString()));
+        (field == ScreenField::StyleFace   ? style.face
+         : field == ScreenField::StyleLine ? style.line
+         : field == ScreenField::StyleText ? style.text
+                                           : style.accent) = color;
+    }
+    if (style == m_context.project().style())
+        return true;
+    m_context.undoStack().push(new ChangeStyleCommand(m_context.project(), style));
     return true;
 }
 

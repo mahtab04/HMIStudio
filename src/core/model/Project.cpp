@@ -19,6 +19,14 @@ Project::~Project()
         screen->setNotifier(nullptr);
 }
 
+void Project::setStyle(const HmiStyle& style)
+{
+    if (style == m_style)
+        return;
+    m_style = style;
+    Q_EMIT m_notifier->styleChanged();
+}
+
 void Project::replaceContents(Project&& other)
 {
     std::vector<std::unique_ptr<Screen>> old = std::move(m_screens);
@@ -27,6 +35,7 @@ void Project::replaceContents(Project&& other)
 
     m_name = std::move(other.m_name);
     m_preserved = std::move(other.m_preserved);
+    m_style = other.m_style;
     m_assets->takeFrom(*other.m_assets);
     m_screens = std::move(other.m_screens);
     other.m_screens.clear();

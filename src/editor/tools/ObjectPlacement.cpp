@@ -1,6 +1,7 @@
 #include "editor/tools/ObjectPlacement.h"
 
 #include "core/model/HmiObject.h"
+#include "core/model/Project.h"
 #include "core/property/Prop.h"
 #include "core/registry/ObjectRegistry.h"
 #include "editor/commands/AddObjectCommand.h"
@@ -70,6 +71,7 @@ std::optional<ObjectId> add(ToolContext& context, std::unique_ptr<HmiObject> obj
 {
     if (!object || !context.screen())
         return std::nullopt;
+    context.project().style().applyTo(*object);
     const ObjectId id = object->id();
     context.undoStack().push(
         new AddObjectCommand(context.project(), context.screenId(), std::move(object)));

@@ -27,14 +27,15 @@ Button::Button(ObjectId id)
 std::span<const PropertyDescriptor> Button::staticDescriptors()
 {
     using namespace PropertyCategory;
-    static const std::vector<PropertyDescriptor> table =
-        withCommonDescriptors({120.0, 44.0}, {
-                                                 Describe::text(QStringLiteral("Button")),
-                                                 Describe::fillColor(QColor(0xDD, 0xE3, 0xEA)),
-                                                 Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)),
-                                                 Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-                                                 Describe::font(16, true),
-                                             });
+    static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
+        {120.0, 44.0},
+        {
+            Describe::text(QStringLiteral("Button")),
+            Describe::fillColor(QColor(0xDD, 0xE3, 0xEA)),
+            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
+            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
+            Describe::font(16, true),
+        });
     return table;
 }
 

@@ -355,6 +355,11 @@ void EditorController::reorder(Order order)
         m_actions.reorder(kMap[int(order)]);
 }
 
+void EditorController::applyProjectStyle()
+{
+    m_actions.applyProjectStyle();
+}
+
 bool EditorController::handleKey(int key, Qt::KeyboardModifiers modifiers)
 {
     const double step = modifiers.testFlag(Qt::ShiftModifier) ? kLargeNudge : 1.0;

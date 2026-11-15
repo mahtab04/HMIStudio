@@ -3,6 +3,7 @@
 #include "core/Result.h"
 #include "core/graphics/AssetStore.h"
 #include "core/model/DocumentNotifier.h"
+#include "core/model/HmiStyle.h"
 #include "core/model/Ids.h"
 #include "core/model/Screen.h"
 
@@ -46,6 +47,10 @@ public:
 
     [[nodiscard]] DocumentNotifier& notifier() const noexcept { return *m_notifier; }
 
+    // Shared look for new objects. Setting it announces styleChanged.
+    [[nodiscard]] const HmiStyle& style() const noexcept { return m_style; }
+    void setStyle(const HmiStyle& style);
+
     // Imported images and SVG files used by graphic objects.
     [[nodiscard]] AssetStore& assets() const noexcept { return *m_assets; }
 
@@ -68,6 +73,7 @@ public:
 private:
     QString m_name;
     QJsonObject m_preserved;
+    HmiStyle m_style;
     std::unique_ptr<DocumentNotifier> m_notifier;
     std::unique_ptr<AssetStore> m_assets = std::make_unique<AssetStore>();
     std::vector<std::unique_ptr<Screen>> m_screens;

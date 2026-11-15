@@ -27,6 +27,8 @@ qt_add_qml_module(hmi_editor_lib
         app/Theme.h
         commands/AddObjectCommand.cpp
         commands/AddObjectCommand.h
+        commands/ChangeStyleCommand.cpp
+        commands/ChangeStyleCommand.h
         commands/GroupObjectsCommand.cpp
         commands/GroupObjectsCommand.h
         commands/MoveObjectsCommand.cpp

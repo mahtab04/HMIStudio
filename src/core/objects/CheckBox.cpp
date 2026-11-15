@@ -33,9 +33,10 @@ std::span<const PropertyDescriptor> CheckBox::staticDescriptors()
             Describe::flag(Prop::Checked, "checked", QT_TRANSLATE_NOOP("hmi::Property", "Checked"),
                            Behaviour, true, true),
             Describe::text(QStringLiteral("Check box")),
-            Describe::color(Prop::AccentColor, "accentColor",
-                            QT_TRANSLATE_NOOP("hmi::Property", "Mark colour"), Appearance,
-                            QColor(0x3B, 0x82, 0xF6)),
+            Describe::styled(Describe::color(Prop::AccentColor, "accentColor",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Mark colour"),
+                                             Appearance, QColor(0x3B, 0x82, 0xF6)),
+                             StyleRole::Accent),
             Describe::textColor(QColor(0x1F, 0x23, 0x28)),
             Describe::font(14),
         });

@@ -47,9 +47,10 @@ std::span<const PropertyDescriptor> IoField::staticDescriptors()
                              QString()),
             Describe::choice(Prop::IoMode, "ioMode", QT_TRANSLATE_NOOP("hmi::Property", "Mode"),
                              Behaviour, InputOutput, kModeOptions),
-            Describe::fillColor(QColor(Qt::white),
-                                QT_TRANSLATE_NOOP("hmi::Property", "Background")),
-            Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)),
+            Describe::styled(Describe::fillColor(QColor(Qt::white),
+                                                 QT_TRANSLATE_NOOP("hmi::Property", "Background")),
+                             StyleRole::Face),
+            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
             Describe::textColor(QColor(0x1F, 0x23, 0x28)),
             Describe::font(16),
         });

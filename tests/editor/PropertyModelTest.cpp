@@ -89,7 +89,7 @@ private Q_SLOTS:
 
     void showsScreenSettingsWithoutSelection()
     {
-        QCOMPARE(m_model->rowCount(), 4);
+        QCOMPARE(m_model->rowCount(), 9); // 4 screen settings, 5 project style
         QCOMPARE(value(u"name"_s).toString(), u"S"_s);
         QCOMPARE(value(u"width"_s).toDouble(), Screen::kDefaultSize.width());
         QCOMPARE(m_model->title(), u"Screen S"_s);
@@ -285,6 +285,23 @@ private Q_SLOTS:
         QSignalSpy rejected(m_model.get(), &PropertyModel::editRejected);
         QVERIFY(!m_model->importAsset(row, QUrl::fromLocalFile(text)));
         QCOMPARE(rejected.count(), 1);
+    }
+
+    void editsTheProjectStyle()
+    {
+        QCOMPARE(value(u"styleAccent"_s, PropertyModel::CategoryRole).toString(),
+                 u"Project style"_s);
+        QCOMPARE(value(u"styleAccent"_s, PropertyModel::EditorRole).toString(), u"color"_s);
+        QVERIFY(m_model->setValue(rowOf(u"styleAccent"_s), u"#ff8800"_s));
+        QVERIFY(m_model->setValue(rowOf(u"styleFont"_s), u"Arial"_s));
+        QCOMPARE(m_project->style().accent, QColor(0xff, 0x88, 0x00));
+        QCOMPARE(m_project->style().fontFamily, u"Arial"_s);
+        QCOMPARE(value(u"styleAccent"_s).value<QColor>(), QColor(0xff, 0x88, 0x00));
+        QVERIFY(!m_model->setValue(rowOf(u"styleText"_s), u"nope"_s));
+        QCOMPARE(m_stack.count(), 2);
+        m_stack.undo();
+        m_stack.undo();
+        QCOMPARE(m_project->style(), HmiStyle{});
     }
 };
 

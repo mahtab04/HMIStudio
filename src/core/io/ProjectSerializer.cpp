@@ -33,6 +33,7 @@ const auto kBackground = QStringLiteral("background");
 const auto kObjects = QStringLiteral("objects");
 const auto kAssets = QStringLiteral("assets");
 const auto kFile = QStringLiteral("file");
+const auto kStyle = QStringLiteral("style");
 
 QString assetPath(const Asset& asset)
 {
@@ -235,6 +236,7 @@ std::vector<File> toFiles(const Project& project)
     projectJson.insert(kFormatVersion, kCurrentFormatVersion);
     projectJson.insert(kName, project.name());
     projectJson.insert(kScreens, screenList);
+    projectJson.insert(kStyle, project.style().toJson());
     QJsonArray assetList;
     for (const QString& id : usedAssets(project))
     {
@@ -268,6 +270,7 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
         return tl::unexpected(projectJson.error());
 
     auto project = std::make_unique<Project>(projectJson->value(kName).toString());
+    project->setStyle(HmiStyle::fromJson(projectJson->value(kStyle).toObject()));
     const QJsonArray screenList = projectJson->value(kScreens).toArray();
     for (const QJsonValue& entry : screenList)
     {
@@ -316,7 +319,7 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
     }
 
     QJsonObject preserved = *projectJson;
-    for (const QString& known : {kFormatVersion, kName, kScreens, kAssets})
+    for (const QString& known : {kFormatVersion, kName, kScreens, kAssets, kStyle})
         preserved.remove(known);
     project->setPreservedJson(preserved);
     return project;

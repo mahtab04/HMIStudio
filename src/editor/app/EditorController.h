@@ -137,6 +137,7 @@ public:
     Q_INVOKABLE void distribute(Qt::Orientation orientation);
     Q_INVOKABLE void matchSize(hmi::EditorController::SizeMatch match);
     Q_INVOKABLE void reorder(hmi::EditorController::Order order);
+    Q_INVOKABLE void applyProjectStyle();
 
     // Keys the canvas tools did not use: arrows nudge, Delete removes.
     bool handleKey(int key, Qt::KeyboardModifiers modifiers);
