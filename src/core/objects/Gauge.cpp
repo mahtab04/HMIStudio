@@ -32,6 +32,7 @@ std::span<const PropertyDescriptor> Gauge::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {140.0, 140.0},
         {
+            Describe::stretchMode(),
             Describe::value(60.0),
             Describe::minimum(0.0),
             Describe::maximum(100.0),
@@ -57,7 +58,9 @@ std::unique_ptr<HmiObject> Gauge::clone() const
 
 void Gauge::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (a picture).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const double side = std::min(size.width(), size.height());

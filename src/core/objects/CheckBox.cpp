@@ -50,10 +50,11 @@ std::unique_ptr<HmiObject> CheckBox::clone() const
 
 void CheckBox::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Control and label grow with the height; extra width is for the label.
+    [[maybe_unused]] const QSizeF size = PaintHelpers::scaleToHeight(painter, *this);
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
-    const double side = std::min(size.height(), 20.0);
+    const double side = size.height() * 0.72;
     const QRectF box(1.0, (size.height() - side) / 2.0, side, side);
     const bool checked = value<bool>(Prop::Checked);
     painter.setPen(

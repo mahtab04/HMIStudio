@@ -51,14 +51,15 @@ std::unique_ptr<HmiObject> RadioGroup::clone() const
 
 void RadioGroup::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Control and label grow with the height; extra width is for the label.
+    [[maybe_unused]] const QSizeF size = PaintHelpers::scaleToHeight(painter, *this);
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const QStringList items = Describe::splitItems(value<QString>(Prop::Items));
     if (items.isEmpty())
         return;
     const double rowHeight = size.height() / items.size();
-    const double side = std::min(rowHeight * 0.7, 18.0);
+    const double side = rowHeight * 0.6;
     for (int i = 0; i < items.size(); ++i)
     {
         const QRectF row(0, i * rowHeight, size.width(), rowHeight);

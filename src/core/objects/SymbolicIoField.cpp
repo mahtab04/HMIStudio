@@ -59,7 +59,7 @@ void SymbolicIoField::paint(QPainter& painter, const PaintContext& context) cons
     const QStringList items = Describe::splitItems(value<QString>(Prop::Items));
     const int index = value<int>(Prop::SelectedIndex);
     const QString shown = index < items.size() ? items[index] : QStringLiteral("#%1").arg(index);
-    const double arrow = std::min(size.height() * 0.6, 20.0);
+    const double arrow = size.height() * 0.5;
     PaintHelpers::drawText(painter, *this, bounds.adjusted(6, 0, -arrow - 6, 0),
                            Qt::AlignLeft | Qt::AlignVCenter, shown);
     const QPointF tip(size.width() - arrow / 2.0 - 4.0, size.height() / 2.0 + arrow / 6.0);

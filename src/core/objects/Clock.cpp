@@ -46,6 +46,7 @@ std::span<const PropertyDescriptor> Clock::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {120.0, 120.0},
         {
+            Describe::stretchMode(),
             Describe::choice(Prop::ClockMode, "clockMode",
                              QT_TRANSLATE_NOOP("hmi::Property", "Style"), Appearance, Analog,
                              kModeOptions),
@@ -69,7 +70,9 @@ std::unique_ptr<HmiObject> Clock::clone() const
 
 void Clock::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Drawn at the design size and scaled to the rectangle (a picture).
+    painter.setTransform(designTransform(), true);
+    [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     if (value<EnumValue>(Prop::ClockMode).value == Digital)

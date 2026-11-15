@@ -237,15 +237,25 @@ their live behaviour comes in phase 7. Objects that are invisible at
 runtime (touch area, an empty graphic view) draw a marked outline while
 `PaintContext::editing` is set.
 
-Process symbols with a "Stretch mode" property (pump, valve, motor, heat
-exchanger, conveyor, sensor) are pictures, as in the symbol libraries of
-WinCC and other HMI editors: `SymbolObject` draws them at their design
-size (the type's default size) and scales the drawing to the rectangle,
-keeping proportions (centred, the default) or stretched. Line widths and
-text scale with the picture. Tank and pipe lay themselves out in their
-rectangle instead (a taller tank is a taller vessel; a pipe follows its
-points). Elements and controls fill their rectangle and keep their font
-size, as operating elements do in WinCC.
+How a type responds to resizing follows WinCC and other HMI editors:
+
+- Pictures: types with a "Stretch mode" property (pump, valve, motor, heat
+  exchanger, conveyor, sensor, gauge, clock) are drawn at their design
+  size (the type's default size) and scaled to the rectangle, keeping
+  proportions (centred, the default) or stretched
+  (`HmiObject::designTransform`). Lines and text scale with the picture.
+- Controls with a label beside them (switch, check box, radio group) scale
+  with the height (`PaintHelpers::scaleToHeight`): control and label grow
+  together, and extra width is room for the label. Slider knobs and
+  drop-down arrows grow with the thickness.
+- Fields, buttons, bars, lists, tables and shapes fill their rectangle and
+  keep their font size and line width, which are properties; lists and
+  tables show more rows when taller. Tank and pipe lay themselves out in
+  their rectangle (a taller tank is a taller vessel; a pipe follows its
+  points).
+
+No part may keep a fixed size while the rest grows; `AllObjectsTest`
+draws each type at twice its size and compares.
 
 The registry records how a type is placed (`Placement`): by dragging a
 rectangle, or point by point (polyline, polygon) or with right-angled

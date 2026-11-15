@@ -58,7 +58,7 @@ void Slider::paint(QPainter& painter, const PaintContext& context) const
     const bool vertical = value<EnumValue>(Prop::Orientation).value == Describe::kVertical;
     const double part = PaintHelpers::fraction(
         value<double>(Prop::Value), value<double>(Prop::Minimum), value<double>(Prop::Maximum));
-    const double knob = std::min(vertical ? size.width() : size.height(), 24.0);
+    const double knob = (vertical ? size.width() : size.height()) * 0.67;
     const double thickness = std::max(2.0, knob / 4.0);
     const double length = (vertical ? size.height() : size.width()) - knob;
     painter.setPen(Qt::NoPen);

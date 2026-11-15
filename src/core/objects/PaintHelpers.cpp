@@ -82,6 +82,18 @@ void drawPlaceholder(QPainter& painter, const QRectF& rect, const QString& title
     painter.restore();
 }
 
+QSizeF scaleToHeight(QPainter& painter, const HmiObject& object)
+{
+    const QSizeF size = object.geometry().size();
+    const PropertyDescriptor* d = findDescriptor(object.descriptors(), Prop::Height);
+    const double* design = d ? std::get_if<double>(&d->defaultValue) : nullptr;
+    if (!design || *design <= 0.0 || size.height() <= 0.0)
+        return size;
+    const double s = size.height() / *design;
+    painter.scale(s, s);
+    return {size.width() / s, *design};
+}
+
 double fraction(double value, double minimum, double maximum)
 {
     if (maximum <= minimum)

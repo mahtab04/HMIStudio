@@ -56,11 +56,12 @@ std::unique_ptr<HmiObject> Switch::clone() const
 
 void Switch::paint(QPainter& painter, const PaintContext& context) const
 {
-    [[maybe_unused]] const QSizeF size = geometry().size();
+    // Control and label grow with the height; extra width is for the label.
+    [[maybe_unused]] const QSizeF size = PaintHelpers::scaleToHeight(painter, *this);
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     const bool on = value<bool>(Prop::Checked);
-    const double trackHeight = std::min(size.height(), 28.0);
+    const double trackHeight = size.height() * 0.78;
     const double trackWidth = std::min(size.width(), trackHeight * 1.9);
     const QRectF track(0, (size.height() - trackHeight) / 2.0, trackWidth, trackHeight);
     painter.setPen(Qt::NoPen);

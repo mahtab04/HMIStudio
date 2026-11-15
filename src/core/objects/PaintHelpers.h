@@ -44,6 +44,12 @@ void drawFace(QPainter& painter, const QRectF& rect, const QColor& fill, const Q
 void drawPlaceholder(QPainter& painter, const QRectF& rect, const QString& title,
                      const QColor& background);
 
+// For controls with a label beside them (switch, check box, radio group):
+// scales the painter by the object's height relative to its design height,
+// so the control and its text grow together, and returns the size to lay
+// out in. Extra width is room for the label.
+[[nodiscard]] QSizeF scaleToHeight(QPainter& painter, const HmiObject& object);
+
 // Normalised position of `value` between `minimum` and `maximum`, 0..1.
 [[nodiscard]] double fraction(double value, double minimum, double maximum);
 

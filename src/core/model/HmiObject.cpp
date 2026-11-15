@@ -42,9 +42,50 @@ void HmiObject::renewIds()
 
 QPainterPath HmiObject::hitShape() const
 {
+    // The design rectangle, mapped: a picture kept in proportion does not
+    // cover the empty margins of its rectangle.
     QPainterPath path;
-    path.addRect(QRectF(QPointF(0, 0), geometry().size()));
-    return path;
+    path.addRect(QRectF(QPointF(0, 0), designSize()));
+    return designTransform().map(path);
+}
+
+bool HmiObject::isScaledPicture() const
+{
+    return find(Prop::StretchMode) != nullptr;
+}
+
+QSizeF HmiObject::designSize() const
+{
+    if (!isScaledPicture())
+        return geometry().size();
+    const auto side = [this](PropertyId id)
+    {
+        const PropertyDescriptor* d = findDescriptor(m_descriptors, id);
+        const double* value = d ? std::get_if<double>(&d->defaultValue) : nullptr;
+        return value && *value > 0.0 ? *value : 1.0;
+    };
+    return {side(Prop::Width), side(Prop::Height)};
+}
+
+QTransform HmiObject::designTransform() const
+{
+    if (!isScaledPicture())
+        return {};
+    const QSizeF design = designSize();
+    const QSizeF size = geometry().size();
+    const double sx = size.width() / design.width();
+    const double sy = size.height() / design.height();
+    QTransform t;
+    if (value<EnumValue>(Prop::StretchMode).value == 1) // stretch
+    {
+        t.scale(sx, sy);
+        return t;
+    }
+    const double s = std::min(sx, sy);
+    t.translate((size.width() - design.width() * s) / 2.0,
+                (size.height() - design.height() * s) / 2.0);
+    t.scale(s, s);
+    return t;
 }
 
 const PropertyValue* HmiObject::find(PropertyId id) const noexcept

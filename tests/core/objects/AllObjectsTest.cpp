@@ -14,6 +14,7 @@
 #include <QTest>
 
 using namespace hmi;
+using namespace Qt::StringLiterals;
 
 Q_DECLARE_METATYPE(hmi::ObjectTypeId)
 
@@ -113,6 +114,74 @@ private Q_SLOTS:
                 QTest::newRow(qPrintable(info.key)) << info.id;
         }
     }
+
+    // Resized evenly, every type looks the same, only larger: no part keeps
+    // a fixed size while the rest grows (a switch track capped at 28 px in a
+    // large rectangle). Types whose content keeps its size on purpose are
+    // left out: fields and lists keep their font size, as in WinCC, lists
+    // and tables show more rows when taller, and a shape's line width (a
+    // pipe's diameter) is a property that resizing does not change.
+    void growsAsOneWhenScaledEvenly_data()
+    {
+        QTest::addColumn<ObjectTypeId>("type");
+        const QStringList fixedContent{u"ioField"_s,         u"listBox"_s,         u"alarmView"_s,
+                                       u"recipeView"_s,      u"diagnosticsView"_s, u"browser"_s,
+                                       u"symbolicIoField"_s, u"screenWindow"_s,    u"graphicView"_s,
+                                       u"textBox"_s,         u"button"_s,          u"line"_s,
+                                       u"polyline"_s,        u"polygon"_s,         u"rectangle"_s,
+                                       u"ellipse"_s,         u"circle"_s,          u"pipe"_s};
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (info.inToolbox && !fixedContent.contains(info.key))
+                QTest::newRow(qPrintable(info.key)) << info.id;
+        }
+    }
+    void growsAsOneWhenScaledEvenly()
+    {
+        QFETCH(ObjectTypeId, type);
+        auto object = ObjectRegistry::instance().create(type);
+        // Glyphs are hinted differently at each size; compare the drawing.
+        for (const PropertyId text : {Prop::Text, Prop::Items, Prop::OnText, Prop::OffText})
+        {
+            if (findDescriptor(object->descriptors(), text))
+                QVERIFY(object->setProperty(text, QString()));
+        }
+        const QSizeF design = object->geometry().size().expandedTo(QSizeF(1, 1));
+        const auto render = [&](double scale)
+        {
+            (void)object->setProperty(
+                Prop::Width, object->geometry().width() > 0 ? design.width() * scale : 0.0);
+            (void)object->setProperty(
+                Prop::Height, object->geometry().height() > 0 ? design.height() * scale : 0.0);
+            const QSize pixels = (design * scale).toSize();
+            QImage image(pixels, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            painter.setRenderHint(QPainter::Antialiasing);
+            painter.setRenderHint(QPainter::TextAntialiasing);
+            object->paint(painter, PaintContext{});
+            painter.end();
+            return image;
+        };
+        const QImage small = render(1.0);
+        const QImage large =
+            render(2.0).scaled(small.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        int differing = 0;
+        for (int y = 0; y < small.height(); ++y)
+        {
+            for (int x = 0; x < small.width(); ++x)
+            {
+                const QRgb a = small.pixel(x, y);
+                const QRgb b = large.pixel(x, y);
+                if (std::abs(qAlpha(a) - qAlpha(b)) > 64 || std::abs(qGreen(a) - qGreen(b)) > 64)
+                    ++differing;
+            }
+        }
+        QVERIFY2(differing < small.width() * small.height() / 20,
+                 qPrintable(QStringLiteral("%1 of %2 pixels differ")
+                                .arg(differing)
+                                .arg(small.width() * small.height())));
+    }
     void scaledSymbolsKeepTheirLook()
     {
         QFETCH(ObjectTypeId, type);
@@ -204,7 +273,7 @@ private Q_SLOTS:
         QVERIFY(sheet.save(path));
     }
 
-    // Set HMI_RESIZE_SHEET=<file.png> to see each process symbol at its
+    // Set HMI_RESIZE_SHEET=<file.png> to see each toolbox type at its
     // default size, then resized out of proportion with "Keep proportions",
     // then with "Stretch".
     void resizeSheet()
@@ -215,7 +284,7 @@ private Q_SLOTS:
         std::vector<const ObjectTypeInfo*> types;
         for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
         {
-            if (info.category == ObjectCategory::ProcessSymbols)
+            if (info.inToolbox)
                 types.push_back(&info);
         }
         constexpr double kRow = 200.0;
