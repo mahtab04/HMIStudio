@@ -18,6 +18,10 @@ public:
     explicit DocumentNotifier(QObject* parent = nullptr);
 
 Q_SIGNALS:
+    // The whole document was replaced (new project, open, recovery). Views
+    // must drop every screen and object they hold.
+    void projectReset();
+
     void screenAdded(hmi::ScreenId screen, int index);
     void screenRemoved(hmi::ScreenId screen);
     void screenChanged(hmi::ScreenId screen);

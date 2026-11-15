@@ -30,8 +30,10 @@ namespace ObjectJson
 [[nodiscard]] QJsonObject write(const HmiObject& object);
 
 // Creates an object of the registered type and applies every known
-// property. Properties the type does not have are ignored; a value of the
-// wrong kind or outside its constraint is an error.
+// property. Unknown properties and keys are kept in the object's
+// preservedJson() and written back by write(); an unknown type becomes an
+// UnknownObject that keeps the whole entry. A known property with a value
+// of the wrong kind or outside its constraint is an error.
 [[nodiscard]] Result<std::unique_ptr<HmiObject>> read(const QJsonObject& json);
 
 [[nodiscard]] QJsonArray writeAll(std::span<const HmiObject* const> objects);

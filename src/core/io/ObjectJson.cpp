@@ -1,6 +1,7 @@
 #include "core/io/ObjectJson.h"
 
 #include "core/model/HmiObject.h"
+#include "core/model/UnknownObject.h"
 #include "core/registry/ObjectRegistry.h"
 
 #include <cmath>
@@ -152,21 +153,21 @@ Result<PropertyValue> readValue(const PropertyDescriptor& descriptor, const QJso
 
 QJsonObject write(const HmiObject& object)
 {
-    const ObjectTypeInfo* info = ObjectRegistry::instance().find(object.typeId());
-    Q_ASSERT_X(info, "ObjectJson::write", "object type is not registered");
-
-    QJsonObject props;
+    // Start from what the object kept from its file, so unknown keys and
+    // properties go back out unchanged.
+    QJsonObject json = object.preservedJson();
+    QJsonObject props = json.value(kProps).toObject();
     for (const PropertyDescriptor& descriptor : object.descriptors())
     {
         if (const auto value = object.property(descriptor.id))
             props.insert(QLatin1StringView(descriptor.key), writeValue(descriptor, *value));
     }
 
-    QJsonObject json{
-        {kType, info ? info->key : QString()},
-        {kId, object.id().toString()},
-        {kProps, props},
-    };
+    // An object of an unknown type is not registered and keeps its type.
+    if (const ObjectTypeInfo* info = ObjectRegistry::instance().find(object.typeId()))
+        json.insert(kType, info->key);
+    json.insert(kId, object.id().toString());
+    json.insert(kProps, props);
     if (!object.children().empty())
     {
         QJsonArray children;
@@ -180,25 +181,43 @@ QJsonObject write(const HmiObject& object)
 Result<std::unique_ptr<HmiObject>> read(const QJsonObject& json)
 {
     const QString key = json.value(kType).toString();
+    if (key.isEmpty())
+        return makeError(ErrorCode::InvalidArgument, QStringLiteral("Object entry has no type"));
     const ObjectTypeInfo* info = ObjectRegistry::instance().findByKey(key);
+    const ObjectId id =
+        ObjectId::fromString(json.value(kId).toString()).value_or(ObjectId::create());
+
     if (!info)
-        return makeError(ErrorCode::UnknownType,
-                         QStringLiteral("Unknown object type '%1'").arg(key));
+    {
+        // Keep the whole entry; read what the common properties can use.
+        auto unknown = std::make_unique<UnknownObject>(id);
+        const QJsonObject props = json.value(kProps).toObject();
+        for (const PropertyDescriptor& descriptor : unknown->descriptors())
+        {
+            const auto it = props.constFind(QLatin1StringView(descriptor.key));
+            if (it == props.constEnd())
+                continue;
+            if (Result<PropertyValue> value = readValue(descriptor, *it))
+                (void)unknown->setProperty(descriptor.id, *value);
+        }
+        unknown->setPreservedJson(json);
+        return std::unique_ptr<HmiObject>(std::move(unknown));
+    }
 
-    const auto id = ObjectId::fromString(json.value(kId).toString());
-    std::unique_ptr<HmiObject> object = info->create(id.value_or(ObjectId::create()));
-
-    const QJsonObject props = json.value(kProps).toObject();
+    std::unique_ptr<HmiObject> object = info->create(id);
+    QJsonObject unknownProps = json.value(kProps).toObject();
     for (const PropertyDescriptor& descriptor : object->descriptors())
     {
-        const auto it = props.constFind(QLatin1StringView(descriptor.key));
-        if (it == props.constEnd())
+        const QLatin1StringView propKey(descriptor.key);
+        const auto it = unknownProps.constFind(propKey);
+        if (it == unknownProps.constEnd())
             continue;
         Result<PropertyValue> value = readValue(descriptor, *it);
         if (!value)
             return tl::unexpected(value.error());
         if (auto set = object->setProperty(descriptor.id, *value); !set)
             return tl::unexpected(set.error());
+        unknownProps.remove(propKey);
     }
 
     if (json.contains(kChildren))
@@ -209,6 +228,14 @@ Result<std::unique_ptr<HmiObject>> read(const QJsonObject& json)
         if (auto adopted = object->setChildren(std::move(*children)); !adopted)
             return tl::unexpected(adopted.error());
     }
+
+    // Whatever this version did not understand stays with the object.
+    QJsonObject preserved = json;
+    for (const QString& known : {kType, kId, kProps, kChildren})
+        preserved.remove(known);
+    if (!unknownProps.isEmpty())
+        preserved.insert(kProps, unknownProps);
+    object->setPreservedJson(preserved);
     return object;
 }
 

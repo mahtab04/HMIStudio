@@ -4,6 +4,7 @@
 #include "core/model/Screen.h"
 #include "core/registry/ObjectRegistry.h"
 #include "editor/app/EditActions.h"
+#include "editor/commands/ScreenCommands.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/tools/ToolContext.h"
@@ -47,6 +48,31 @@ EditorController::EditorController(ToolContext& context, EditActions& actions,
         connect(clipboard, &QClipboard::dataChanged, this, &EditorController::editStateChanged);
 
     m_context.setSnapSettings({.toGrid = true, .toObjects = true, .gridSpacing = kGridSpacing});
+
+    DocumentNotifier& notifier = m_context.project().notifier();
+    connect(&notifier, &DocumentNotifier::screenRemoved, this, &EditorController::onScreenRemoved);
+    connect(&notifier, &DocumentNotifier::screenChanged, this,
+            [this](ScreenId changed)
+            {
+                if (changed == m_context.screenId())
+                    Q_EMIT screenChanged();
+            });
+    connect(&notifier, &DocumentNotifier::screenAdded, this,
+            [this]
+            {
+                // The current screen may have moved; index and
+                // canRemoveScreen change.
+                if (const auto index = m_context.project().indexOf(m_context.screenId()))
+                    m_lastScreenIndex = *index;
+                Q_EMIT screenChanged();
+            });
+    connect(&notifier, &DocumentNotifier::projectReset, this,
+            [this]
+            {
+                const Project& project = m_context.project();
+                if (project.screenCount() > 0)
+                    showScreen(project.screens().front()->id());
+            });
     m_context.setContextMenuRequest([this](QPointF viewPos)
                                     { Q_EMIT contextMenuRequested(viewPos); });
 }
@@ -88,6 +114,99 @@ void EditorController::attachCanvas(CanvasItem* canvas)
     updateSizeText();
     Q_EMIT screenChanged();
     Q_EMIT zoomChanged();
+}
+
+void EditorController::showScreen(ScreenId id)
+{
+    m_context.selection().clear();
+    m_context.setScreenId(id);
+    if (const auto index = m_context.project().indexOf(id))
+        m_lastScreenIndex = *index;
+    if (m_canvas)
+        m_canvas->setScreen(m_context.screen(), &m_context.project().notifier());
+    Q_EMIT currentScreenChanged();
+    Q_EMIT screenChanged();
+}
+
+void EditorController::onScreenRemoved(ScreenId id)
+{
+    const Project& project = m_context.project();
+    if (id == m_context.screenId() && project.screenCount() > 0)
+    {
+        // The neighbour that took its place, or the new last screen.
+        const std::size_t index = std::min(m_lastScreenIndex, project.screenCount() - 1);
+        showScreen(project.screens()[index]->id());
+        return;
+    }
+    if (const auto index = project.indexOf(m_context.screenId()))
+        m_lastScreenIndex = *index;
+    Q_EMIT screenChanged();
+}
+
+void EditorController::setCurrentScreen(int index)
+{
+    const Project& project = m_context.project();
+    if (index < 0 || std::size_t(index) >= project.screenCount())
+        return;
+    const ScreenId id = project.screens()[std::size_t(index)]->id();
+    if (id != m_context.screenId())
+        showScreen(id);
+}
+
+void EditorController::addScreen()
+{
+    Project& project = m_context.project();
+    const QSizeF size = m_context.screen() ? m_context.screen()->size() : Screen::kDefaultSize;
+    auto screen = std::make_unique<Screen>(tr("Screen %1").arg(project.screenCount() + 1), size);
+    const ScreenId id = screen->id();
+    m_context.undoStack().push(new AddScreenCommand(project, std::move(screen)));
+    showScreen(id);
+}
+
+void EditorController::duplicateScreen(int index)
+{
+    Project& project = m_context.project();
+    if (index < 0 || std::size_t(index) >= project.screenCount())
+        return;
+    const Screen& source = *project.screens()[std::size_t(index)];
+    auto copy = source.cloneWithNewIds(tr("%1 copy").arg(source.name()));
+    const ScreenId id = copy->id();
+    m_context.undoStack().push(new AddScreenCommand(project, std::move(copy), index + 1));
+    showScreen(id);
+}
+
+void EditorController::removeScreen(int index)
+{
+    Project& project = m_context.project();
+    if (index < 0 || std::size_t(index) >= project.screenCount() || !canRemoveScreen())
+        return;
+    m_context.undoStack().push(
+        new RemoveScreenCommand(project, project.screens()[std::size_t(index)]->id()));
+}
+
+void EditorController::renameScreen(int index, const QString& name)
+{
+    Project& project = m_context.project();
+    const QString trimmed = name.trimmed();
+    if (index < 0 || std::size_t(index) >= project.screenCount() || trimmed.isEmpty())
+        return;
+    const Screen& screen = *project.screens()[std::size_t(index)];
+    if (screen.name() == trimmed)
+        return;
+    ScreenSettings settings = ChangeScreenCommand::settingsOf(screen);
+    settings.name = trimmed;
+    m_context.undoStack().push(new ChangeScreenCommand(project, screen.id(), settings));
+}
+
+int EditorController::currentScreenIndex() const
+{
+    const auto index = m_context.project().indexOf(m_context.screenId());
+    return index ? int(*index) : -1;
+}
+
+bool EditorController::canRemoveScreen() const
+{
+    return m_context.project().screenCount() > 1;
 }
 
 void EditorController::selectTool()

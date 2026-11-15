@@ -1,0 +1,22 @@
+{
+    "background": "#ffe6e8eb",
+    "id": "5d0f6a52-6b3c-4a8e-9f57-3c1f2a6d9b10",
+    "name": "Main",
+    "objects": [
+        {
+            "id": "0b6f1c2e-8a1d-4b7e-a9c3-2f4d6e8a0b1c",
+            "props": {
+                "fillColor": "#ffff0000",
+                "height": 50,
+                "width": 100,
+                "x": 10,
+                "y": 20
+            },
+            "type": "rectangle"
+        }
+    ],
+    "size": [
+        800,
+        600
+    ]
+}

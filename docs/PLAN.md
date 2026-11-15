@@ -111,7 +111,8 @@ Still open from this phase:
 
 - Trying it on a real touch screen.
 - The editor opens a built-in sample project until projects can be opened
-  (phase 4).
+  (projects open and save since phase 4; the sample is still the start
+  document).
 - The toolbox shows one section and has no search yet.
 
 ## Phase 3 — Editing operations
@@ -180,6 +181,29 @@ screen.
 
 Done when: a project with several screens survives save, close, reopen with
 a byte-identical second save, and every property can be edited by touch.
+
+Status: implemented on `feat/phase-4-properties`. `ProjectSerializerTest`
+and `DocumentControllerTest` save, close, reopen and save again and compare
+the bytes; unknown keys, properties and object types survive a round trip;
+the first migration (unversioned files) loads a sample under `tests/data/`.
+Every property has a touch editor: numbers through steppers or the on-screen
+keypad, colours and fonts through dialogs, the rest with taps; free text
+uses the platform's on-screen keyboard. Choices made here:
+
+- Layers are a flat `ListView` with expandable groups rather than a
+  `TreeView`, so reordering can be a drag handle that leaves the rest of
+  the row free to scroll the list by touch. Group children are shown but
+  edited only through their group.
+- With nothing selected, the properties panel shows the screen's name,
+  size and background.
+- A typed value applies to locked objects too; the lock only stops
+  dragging on the canvas.
+- The editor still starts with the built-in sample project, untitled and
+  unsaved. A project's name comes from the folder it is first saved to.
+- Autosave runs every 60 seconds while there are unsaved changes; the
+  interval is a setting without UI yet.
+
+Still open: trying the touch editors on a real touch screen.
 
 ## Phase 5 — Full object set
 

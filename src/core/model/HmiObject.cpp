@@ -21,6 +21,7 @@ HmiObject::HmiObject(std::span<const PropertyDescriptor> descriptors, ObjectId i
 HmiObject::HmiObject(const HmiObject& other)
     : m_descriptors(other.m_descriptors)
     , m_values(other.m_values)
+    , m_preserved(other.m_preserved)
     , m_id(other.m_id)
 {
 }

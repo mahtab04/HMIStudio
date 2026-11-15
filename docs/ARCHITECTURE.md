@@ -97,7 +97,7 @@ hmi_runtime (later) ────────────────────
 | `hmi_render` | Painter helpers, symbol drawing, graphic loading and caching (section 14) | Gui, Svg |
 | `hmi_comm` | `IDriver`, simulator, OPC UA, S7, Modbus drivers, `TagEngine` | Core, Network |
 | `hmi_quick` | `CanvasItem`, `ScreenItem`, `ObjectItem`, overlays, gesture recognizer; static QML module `HmiStudio.Quick` | Quick |
-| `hmi_editor_lib` | `AppContext`, `Theme`, controllers, panel models, undo commands, tools and the QML shell; static QML module `HmiStudio.Editor`, so tests link it without the app | Quick, QuickControls2, Svg (QuickDialogs2 from phase 4) |
+| `hmi_editor_lib` | `AppContext`, `Theme`, controllers, panel models, undo commands, tools and the QML shell; static QML module `HmiStudio.Editor`, so tests link it without the app | Quick, QuickControls2, Svg; the `QtQuick.Dialogs` and `QtQml.Models` QML modules |
 | `hmi_editor` | The executable: `main.cpp` only; output name `HmiStudio` | as above |
 | `hmi_runtime` | Full-screen player (phase 9), links `hmi_quick` without editor code | Quick |
 | `tests` | One Qt Test executable per test class | Test |
@@ -122,7 +122,7 @@ hmi-studio/
 │  │  ├─ property/           # PropertyValue, PropertyDescriptor
 │  │  ├─ tags/               # Tag, TagDatabase, Binding, Dynamization
 │  │  ├─ events/             # Action, EventHandler
-│  │  ├─ io/                 # ObjectJson; ProjectSerializer, migrations (phase 4)
+│  │  ├─ io/                 # ObjectJson, ProjectSerializer and its migrations
 │  │  ├─ spatial/            # HitTester, Snapper and snap strategies
 │  │  └─ registry/           # ObjectRegistry (factory)
 │  ├─ render/
@@ -139,12 +139,12 @@ hmi-studio/
 │  │  └─ input/              # GestureRecognizer, PointerGesture, InputSettings
 │  └─ editor/
 │     ├─ app/                # main.cpp, AppContext, EditorController,
-│     │                      # EditActions, Theme
+│     │                      # EditActions, DocumentController, AppSettings, Theme
 │     ├─ tools/              # ITool, ToolController, ToolContext, SelectTool,
 │     │                      # CreateTool, PanTool (PipeTool in phase 5)
 │     ├─ commands/           # QUndoCommand subclasses
-│     ├─ models/             # SelectionModel, ToolboxModel, ToolboxDragController;
-│     │                      # later PropertyModel, LayerModel, TagModel
+│     ├─ models/             # SelectionModel, ToolboxModel, ToolboxDragController,
+│     │                      # PropertyModel, LayerModel, ScreenListModel; later TagModel
 │     └─ qml/                # Main.qml, panels/, controls/
 ├─ tests/                    # core/, quick/, editor/, mirroring src/
 ├─ resources/icons/          # single-colour SVG icons
@@ -235,9 +235,21 @@ never test for the group type. Groups are registered as an internal type:
 files and the clipboard can contain them, the toolbox does not offer them.
 
 `ObjectJson` writes objects as JSON from their descriptors (section 10).
-The clipboard uses it now, under the MIME type
-`application/x-hmistudio-objects`; the project serializer reuses it in
-phase 4.
+The clipboard uses it under the MIME type `application/x-hmistudio-objects`,
+and `ProjectSerializer` uses it for screen files.
+
+An object, a screen and the project each keep the part of their file this
+version does not understand (`preservedJson()`: unknown keys, unknown
+properties) and write it back unchanged. An object of an unknown type is
+loaded as an `UnknownObject`: it has the common properties, so it can be
+selected, moved and deleted, draws a marked placeholder, and keeps its
+whole entry.
+
+`Project::replaceContents()` swaps in a loaded project while the `Project`
+object, and so its `DocumentNotifier`, stays the same: everything holding a
+`Project&` (tool context, commands, models) keeps working after open, new
+and recovery. It emits `projectReset`, and destroys the old screens only
+after every view has moved to the new ones.
 
 ### 5.2 Property system
 
@@ -305,8 +317,8 @@ registries, so new ones do not touch existing code.
 | Visitor | `ObjectVisitor` for validation, export, "where is this tag used". |
 | Adapter | Each driver adapts a third-party client library to `IDriver`; `GestureRecognizer` adapts mouse, touch and pen to one `PointerGesture`. |
 | Facade | `TagEngine` hides drivers and threading; `EditorController` is the single object QML talks to for editing actions and display state. |
-| Memento | Project snapshot for autosave and crash recovery. |
-| Model/View | `QAbstractItemModel` subclasses feed QML `ListView`, `TableView` and `TreeView`. |
+| Memento | Autosave: `DocumentController` writes the modified project to an autosave folder at an interval; it is offered for recovery if the application did not exit normally. |
+| Model/View | `QAbstractItemModel` subclasses feed QML `ListView` and `TableView`. |
 | Singleton | Used sparingly: registries filled at start-up only, as function-local statics. |
 
 On Singleton: registries are safe as singletons because they are filled once
@@ -437,7 +449,7 @@ layout, undo and redo always visible, numeric fields that open an on-screen keyp
 least 44 px high when the UI is in touch density. `Theme` exposes a density
 setting (compact for mouse, comfortable for touch): comfortable when a touch
 screen is attached at start-up, switchable with the Input button in the top
-bar, and saved in settings from phase 4.
+bar, and saved in the settings.
 
 Hit testing: `HitTester` in `hmi_core` walks the objects of a screen from
 top to bottom and tests `hitShape()` with a tolerance that depends on the
@@ -451,8 +463,9 @@ Every panel is a C++ model plus a short QML view.
 | Panel | C++ | QML view |
 |---|---|---|
 | Toolbox | `ToolboxModel` (from `ObjectRegistry`), `ToolboxDragController` (fed by each tile's `DragHandler`; mouse and touch) | `GridView` of tiles; not flickable, so dragging a tile places an object; a scroll bar scrolls |
-| Properties | `PropertyModel` built from the selection's descriptors; `setData` pushes `SetPropertyCommand` | `ListView` with a delegate chosen by value type |
-| Layers | `LayerModel` (tree) | `TreeView` |
+| Properties | `PropertyModel`: rows from the descriptors every selected object shares, with a mixed flag, or the screen's name, size and background when nothing is selected; `setValue` and friends push `SetPropertyCommand` or `ChangeScreenCommand`; edits between `beginEdit` and `endEdit` merge into one step | `ListView` with sections per category and a `DelegateChooser` on the `editor` role (number with steppers and a touch keypad, text, colour, font, enum, bool, point, size) |
+| Layers | `LayerModel`: a flat list, topmost first, with expandable groups shown by depth | `ListView`; a drag handle reorders, so the rest of the row still scrolls the list by touch |
+| Screens | `ScreenListModel`; actions on `EditorController` | Tab buttons over the canvas with a rename, duplicate and delete menu |
 | Tags | `TagModel`, `TagFilterProxy` | `TableView` |
 | Output | `MessageModel` filled by `ValidationVisitor` | `ListView` |
 
@@ -467,7 +480,16 @@ actions `cut`, `copy`, `paste`, `duplicate`, `deleteSelection`, `group`,
 that each pushes one undo step, so keyboard shortcuts, the context menu and
 the touch toolbar run the same code. Text is formatted in C++ so QML only binds. `Main.qml` lays
 the panels out in a `SplitView` and sets the Controls palette from `Theme`.
-Collapsing panels and saving their sizes comes in phase 4.
+`AppSettings` (QSettings) keeps the density, which panels are shown, the
+split sizes and the recent projects.
+
+`DocumentController` handles new, open, save, save as, recent projects,
+the unsaved-changes question, autosave and recovery. Actions that would
+lose changes ask first: it emits `confirmRequested` and continues on
+`saveChanges`, `discardChanges` or `cancelPending`. It asks QML for file
+names with `openDialogRequested` and `saveAsDialogRequested`; QML only
+shows the dialogs (`DocumentDialogs.qml`). "Modified" is the undo stack
+not being clean.
 
 ### 7.4 Simulation mode and runtime
 
@@ -552,13 +574,24 @@ MyLine.hmiproj/
 └─ assets/             # imported images
 ```
 
-- JSON, pretty-printed, stable key order, so diffs are readable.
+- JSON, pretty-printed, keys sorted, so diffs are readable and saving an
+  unchanged project writes byte-identical files.
+- `project.json` lists the screen files in screen order. Screen files are
+  named `screens/<nn>_<name>.json`; renamed or deleted screens' old files
+  are removed on save. Files the project does not list (later `tags.json`,
+  the user's own files) are never touched.
 - Every file carries `formatVersion`. `ProjectSerializer` runs a chain of
-  migration functions from the file's version to the current one.
+  migration functions from the file's version to the current one and
+  refuses files from a newer version. Version 0 is a file without
+  `formatVersion`, from before the format was versioned.
+- Files are written with `QSaveFile` (temporary file and rename), screens
+  first and `project.json` last.
 - Objects serialize as `{ "type": "tank", "id": "...", "props": { ... },
-  "bindings": [...], "events": [...] }` driven by descriptors, so a new
-  object type needs no serializer code.
-- Unknown types and properties are kept and written back unchanged.
+  "children": [...] }` driven by descriptors, so a new object type needs no
+  serializer code. Colours are `"#AARRGGBB"`, points and sizes two-number
+  arrays, fonts `QFont::toString()`, enums the option key.
+- Unknown types, properties and keys are kept and written back unchanged
+  (section 5.1).
 
 ## 11. C++20 usage
 

@@ -24,9 +24,21 @@ std::unique_ptr<Screen> Screen::clone() const
 {
     auto copy = std::make_unique<Screen>(m_name, m_size, m_id);
     copy->m_background = m_background;
+    copy->m_preserved = m_preserved;
     copy->m_objects.reserve(m_objects.size());
     for (const auto& object : m_objects)
         copy->m_objects.push_back(object->clone());
+    return copy;
+}
+
+std::unique_ptr<Screen> Screen::cloneWithNewIds(const QString& name) const
+{
+    auto copy = std::make_unique<Screen>(name, m_size);
+    copy->m_background = m_background;
+    copy->m_preserved = m_preserved;
+    copy->m_objects.reserve(m_objects.size());
+    for (const auto& object : m_objects)
+        copy->m_objects.push_back(object->cloneWithNewId());
     return copy;
 }
 

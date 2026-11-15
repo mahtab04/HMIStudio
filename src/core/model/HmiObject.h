@@ -6,6 +6,7 @@
 #include "core/property/PropertyDescriptor.h"
 #include "core/property/PropertyValue.h"
 
+#include <QJsonObject>
 #include <QPainterPath>
 #include <QRectF>
 #include <QTransform>
@@ -103,6 +104,13 @@ public:
     // compared.
     [[nodiscard]] bool hasSameProperties(const HmiObject& other) const;
 
+    // Data from a file this version does not understand (unknown
+    // properties, bindings of a newer format, ...). Kept with the object and
+    // written back unchanged, so opening and saving never loses it. Set and
+    // read only by the serializer.
+    [[nodiscard]] const QJsonObject& preservedJson() const noexcept { return m_preserved; }
+    void setPreservedJson(QJsonObject json) { m_preserved = std::move(json); }
+
     [[nodiscard]] ObjectId id() const noexcept { return m_id; }
     [[nodiscard]] QString name() const;
     [[nodiscard]] QRectF geometry() const;
@@ -137,6 +145,7 @@ private:
 
     std::span<const PropertyDescriptor> m_descriptors;
     std::vector<PropertyValue> m_values;
+    QJsonObject m_preserved;
     ObjectId m_id;
     DocumentNotifier* m_notifier = nullptr;
 };

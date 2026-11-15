@@ -19,6 +19,22 @@ Project::~Project()
         screen->setNotifier(nullptr);
 }
 
+void Project::replaceContents(Project&& other)
+{
+    std::vector<std::unique_ptr<Screen>> old = std::move(m_screens);
+    for (const auto& screen : old)
+        screen->setNotifier(nullptr);
+
+    m_name = std::move(other.m_name);
+    m_preserved = std::move(other.m_preserved);
+    m_screens = std::move(other.m_screens);
+    other.m_screens.clear();
+    for (const auto& screen : m_screens)
+        screen->setNotifier(m_notifier.get());
+    Q_EMIT m_notifier->projectReset();
+    // `old` is destroyed here, after every view has let go of it.
+}
+
 Screen* Project::screen(ScreenId id) const noexcept
 {
     const auto index = indexOf(id);
