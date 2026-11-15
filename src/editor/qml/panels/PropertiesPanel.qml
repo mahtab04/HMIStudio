@@ -83,6 +83,14 @@ Pane {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "points"
+                    TextEditor {
+                        width: list.width
+                        properties: panel.properties
+                        theme: panel.theme
+                    }
+                }
+                DelegateChoice {
                     roleValue: "color"
                     ColorEditor {
                         width: list.width

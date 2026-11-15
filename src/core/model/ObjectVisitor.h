@@ -5,6 +5,9 @@ namespace hmi
 
 class Ellipse;
 class GroupObject;
+class Circle;
+class Polygon;
+class Polyline;
 class Line;
 class Rectangle;
 class TextBox;
@@ -30,6 +33,9 @@ public:
     virtual void visit(TextBox& /*object*/) {}
     // Does not descend into the children; a visitor that needs them walks
     // GroupObject::children() itself.
+    virtual void visit(Polyline& /*object*/) {}
+    virtual void visit(Polygon& /*object*/) {}
+    virtual void visit(Circle& /*object*/) {}
     virtual void visit(GroupObject& /*object*/) {}
     virtual void visit(UnknownObject& /*object*/) {}
 };

@@ -39,6 +39,7 @@ hmi_add_test(RectangleTest SOURCES core/objects/RectangleTest.cpp core/objects/O
 hmi_add_test(EllipseTest SOURCES core/objects/EllipseTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(LineTest SOURCES core/objects/LineTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(TextBoxTest SOURCES core/objects/TextBoxTest.cpp core/objects/ObjectContract.h)
+hmi_add_test(AllObjectsTest SOURCES core/objects/AllObjectsTest.cpp core/objects/ObjectContract.h)
 
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)

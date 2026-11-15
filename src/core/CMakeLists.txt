@@ -9,8 +9,10 @@ add_library(hmi_core_impl STATIC
     io/ProjectSerializer.cpp
     io/ProjectSerializer.h
 
+    model/ControlObject.h
     model/DocumentNotifier.cpp
     model/DocumentNotifier.h
+    model/ElementObject.h
     model/GroupObject.cpp
     model/GroupObject.h
     model/HmiObject.cpp
@@ -25,13 +27,22 @@ add_library(hmi_core_impl STATIC
     model/ScreenBuilder.cpp
     model/ScreenBuilder.h
     model/ShapeObject.h
+    model/SymbolObject.h
     model/UnknownObject.cpp
     model/UnknownObject.h
 
     objects/Ellipse.cpp
     objects/Ellipse.h
+    objects/Circle.cpp
+    objects/Circle.h
     objects/Line.cpp
     objects/Line.h
+    objects/PaintHelpers.cpp
+    objects/PaintHelpers.h
+    objects/Polygon.cpp
+    objects/Polygon.h
+    objects/Polyline.cpp
+    objects/Polyline.h
     objects/Rectangle.cpp
     objects/Rectangle.h
     objects/TextBox.cpp
@@ -39,6 +50,8 @@ add_library(hmi_core_impl STATIC
 
     property/CommonDescriptors.cpp
     property/CommonDescriptors.h
+    property/DescriptorBuilders.cpp
+    property/DescriptorBuilders.h
     property/Prop.h
     property/PropertyDescriptor.cpp
     property/PropertyDescriptor.h

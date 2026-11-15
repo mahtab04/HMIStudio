@@ -27,6 +27,8 @@ const char* valueKindName(ValueKind kind) noexcept
         return "tag";
     case ValueKind::Enum:
         return "enum";
+    case ValueKind::Points:
+        return "points";
     }
     return "unknown";
 }

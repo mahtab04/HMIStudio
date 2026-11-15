@@ -25,6 +25,17 @@ inline constexpr PropertyId LineColor{"lineColor"};
 inline constexpr PropertyId LineWidth{"lineWidth"};
 inline constexpr PropertyId CornerRadius{"cornerRadius"};
 inline constexpr PropertyId LineDirection{"lineDirection"};
+inline constexpr PropertyId Points{"points"};
+
+// Values (elements and symbols)
+inline constexpr PropertyId Value{"value"};
+inline constexpr PropertyId Minimum{"minimum"};
+inline constexpr PropertyId Maximum{"maximum"};
+
+// Graphics
+inline constexpr PropertyId Asset{"asset"};
+inline constexpr PropertyId FitMode{"fitMode"};
+inline constexpr PropertyId StyleOverrides{"styleOverrides"};
 
 // Text
 inline constexpr PropertyId Text{"text"};

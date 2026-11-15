@@ -46,6 +46,8 @@ QString editorFor(ValueKind kind)
         return QStringLiteral("font");
     case ValueKind::Enum:
         return QStringLiteral("enum");
+    case ValueKind::Points:
+        return QStringLiteral("points");
     case ValueKind::String:
     case ValueKind::Tag:
         break;
@@ -69,6 +71,34 @@ std::optional<double> toNumber(const QVariant& value)
     bool ok = false;
     const double number = value.toDouble(&ok);
     return ok && std::isfinite(number) ? std::optional(number) : std::nullopt;
+}
+
+// Points as "x,y x,y …" with a decimal point whatever the locale: commas
+// already separate the coordinates.
+QString pointsText(const QPolygonF& points)
+{
+    QStringList parts;
+    for (const QPointF& p : points)
+        parts << QStringLiteral("%1,%2").arg(p.x(), 0, 'g', 4).arg(p.y(), 0, 'g', 4);
+    return parts.join(u' ');
+}
+
+std::optional<QPolygonF> parsePoints(const QString& text)
+{
+    QPolygonF points;
+    const QStringList parts = text.split(u' ', Qt::SkipEmptyParts);
+    for (const QString& part : parts)
+    {
+        const QStringList xy = part.split(u',');
+        bool okX = false;
+        bool okY = false;
+        const double x = xy.value(0).toDouble(&okX);
+        const double y = xy.value(1).toDouble(&okY);
+        if (xy.size() != 2 || !okX || !okY)
+            return std::nullopt;
+        points.append(QPointF(x, y));
+    }
+    return points;
 }
 
 // Short, locale-aware text for a value, as the panel shows it.
@@ -111,6 +141,8 @@ QString displayText(const QVariant& value)
             text += QCoreApplication::translate("hmi::PropertyModel", ", italic");
         return text;
     }
+    case QMetaType::QPolygonF:
+        return pointsText(value.value<QPolygonF>());
     case QMetaType::Bool:
         return value.toBool() ? QCoreApplication::translate("hmi::PropertyModel", "Yes")
                               : QCoreApplication::translate("hmi::PropertyModel", "No");
@@ -150,6 +182,8 @@ QVariant toVariant(const PropertyDescriptor& descriptor, const PropertyValue& va
         return std::get<QFont>(value);
     case ValueKind::Tag:
         return std::get<TagRef>(value).tagName;
+    case ValueKind::Points:
+        return QVariant::fromValue(std::get<PointList>(value));
     case ValueKind::Enum:
     {
         const auto options = descriptor.constraint.enumOptions;
@@ -200,6 +234,14 @@ std::optional<PropertyValue> fromVariant(const PropertyDescriptor& descriptor,
         if (value.typeId() == QMetaType::QFont)
             return PropertyValue(value.value<QFont>());
         return std::nullopt;
+    case ValueKind::Points:
+    {
+        if (value.typeId() == QMetaType::QPolygonF)
+            return PropertyValue(value.value<QPolygonF>());
+        if (const auto points = parsePoints(value.toString()))
+            return PropertyValue(*points);
+        return std::nullopt;
+    }
     case ValueKind::Enum:
     {
         const auto options = descriptor.constraint.enumOptions;

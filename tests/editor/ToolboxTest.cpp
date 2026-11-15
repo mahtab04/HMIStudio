@@ -14,6 +14,7 @@
 #include <memory>
 
 using namespace hmi;
+using namespace Qt::StringLiterals;
 
 class ToolboxTest : public QObject
 {
@@ -62,19 +63,36 @@ private Q_SLOTS:
         m_project.reset();
     }
 
-    void modelListsRegisteredTypes()
+    void modelListsSectionsOfTiles()
     {
         ToolboxModel model;
         QAbstractItemModelTester tester(&model);
-        QCOMPARE(model.rowCount(), 4);
-        const QModelIndex first = model.index(0);
-        QCOMPARE(model.data(first, ToolboxModel::KeyRole).toString(), QStringLiteral("ellipse"));
-        QCOMPARE(model.data(first, ToolboxModel::NameRole).toString(), QStringLiteral("Ellipse"));
-        QCOMPARE(model.data(first, ToolboxModel::IconSourceRole).toUrl(),
-                 QUrl(QStringLiteral("qrc:/icons/ellipse.svg")));
-        QCOMPARE(model.data(first, ToolboxModel::CategoryRole).toString(),
+        QVERIFY(model.rowCount() >= 1);
+        const QModelIndex basics = model.index(0);
+        QCOMPARE(model.data(basics, ToolboxModel::TitleRole).toString(),
                  QStringLiteral("Basic objects"));
-        QVERIFY(model.roleNames().values().contains("iconSource"));
+        const QVariantList tiles = model.data(basics, ToolboxModel::TilesRole).toList();
+        const QVariantMap circle = tiles.front().toMap();
+        QCOMPARE(circle.value(u"key"_s).toString(), u"circle"_s);
+        QCOMPARE(circle.value(u"name"_s).toString(), u"Circle"_s);
+        QCOMPARE(circle.value(u"iconSource"_s).toUrl(), QUrl(u"qrc:/icons/circle.svg"_s));
+        // Groups are made by grouping, not offered as a tile.
+        for (const QVariant& tile : tiles)
+            QVERIFY(tile.toMap().value(u"key"_s).toString() != u"group"_s);
+    }
+
+    void filterNarrowsAndDropsEmptySections()
+    {
+        ToolboxModel model;
+        QAbstractItemModelTester tester(&model);
+        const int all = model.entryCount();
+        model.setFilterText(u"  ELLI "_s);
+        QCOMPARE(model.entryCount(), 1);
+        QCOMPARE(model.rowCount(), 1);
+        model.setFilterText(u"no such object"_s);
+        QCOMPARE(model.rowCount(), 0);
+        model.setFilterText({});
+        QCOMPARE(model.entryCount(), all);
     }
 
     void dropOnCanvasAddsObject()

@@ -19,7 +19,8 @@ struct EnumOption
     const char* displayName = nullptr;
 };
 
-// Limits a value must satisfy. `readOnly` is advice for editors (the property
+// Limits a value must satisfy. For a point list, minimum and maximum bound
+// the number of points. `readOnly` is advice for editors (the property
 // panel shows the value without an input); the model itself may still set it.
 struct Constraint
 {

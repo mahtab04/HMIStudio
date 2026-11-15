@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QFont>
 #include <QPointF>
+#include <QPolygonF>
 #include <QSizeF>
 #include <QString>
 
@@ -28,8 +29,12 @@ struct EnumValue
     friend constexpr auto operator<=>(const EnumValue&, const EnumValue&) = default;
 };
 
-using PropertyValue =
-    std::variant<bool, int, double, QString, QColor, QPointF, QSizeF, QFont, TagRef, EnumValue>;
+// A list of points (polyline, polygon, pipe). Objects store them relative
+// to their bounds, from (0, 0) to (1, 1), so resizing scales the shape.
+using PointList = QPolygonF;
+
+using PropertyValue = std::variant<bool, int, double, QString, QColor, QPointF, QSizeF, QFont,
+                                   TagRef, EnumValue, PointList>;
 
 // Kind of a PropertyValue, in the same order as the variant alternatives.
 enum class ValueKind
@@ -44,6 +49,7 @@ enum class ValueKind
     Font,
     Tag,
     Enum,
+    Points,
 };
 
 namespace detail
@@ -65,7 +71,7 @@ struct IsAlternative<T, std::variant<Ts...>> : std::bool_constant<(std::same_as<
 template <typename T>
 concept PropertyType = detail::IsAlternative<T, PropertyValue>::value;
 
-static_assert(std::variant_size_v<PropertyValue> == 10, "ValueKind must list every alternative");
+static_assert(std::variant_size_v<PropertyValue> == 11, "ValueKind must list every alternative");
 
 [[nodiscard]] constexpr ValueKind valueKind(const PropertyValue& value) noexcept
 {

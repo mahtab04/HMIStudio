@@ -70,6 +70,13 @@ QJsonValue writeValue(const PropertyDescriptor& descriptor, const PropertyValue&
         return std::get<QFont>(value).toString();
     case ValueKind::Tag:
         return std::get<TagRef>(value).tagName;
+    case ValueKind::Points:
+    {
+        QJsonArray array;
+        for (const QPointF& p : std::get<PointList>(value))
+            array.append(pair(p.x(), p.y()));
+        return array;
+    }
     case ValueKind::Enum:
     {
         const int number = std::get<EnumValue>(value).value;
@@ -129,6 +136,22 @@ Result<PropertyValue> readValue(const PropertyDescriptor& descriptor, const QJso
     case ValueKind::Tag:
         if (json.isString())
             value = TagRef{json.toString()};
+        break;
+    case ValueKind::Points:
+        if (json.isArray())
+        {
+            PointList points;
+            bool valid = true;
+            for (const QJsonValue& entry : json.toArray())
+            {
+                const auto p = readPair(entry);
+                valid = valid && p.has_value();
+                if (p)
+                    points.append(QPointF(p->first, p->second));
+            }
+            if (valid)
+                value = points;
+        }
         break;
     case ValueKind::Enum:
         if (json.isString())

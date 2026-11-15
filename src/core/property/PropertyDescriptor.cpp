@@ -68,6 +68,22 @@ Result<PropertyValue> validate(const PropertyDescriptor& descriptor, const Prope
                                  .arg(QLatin1StringView(descriptor.key)));
         }
     }
+    else if (const auto* points = std::get_if<PointList>(&result))
+    {
+        const Constraint& c = descriptor.constraint;
+        const auto count = double(points->size());
+        const bool finite = std::ranges::all_of(
+            *points, [](QPointF p) { return std::isfinite(p.x()) && std::isfinite(p.y()); });
+        if (!finite || (c.minimum && count < *c.minimum) || (c.maximum && count > *c.maximum))
+        {
+            return makeError(ErrorCode::OutOfRange,
+                             QStringLiteral("Property '%1' needs %2 to %3 finite points, got %4")
+                                 .arg(QLatin1StringView(descriptor.key))
+                                 .arg(c.minimum.value_or(0))
+                                 .arg(c.maximum.value_or(HUGE_VAL))
+                                 .arg(points->size()));
+        }
+    }
     else if (const auto* enumValue = std::get_if<EnumValue>(&result))
     {
         const auto options = descriptor.constraint.enumOptions;
