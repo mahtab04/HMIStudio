@@ -68,6 +68,11 @@ void CanvasItem::setScreen(const Screen* screen, DocumentNotifier* notifier)
         applyView();
 }
 
+void CanvasItem::setGraphics(const IGraphicProvider* graphics)
+{
+    m_screenItem->setGraphics(graphics);
+}
+
 void CanvasItem::setSelection(std::vector<ObjectId> ids)
 {
     m_selection = std::move(ids);

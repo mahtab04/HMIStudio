@@ -9,6 +9,7 @@ namespace hmi
 {
 
 class DocumentNotifier;
+class IGraphicProvider;
 class ObjectItem;
 class Screen;
 
@@ -40,6 +41,7 @@ public:
     // coordinates); objects further away render at no more than 1:1, so a
     // deep zoom does not hold full-resolution textures for the whole screen.
     void setRenderScale(double scale, const QRectF& sharpArea);
+    void setGraphics(const IGraphicProvider* graphics);
 
     void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
     void clearPreview();
@@ -63,6 +65,7 @@ private:
     QList<ObjectId> m_previewed;
     double m_renderScale = 1.0;
     QRectF m_sharpArea;
+    const IGraphicProvider* m_graphics = nullptr;
 };
 
 } // namespace hmi

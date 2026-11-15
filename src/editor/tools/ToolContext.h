@@ -15,6 +15,7 @@ namespace hmi
 {
 
 class ICanvasView;
+class IGraphicProvider;
 class Project;
 class Screen;
 class SelectionModel;
@@ -38,6 +39,10 @@ public:
     [[nodiscard]] const InputSettings& input() const noexcept { return m_input; }
 
     [[nodiscard]] ICanvasView* canvas() const noexcept { return m_canvas; }
+
+    // Draws imported graphics for the canvas; set by the application.
+    [[nodiscard]] const IGraphicProvider* graphics() const noexcept { return m_graphics; }
+    void setGraphics(const IGraphicProvider* graphics) noexcept { m_graphics = graphics; }
     void setCanvas(ICanvasView* canvas) noexcept { m_canvas = canvas; }
 
     // Device hit tolerance and handle hit size converted to scene units at
@@ -77,6 +82,7 @@ private:
     SelectionModel& m_selection;
     const InputSettings& m_input;
     ICanvasView* m_canvas = nullptr;
+    const IGraphicProvider* m_graphics = nullptr;
     ScreenId m_screenId;
     std::function<void()> m_selectToolRequest;
     std::function<void(QPointF)> m_contextMenuRequest;

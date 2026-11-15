@@ -17,6 +17,7 @@ class LayerModel;
 class PropertyModel;
 class ScreenListModel;
 class EditorController;
+class GraphicLibrary;
 class Project;
 class SelectionModel;
 class Theme;
@@ -57,6 +58,7 @@ public:
     [[nodiscard]] ToolboxModel& toolbox() const noexcept { return *m_toolbox; }
     [[nodiscard]] ToolboxDragController& toolboxDrag() const noexcept { return *m_toolboxDrag; }
     [[nodiscard]] AppSettings& settings() const noexcept { return *m_settings; }
+    [[nodiscard]] GraphicLibrary& graphics() const noexcept { return *m_graphics; }
     [[nodiscard]] DocumentController& document() const noexcept { return *m_document; }
     [[nodiscard]] PropertyModel& properties() const noexcept { return *m_properties; }
     [[nodiscard]] LayerModel& layers() const noexcept { return *m_layers; }
@@ -66,6 +68,7 @@ private:
     InputSettings m_inputSettings;
     QUndoStack m_undoStack;
     std::unique_ptr<Project> m_project;
+    std::unique_ptr<GraphicLibrary> m_graphics;
     std::unique_ptr<Theme> m_theme;
     std::unique_ptr<SelectionModel> m_selection;
     std::unique_ptr<ToolContext> m_toolContext;

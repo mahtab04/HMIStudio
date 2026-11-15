@@ -77,6 +77,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/CanvasPanel.qml
         qml/panels/LayerRow.qml
         qml/panels/PropertiesPanel.qml
+        qml/panels/properties/AssetEditor.qml
         qml/panels/properties/BoolEditor.qml
         qml/panels/properties/ColorEditor.qml
         qml/panels/properties/EnumEditor.qml
@@ -106,6 +107,7 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/undo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/redo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/zoom-fit.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/graphic-view.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/circle.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/polygon.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/polyline.svg"
@@ -141,6 +143,7 @@ target_include_directories(hmi_editor_lib PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/models")
 target_link_libraries(hmi_editor_lib PUBLIC
     hmi_quick
+    hmi_render
     hmi_quickplugin
     Qt6::Quick
     Qt6::QuickControls2

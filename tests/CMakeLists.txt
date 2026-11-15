@@ -41,6 +41,9 @@ hmi_add_test(LineTest SOURCES core/objects/LineTest.cpp core/objects/ObjectContr
 hmi_add_test(TextBoxTest SOURCES core/objects/TextBoxTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(AllObjectsTest SOURCES core/objects/AllObjectsTest.cpp core/objects/ObjectContract.h)
 
+# Graphics
+hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
+
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
 hmi_add_test(GestureRecognizerTest SOURCES quick/GestureRecognizerTest.cpp LIBS hmi_quick)

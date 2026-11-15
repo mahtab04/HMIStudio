@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 40 20">
+  <defs><filter id="blur"><feGaussianBlur stdDeviation="2"/></filter></defs>
+  <rect x="2" y="2" width="36" height="16" fill="#204080" filter="url(#blur)"/>
+  <script>alert(1)</script>
+</svg>

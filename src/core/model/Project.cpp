@@ -27,6 +27,7 @@ void Project::replaceContents(Project&& other)
 
     m_name = std::move(other.m_name);
     m_preserved = std::move(other.m_preserved);
+    m_assets->takeFrom(*other.m_assets);
     m_screens = std::move(other.m_screens);
     other.m_screens.clear();
     for (const auto& screen : m_screens)

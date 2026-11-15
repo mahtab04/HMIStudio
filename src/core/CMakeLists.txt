@@ -4,6 +4,12 @@
 add_library(hmi_core_impl STATIC
     Result.h
 
+    graphics/AssetStore.cpp
+    graphics/AssetStore.h
+    graphics/GraphicStyle.cpp
+    graphics/GraphicStyle.h
+    graphics/IGraphicProvider.h
+
     io/ObjectJson.cpp
     io/ObjectJson.h
     io/ProjectSerializer.cpp
@@ -45,6 +51,8 @@ add_library(hmi_core_impl STATIC
     objects/Polyline.h
     objects/Rectangle.cpp
     objects/Rectangle.h
+    objects/GraphicView.cpp
+    objects/GraphicView.h
     objects/TextBox.cpp
     objects/TextBox.h
 

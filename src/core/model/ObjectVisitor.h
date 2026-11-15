@@ -5,6 +5,7 @@ namespace hmi
 
 class Ellipse;
 class GroupObject;
+class GraphicView;
 class Circle;
 class Polygon;
 class Polyline;
@@ -36,6 +37,7 @@ public:
     virtual void visit(Polyline& /*object*/) {}
     virtual void visit(Polygon& /*object*/) {}
     virtual void visit(Circle& /*object*/) {}
+    virtual void visit(GraphicView& /*object*/) {}
     virtual void visit(GroupObject& /*object*/) {}
     virtual void visit(UnknownObject& /*object*/) {}
 };

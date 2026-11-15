@@ -4,14 +4,19 @@
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/model/Screen.h"
+#include "core/property/Prop.h"
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
+
+#include <algorithm>
+#include <set>
 
 namespace hmi::ProjectSerializer
 {
@@ -26,6 +31,30 @@ const auto kId = QStringLiteral("id");
 const auto kSize = QStringLiteral("size");
 const auto kBackground = QStringLiteral("background");
 const auto kObjects = QStringLiteral("objects");
+const auto kAssets = QStringLiteral("assets");
+const auto kFile = QStringLiteral("file");
+
+QString assetPath(const Asset& asset)
+{
+    const QString suffix = asset.suffix.isEmpty() ? QStringLiteral("bin") : asset.suffix;
+    return QStringLiteral("%1/%2.%3").arg(QLatin1StringView(kAssetsFolder), asset.id, suffix);
+}
+
+void collectAssets(const HmiObject& object, std::set<QString>& ids)
+{
+    if (const auto value = object.property(Prop::Asset))
+    {
+        if (const auto* id = std::get_if<QString>(&*value); id && !id->isEmpty())
+            ids.insert(*id);
+    }
+    for (const auto& child : object.children())
+        collectAssets(*child, ids);
+}
+
+bool isInside(const QString& path, const char* folder)
+{
+    return path.startsWith(QLatin1StringView(folder) + u'/') && !path.contains(u"..");
+}
 
 // Migration from version `from` to `from + 1`, for every kind of file. Each
 // format change appends one step; a step changes only what that version
@@ -179,6 +208,17 @@ Result<QJsonObject> migrate(QJsonObject file, const QString& name)
     return file;
 }
 
+std::vector<QString> usedAssets(const Project& project)
+{
+    std::set<QString> ids;
+    for (const auto& screen : project.screens())
+    {
+        for (const auto& object : screen->objects())
+            collectAssets(*object, ids);
+    }
+    return {ids.begin(), ids.end()};
+}
+
 std::vector<File> toFiles(const Project& project)
 {
     std::vector<File> files;
@@ -195,13 +235,29 @@ std::vector<File> toFiles(const Project& project)
     projectJson.insert(kFormatVersion, kCurrentFormatVersion);
     projectJson.insert(kName, project.name());
     projectJson.insert(kScreens, screenList);
+    QJsonArray assetList;
+    for (const QString& id : usedAssets(project))
+    {
+        if (const auto asset = project.assets().find(id))
+        {
+            assetList.append(QJsonObject{
+                {kId, asset->id},
+                {kFile, assetPath(*asset)},
+                {kName, asset->fileName},
+            });
+        }
+    }
+    if (assetList.isEmpty())
+        projectJson.remove(kAssets);
+    else
+        projectJson.insert(kAssets, assetList);
     files.emplace_back(QString::fromLatin1(kProjectFile), projectJson);
     files.insert(files.end(), std::make_move_iterator(screens.begin()),
                  std::make_move_iterator(screens.end()));
     return files;
 }
 
-Result<std::unique_ptr<Project>> fromFiles(const Reader& read)
+Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReader& readAsset)
 {
     const QString projectPath = QString::fromLatin1(kProjectFile);
     auto raw = read(projectPath);
@@ -236,8 +292,31 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read)
     if (project->screenCount() == 0)
         return makeError(ErrorCode::BadFormat, QStringLiteral("The project has no screens"));
 
+    if (readAsset)
+    {
+        for (const QJsonValue& entry : projectJson->value(kAssets).toArray())
+        {
+            const QJsonObject info = entry.toObject();
+            const QString path = info.value(kFile).toString();
+            const QString id = info.value(kId).toString();
+            if (!isInside(path, kAssetsFolder))
+                return makeError(ErrorCode::BadFormat,
+                                 QStringLiteral("Invalid asset file path '%1'").arg(path));
+            auto bytes = readAsset(path);
+            if (!bytes)
+                return tl::unexpected(bytes.error());
+            // The id is the content's hash; a file that no longer matches
+            // was changed outside the editor.
+            if (AssetStore::idFor(*bytes) != id)
+                return makeError(
+                    ErrorCode::BadFormat,
+                    QStringLiteral("%1 does not match its id (the file was changed)").arg(path));
+            project->assets().add(std::move(*bytes), info.value(kName).toString());
+        }
+    }
+
     QJsonObject preserved = *projectJson;
-    for (const QString& known : {kFormatVersion, kName, kScreens})
+    for (const QString& known : {kFormatVersion, kName, kScreens, kAssets})
         preserved.remove(known);
     project->setPreservedJson(preserved);
     return project;
@@ -257,6 +336,28 @@ Result<void> save(const Project& project, const QString& folder)
     {
         for (const QJsonValue& entry : old->value(kScreens).toArray())
             previous.insert(entry.toString());
+        for (const QJsonValue& entry : old->value(kAssets).toArray())
+            previous.insert(entry.toObject().value(kFile).toString());
+    }
+
+    // Assets first: a file named by its content hash never changes, so an
+    // existing one is kept as it is.
+    for (const QString& id : usedAssets(project))
+    {
+        const auto asset = project.assets().find(id);
+        if (!asset)
+            continue;
+        const QString path = assetPath(*asset);
+        previous.remove(path);
+        if (QFileInfo(dir.filePath(path)).size() == asset->data.size())
+            continue;
+        if (!dir.mkpath(QLatin1StringView(kAssetsFolder)))
+            return makeError(ErrorCode::Io,
+                             QStringLiteral("Cannot create the folder %1").arg(path));
+        QSaveFile file(dir.filePath(path));
+        if (!file.open(QIODevice::WriteOnly) || file.write(asset->data) < 0 || !file.commit())
+            return makeError(ErrorCode::Io,
+                             QStringLiteral("Cannot write %1: %2").arg(path, file.errorString()));
     }
 
     const std::vector<File> files = toFiles(project);
@@ -270,7 +371,7 @@ Result<void> save(const Project& project, const QString& folder)
     }
     for (const QString& stale : std::as_const(previous))
     {
-        if (stale.startsWith(QLatin1StringView(kScreensFolder) + u'/') && !stale.contains(u".."))
+        if (isInside(stale, kScreensFolder) || isInside(stale, kAssetsFolder))
             QFile::remove(dir.filePath(stale));
     }
     return {};
@@ -278,7 +379,17 @@ Result<void> save(const Project& project, const QString& folder)
 
 Result<std::unique_ptr<Project>> load(const QString& folder)
 {
-    return fromFiles([&folder](const QString& path) { return readFile(folder, path); });
+    return fromFiles(
+        [&folder](const QString& path) { return readFile(folder, path); },
+        [&folder](const QString& path) -> Result<QByteArray>
+        {
+            QFile file(QDir(folder).filePath(path));
+            if (!file.open(QIODevice::ReadOnly))
+                return makeError(
+                    ErrorCode::Io,
+                    QStringLiteral("Cannot read %1: %2").arg(path, file.errorString()));
+            return file.readAll();
+        });
 }
 
 } // namespace hmi::ProjectSerializer

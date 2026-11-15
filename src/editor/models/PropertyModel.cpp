@@ -1,5 +1,6 @@
 #include "editor/models/PropertyModel.h"
 
+#include "core/graphics/AssetStore.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/property/Prop.h"
@@ -9,11 +10,16 @@
 #include "editor/commands/SetPropertyCommand.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
+#include "render/GraphicFactory.h"
+#include "render/SvgInspector.h"
 
 #include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
 #include <QFontDatabase>
 #include <QLocale>
 #include <QUndoStack>
+#include <QUrl>
 
 #include <algorithm>
 #include <cmath>
@@ -459,7 +465,8 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     case CategoryRole:
         return QCoreApplication::translate("hmi::Property", d.category);
     case EditorRole:
-        return editorFor(valueKind(d.defaultValue));
+        // A graphic is a string id, but picked from files, not typed.
+        return d.id == Prop::Asset ? QStringLiteral("asset") : editorFor(valueKind(d.defaultValue));
     case ValueRole:
         return objectValue(row, nullptr);
     case MixedRole:
@@ -487,6 +494,12 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
         const QVariant value = objectValue(row, &mixed);
         if (mixed)
             return QString();
+        if (d.id == Prop::Asset)
+        {
+            const QString id = value.toString();
+            const auto asset = m_context.project().assets().find(id);
+            return id.isEmpty() ? tr("None") : asset ? asset->fileName : tr("Missing (%1)").arg(id);
+        }
         if (valueKind(d.defaultValue) == ValueKind::Enum)
         {
             const int option = value.toInt();
@@ -691,6 +704,43 @@ bool PropertyModel::setFontItalic(int row, bool italic)
     QFont font = currentValue(row).value<QFont>();
     font.setItalic(italic);
     return setValue(row, font);
+}
+
+bool PropertyModel::importAsset(int row, const QUrl& file, ImportMode mode)
+{
+    if (row < 0 || std::size_t(row) >= m_rows.size() || !m_rows[std::size_t(row)].descriptor)
+        return false;
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    QFile input(path);
+    if (!input.open(QIODevice::ReadOnly))
+        return reject(tr("Cannot read %1: %2").arg(path, input.errorString()));
+    QByteArray data = input.readAll();
+    QString name = QFileInfo(path).fileName();
+
+    if (GraphicFactory::looksLikeSvg(data))
+    {
+        const QStringList unsupported = SvgInspector::unsupportedElements(data);
+        if (!unsupported.isEmpty() && mode == AskAboutSvg)
+        {
+            Q_EMIT svgImportQuestion(row, file, unsupported.join(QStringLiteral(", ")));
+            return false;
+        }
+        if (mode == Rasterize)
+        {
+            data = SvgInspector::rasterize(data);
+            if (data.isEmpty())
+                return reject(tr("%1 could not be rasterized.").arg(name));
+            name = QFileInfo(name).completeBaseName() + QStringLiteral(".png");
+        }
+    }
+
+    // Check that it can be shown before it becomes part of the project.
+    const Asset probe{
+        .id = {}, .fileName = name, .suffix = QFileInfo(name).suffix().toLower(), .data = data};
+    if (!GraphicFactory::create(probe))
+        return reject(tr("%1 is not an image or SVG file that can be shown.").arg(name));
+    const QString id = m_context.project().assets().add(std::move(data), name);
+    return setValue(row, id);
 }
 
 void PropertyModel::beginEdit()

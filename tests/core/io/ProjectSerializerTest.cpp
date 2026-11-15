@@ -10,6 +10,7 @@
 #include "core/objects/Rectangle.h"
 #include "core/objects/TextBox.h"
 #include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -323,6 +324,53 @@ private Q_SLOTS:
         // The new screens report through this project's notifier.
         QVERIFY(project.screens()[1]->objects()[0]->setProperty(Prop::X, 5.0));
         QCOMPARE(changed.count(), 1);
+    }
+
+    void assetsAreSavedOnlyWhileUsed()
+    {
+        auto project = sampleProject();
+        const QString used = project->assets().add("picture bytes", u"logo.png"_s);
+        const QString unused = project->assets().add("other bytes", u"old.svg"_s);
+        Screen& screen = *project->screens()[1];
+        auto view = ObjectRegistry::instance().create(ObjectTypeId{"graphicView"});
+        QVERIFY(view->setProperty(Prop::Asset, used));
+        const ObjectId viewId = view->id();
+        QVERIFY(screen.insertObject(std::move(view)));
+        QCOMPARE(ProjectSerializer::usedAssets(*project), std::vector{used});
+
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        const QString usedFile = u"assets/"_s + used + u".png"_s;
+        QVERIFY(QFile::exists(dir.filePath(usedFile)));
+        QVERIFY(!QFile::exists(dir.filePath(u"assets/"_s + unused + u".svg"_s)));
+
+        auto loaded = ProjectSerializer::load(dir.path());
+        QVERIFY(loaded);
+        QCOMPARE((*loaded)->assets().size(), std::size_t(1));
+        QCOMPARE((*loaded)->assets().find(used)->fileName, u"logo.png"_s);
+        QCOMPARE((*loaded)->assets().find(used)->data, QByteArray("picture bytes"));
+
+        // Once nothing uses it, the next save removes the file.
+        (void)(*loaded)->screens()[1]->takeObject(viewId);
+        QVERIFY(ProjectSerializer::save(**loaded, dir.path()));
+        QVERIFY(!QFile::exists(dir.filePath(usedFile)));
+    }
+
+    void changedAssetFilesAreReported()
+    {
+        auto project = sampleProject();
+        const QString id = project->assets().add("picture bytes", u"logo.png"_s);
+        auto view = ObjectRegistry::instance().create(ObjectTypeId{"graphicView"});
+        QVERIFY(view->setProperty(Prop::Asset, id));
+        QVERIFY(project->screens()[0]->insertObject(std::move(view)));
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        QFile file(dir.filePath(u"assets/"_s + id + u".png"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("edited outside");
+        file.close();
+        const auto loaded = ProjectSerializer::load(dir.path());
+        QCOMPARE(loaded.error().code, ErrorCode::BadFormat);
     }
 };
 

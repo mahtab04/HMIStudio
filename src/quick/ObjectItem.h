@@ -6,6 +6,7 @@ namespace hmi
 {
 
 class HmiObject;
+class IGraphicProvider;
 
 // Hosts one HmiObject on the canvas. Holds only a non-owning pointer: the
 // geometry, rotation and look come from the object every time
@@ -38,6 +39,9 @@ public:
     // pixel ratio). Applied when the zoom settles, so the result is sharp.
     void setRenderScale(double scale);
 
+    // Where imported graphics come from; must outlive the item.
+    void setGraphics(const IGraphicProvider* graphics);
+
     void paint(QPainter* painter) override;
 
 private:
@@ -45,6 +49,7 @@ private:
 
     const HmiObject* m_object = nullptr;
     double m_renderScale = 1.0;
+    const IGraphicProvider* m_graphics = nullptr;
 };
 
 } // namespace hmi
