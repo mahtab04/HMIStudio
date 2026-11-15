@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,6 +11,7 @@ ColumnLayout {
 
     required property EditorController editor
     required property Theme theme
+    required property ScreenListModel screens
 
     spacing: 0
 
@@ -23,14 +26,54 @@ ColumnLayout {
             anchors.rightMargin: panel.theme.padding
             spacing: panel.theme.spacing
 
-            TabBar {
-                TabButton {
-                    text: panel.editor.screenTitle
-                    implicitHeight: panel.theme.controlHeight
-                }
-            }
-            Item {
+            // Screen tabs. Tap shows a screen; right-click or long-press
+            // opens its menu (rename, duplicate, delete).
+            ScrollView {
                 Layout.fillWidth: true
+                Layout.preferredHeight: panel.theme.controlHeight
+                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                contentHeight: availableHeight
+
+                Row {
+                    spacing: 2
+
+                    Repeater {
+                        model: panel.screens
+
+                        ToolButton {
+                            id: tab
+
+                            required property int index
+                            required property string name
+                            required property bool current
+
+                            text: tab.name
+                            checked: tab.current
+                            implicitHeight: panel.theme.controlHeight
+                            focusPolicy: Qt.NoFocus
+                            onClicked: panel.editor.setCurrentScreen(tab.index)
+                            onPressAndHold: {
+                                screenMenu.screenIndex = tab.index
+                                screenMenu.popup(tab)
+                            }
+
+                            TapHandler {
+                                acceptedButtons: Qt.RightButton
+                                onTapped: {
+                                    screenMenu.screenIndex = tab.index
+                                    screenMenu.popup(tab)
+                                }
+                            }
+                        }
+                    }
+
+                    IconButton {
+                        theme: panel.theme
+                        label: qsTr("Add screen")
+                        icon.source: "qrc:/icons/plus.svg"
+                        onClicked: panel.editor.addScreen()
+                    }
+                }
             }
             Label {
                 text: panel.editor.gridText
@@ -140,6 +183,48 @@ ColumnLayout {
                 y: above >= 0 ? above
                               : Math.min(parent.height - height,
                                          bounds.y + bounds.height + panel.theme.touchTarget)
+            }
+
+            Menu {
+                id: screenMenu
+
+                // The screen the menu was opened for.
+                property int screenIndex: 0
+
+                MenuItem {
+                    text: qsTr("Rename…")
+                    onTriggered: renameDialog.open()
+                }
+                MenuItem {
+                    text: qsTr("Duplicate")
+                    onTriggered: panel.editor.duplicateScreen(screenMenu.screenIndex)
+                }
+                MenuItem {
+                    text: qsTr("Delete")
+                    enabled: panel.editor.canRemoveScreen
+                    onTriggered: panel.editor.removeScreen(screenMenu.screenIndex)
+                }
+            }
+
+            Dialog {
+                id: renameDialog
+
+                title: qsTr("Rename screen")
+                width: panel.theme.sidePanelWidth * 1.2
+                modal: true
+                anchors.centerIn: Overlay.overlay
+                standardButtons: Dialog.Ok | Dialog.Cancel
+                onAboutToShow: nameField.text = panel.screens.nameAt(screenMenu.screenIndex)
+                onAccepted: panel.editor.renameScreen(screenMenu.screenIndex, nameField.text)
+
+                TextField {
+                    id: nameField
+
+                    width: renameDialog.availableWidth
+                    implicitHeight: panel.theme.controlHeight
+                    Accessible.name: qsTr("Screen name")
+                    onAccepted: renameDialog.accept()
+                }
             }
 
             CanvasContextMenu {

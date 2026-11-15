@@ -40,6 +40,7 @@ class Theme : public QObject
     Q_PROPERTY(QColor rulerBackground MEMBER m_rulerBackground CONSTANT)
     Q_PROPERTY(QColor rulerTick MEMBER m_rulerTick CONSTANT)
     Q_PROPERTY(QColor good MEMBER m_good CONSTANT)
+    Q_PROPERTY(QColor warning MEMBER m_warning CONSTANT)
 
     Q_PROPERTY(int touchTarget READ touchTarget CONSTANT)
     Q_PROPERTY(int controlHeight READ controlHeight NOTIFY densityChanged)
@@ -50,6 +51,7 @@ class Theme : public QObject
     Q_PROPERTY(int radius READ radius CONSTANT)
     Q_PROPERTY(int rulerSize READ rulerSize CONSTANT)
     Q_PROPERTY(int sidePanelWidth READ sidePanelWidth NOTIFY densityChanged)
+    Q_PROPERTY(int propertyLabelWidth READ propertyLabelWidth NOTIFY densityChanged)
     Q_PROPERTY(int bottomPanelHeight READ bottomPanelHeight CONSTANT)
 
     Q_PROPERTY(QFont font READ font NOTIFY densityChanged)
@@ -86,6 +88,7 @@ public:
     [[nodiscard]] static int radius() noexcept { return 6; }
     [[nodiscard]] static int rulerSize() noexcept { return 20; }
     [[nodiscard]] int sidePanelWidth() const noexcept;
+    [[nodiscard]] int propertyLabelWidth() const noexcept;
     [[nodiscard]] static int bottomPanelHeight() noexcept { return 220; }
 
     [[nodiscard]] QFont font() const;
@@ -120,6 +123,7 @@ private:
     QColor m_rulerBackground{0x16, 0x19, 0x1D};
     QColor m_rulerTick{0x4A, 0x50, 0x58};
     QColor m_good{0x22, 0xC5, 0x5E};
+    QColor m_warning{0xF5, 0x9E, 0x0B};
 };
 
 } // namespace hmi

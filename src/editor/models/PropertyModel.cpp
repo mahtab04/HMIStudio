@@ -71,6 +71,63 @@ std::optional<double> toNumber(const QVariant& value)
     return ok && std::isfinite(number) ? std::optional(number) : std::nullopt;
 }
 
+// Short, locale-aware text for a value, as the panel shows it.
+QString displayText(const QVariant& value)
+{
+    const QLocale locale;
+    switch (value.typeId())
+    {
+    case QMetaType::Double:
+    {
+        // Up to two decimals, without trailing zeros.
+        QString text = locale.toString(value.toDouble(), 'f', 2);
+        const QString point = locale.decimalPoint();
+        if (text.contains(point))
+        {
+            while (text.endsWith(u'0'))
+                text.chop(1);
+            if (text.endsWith(point))
+                text.chop(point.size());
+        }
+        return text;
+    }
+    case QMetaType::Int:
+        return locale.toString(value.toInt());
+    case QMetaType::QColor:
+    {
+        const QColor color = value.value<QColor>();
+        return color.name(color.alpha() == 255 ? QColor::HexRgb : QColor::HexArgb).toUpper();
+    }
+    case QMetaType::QFont:
+    {
+        const QFont font = value.value<QFont>();
+        const int size = font.pixelSize() > 0 ? font.pixelSize() : int(font.pointSizeF());
+        QString text = QCoreApplication::translate("hmi::PropertyModel", "%1, %2 px")
+                           .arg(font.family())
+                           .arg(size);
+        if (font.bold())
+            text += QCoreApplication::translate("hmi::PropertyModel", ", bold");
+        if (font.italic())
+            text += QCoreApplication::translate("hmi::PropertyModel", ", italic");
+        return text;
+    }
+    case QMetaType::Bool:
+        return value.toBool() ? QCoreApplication::translate("hmi::PropertyModel", "Yes")
+                              : QCoreApplication::translate("hmi::PropertyModel", "No");
+    default:
+        return value.toString();
+    }
+}
+
+QVariantList components(const QVariant& value)
+{
+    if (value.typeId() == QMetaType::QPointF)
+        return {value.toPointF().x(), value.toPointF().y()};
+    if (value.typeId() == QMetaType::QSizeF)
+        return {value.toSizeF().width(), value.toSizeF().height()};
+    return {};
+}
+
 QVariant toVariant(const PropertyDescriptor& descriptor, const PropertyValue& value)
 {
     switch (valueKind(value))
@@ -168,7 +225,7 @@ PropertyModel::PropertyModel(ToolContext& context, QObject* parent)
             [this](ScreenId screen)
             {
                 if (screen == m_context.screenId() && !m_rows.empty() && !m_rows.front().descriptor)
-                    Q_EMIT dataChanged(index(0), index(rowCount() - 1), {ValueRole});
+                    Q_EMIT dataChanged(index(0), index(rowCount() - 1), {ValueRole, TextRole});
                 Q_EMIT titleChanged();
             });
     connect(&notifier, &DocumentNotifier::projectReset, this, &PropertyModel::refresh);
@@ -341,6 +398,10 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
             return isSize ? QVariant(kMaxScreenSide) : QVariant();
         case OptionsRole:
             return QStringList();
+        case TextRole:
+            return displayText(screenValue(row.field));
+        case ComponentsRole:
+            return QVariantList();
         default:
             return {};
         }
@@ -378,6 +439,24 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
             options << QCoreApplication::translate("hmi::Property", option.displayName);
         return options;
     }
+    case TextRole:
+    {
+        bool mixed = false;
+        const QVariant value = objectValue(row, &mixed);
+        if (mixed)
+            return QString();
+        if (valueKind(d.defaultValue) == ValueKind::Enum)
+        {
+            const int option = value.toInt();
+            return option >= 0 ? QCoreApplication::translate(
+                                     "hmi::Property",
+                                     d.constraint.enumOptions[std::size_t(option)].displayName)
+                               : QString();
+        }
+        return displayText(value);
+    }
+    case ComponentsRole:
+        return components(objectValue(row, nullptr));
     default:
         return {};
     }
@@ -389,22 +468,33 @@ QHash<int, QByteArray> PropertyModel::roleNames() const
         {KeyRole, "key"},           {NameRole, "name"},       {CategoryRole, "category"},
         {EditorRole, "editor"},     {ValueRole, "value"},     {MixedRole, "mixed"},
         {ReadOnlyRole, "readOnly"}, {MinimumRole, "minimum"}, {MaximumRole, "maximum"},
-        {OptionsRole, "options"},
+        {OptionsRole, "options"},   {TextRole, "text"},       {ComponentsRole, "components"},
     };
 }
 
 bool PropertyModel::reject(const QString& message)
 {
     Q_EMIT editRejected(message);
-    // The editor may show the rejected text; put the model's value back.
-    if (!m_rows.empty())
-        Q_EMIT dataChanged(index(0), index(rowCount() - 1), {ValueRole, MixedRole});
+    // The editor still shows the rejected text, and the model's value did not
+    // change, so nothing would replace it. Rebuild the rows once the editor's
+    // handler has returned (it is running inside a delegate).
+    QMetaObject::invokeMethod(this, &PropertyModel::refresh, Qt::QueuedConnection);
     return false;
+}
+
+bool PropertyModel::isBlank(const QVariant& value)
+{
+    return value.typeId() == QMetaType::QString && value.toString().trimmed().isEmpty();
 }
 
 bool PropertyModel::applyObjectValue(const Row& row, const QVariant& value)
 {
     const PropertyDescriptor& d = *row.descriptor;
+    // An emptied number field (or one left empty for a mixed value) changes
+    // nothing.
+    const ValueKind kind = valueKind(d.defaultValue);
+    if (isBlank(value) && (kind == ValueKind::Double || kind == ValueKind::Int))
+        return true;
     if (d.constraint.readOnly)
         return reject(tr("%1 cannot be changed.")
                           .arg(QCoreApplication::translate("hmi::Property", d.displayName)));
@@ -452,6 +542,8 @@ bool PropertyModel::applyScreenValue(ScreenField field, const QVariant& value)
     case ScreenField::Width:
     case ScreenField::Height:
     {
+        if (isBlank(value))
+            return true;
         const auto number = toNumber(value);
         if (!number || *number < 1.0 || *number > kMaxScreenSide)
             return reject(tr("Screen sizes go from 1 to %1.").arg(kMaxScreenSide));
@@ -487,10 +579,14 @@ bool PropertyModel::setValue(int row, const QVariant& value)
     return r.descriptor ? applyObjectValue(r, value) : applyScreenValue(r.field, value);
 }
 
-bool PropertyModel::setComponent(int row, int component, double value)
+bool PropertyModel::setComponent(int row, int component, const QVariant& text)
 {
-    if (row < 0 || std::size_t(row) >= m_rows.size() || !std::isfinite(value))
+    if (row < 0 || std::size_t(row) >= m_rows.size() || isBlank(text))
         return false;
+    const auto number = toNumber(text);
+    if (!number)
+        return reject(tr("“%1” is not a number.").arg(text.toString()));
+    const double value = *number;
     const QVariant current = currentValue(row);
     if (current.typeId() == QMetaType::QPointF)
     {
@@ -572,7 +668,8 @@ void PropertyModel::onPropertyChanged(ObjectId object, PropertyId property)
     for (std::size_t i = 0; i < m_rows.size(); ++i)
     {
         if (m_rows[i].descriptor && m_rows[i].descriptor->id == property)
-            Q_EMIT dataChanged(index(int(i)), index(int(i)), {ValueRole, MixedRole});
+            Q_EMIT dataChanged(index(int(i)), index(int(i)),
+                               {ValueRole, MixedRole, TextRole, ComponentsRole});
     }
     if (property == Prop::Name)
         Q_EMIT titleChanged();

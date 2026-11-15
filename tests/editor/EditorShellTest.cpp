@@ -3,9 +3,14 @@
 
 #include "core/model/Project.h"
 #include "editor/app/AppContext.h"
+#include "editor/app/AppSettings.h"
+#include "editor/app/DocumentController.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
 #include "editor/app/Theme.h"
+#include "editor/models/LayerModel.h"
+#include "editor/models/PropertyModel.h"
+#include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
@@ -16,6 +21,7 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QRegularExpression>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QtQml/qqmlextensionplugin.h>
 
@@ -36,7 +42,12 @@ private Q_SLOTS:
         // Any warning that mentions a QML file is a failure.
         QTest::failOnWarning(QRegularExpression(QStringLiteral("\\.qml")));
 
-        AppContext context(makeSampleProject());
+        // Temporary settings and autosave folders: the test must not read or
+        // change the user's.
+        QTemporaryDir dir;
+        AppContext context(makeSampleProject(),
+                           {.settingsFile = dir.filePath(QStringLiteral("settings.ini")),
+                            .autosaveFolder = dir.filePath(QStringLiteral("autosave"))});
         QGuiApplication::setPalette(context.theme().palette());
         context.theme().setDensity(Theme::Density::Compact);
 
@@ -46,6 +57,11 @@ private Q_SLOTS:
             {QStringLiteral("theme"), QVariant::fromValue(&context.theme())},
             {QStringLiteral("toolbox"), QVariant::fromValue(&context.toolbox())},
             {QStringLiteral("toolboxDrag"), QVariant::fromValue(&context.toolboxDrag())},
+            {QStringLiteral("document"), QVariant::fromValue(&context.document())},
+            {QStringLiteral("settings"), QVariant::fromValue(&context.settings())},
+            {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
+            {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
+            {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
         });
         engine.loadFromModule("HmiStudio.Editor", "Main");
         QCOMPARE(engine.rootObjects().size(), 1);
@@ -90,6 +106,12 @@ private Q_SLOTS:
         QVERIFY(toolbar->mapToItem(canvas, QPointF(0, toolbar->height())).y() <
                 canvas->selectionBounds().top());
 
+        // The properties panel lists the selected object's properties, and
+        // there is one tab per screen.
+        QTRY_VERIFY(context.properties().title().startsWith(u"Rectangle"));
+        QVERIFY(context.properties().rowCount() > 8);
+        QCOMPARE(context.screens().rowCount(), int(context.project().screenCount()));
+
         // Right-click (or the toolbar's "more" button) opens the menu.
         auto* menu = window->findChild<QObject*>(QStringLiteral("contextMenu"));
         QVERIFY(menu);
@@ -98,6 +120,8 @@ private Q_SLOTS:
 
         if (const QString path = qEnvironmentVariable("HMI_SCREENSHOT"); !path.isEmpty())
         {
+            QMetaObject::invokeMethod(menu, "close");
+            context.theme().setDensity(Theme::Density::Compact);
             QTest::qWait(300);
             QVERIFY(window->grabWindow().save(path));
         }

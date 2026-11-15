@@ -69,6 +69,11 @@ int Theme::sidePanelWidth() const noexcept
     return comfortable() ? 340 : 290;
 }
 
+int Theme::propertyLabelWidth() const noexcept
+{
+    return comfortable() ? 110 : 96;
+}
+
 QFont Theme::fontOfSize(int pixelSize, bool bold) const
 {
     QFont f;

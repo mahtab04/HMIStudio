@@ -46,6 +46,8 @@ public:
         MinimumRole,
         MaximumRole,
         OptionsRole,
+        TextRole,       // the value as text for display and text fields
+        ComponentsRole, // [x, y] of a point or [width, height] of a size
     };
 
     explicit PropertyModel(ToolContext& context, QObject* parent = nullptr);
@@ -61,7 +63,7 @@ public:
     // Returns false, and emits editRejected, when the value is not allowed.
     Q_INVOKABLE bool setValue(int row, const QVariant& value);
     // One coordinate of a point (x = 0, y = 1) or size (width = 0, height = 1).
-    Q_INVOKABLE bool setComponent(int row, int component, double value);
+    Q_INVOKABLE bool setComponent(int row, int component, const QVariant& value);
     // Adds `steps` (negative to subtract) to a number.
     Q_INVOKABLE bool stepValue(int row, int steps);
     Q_INVOKABLE bool setFontFamily(int row, const QString& family);
@@ -102,6 +104,7 @@ private:
     bool applyScreenValue(ScreenField field, const QVariant& value);
     void onPropertyChanged(ObjectId object, PropertyId property);
     bool reject(const QString& message);
+    [[nodiscard]] static bool isBlank(const QVariant& value);
 
     ToolContext& m_context;
     std::vector<Row> m_rows;

@@ -41,6 +41,10 @@ class DocumentController : public QObject
     Q_PROPERTY(bool modified READ modified NOTIFY modifiedChanged)
     Q_PROPERTY(QStringList recentProjects READ recentProjects NOTIFY recentProjectsChanged)
     Q_PROPERTY(bool recoveryAvailable READ recoveryAvailable NOTIFY recoveryAvailableChanged)
+    // The latest status note ("Saved ..."), cleared after a few seconds.
+    Q_PROPERTY(QString statusText READ statusText NOTIFY statusTextChanged)
+    // The latest error, for the error dialog.
+    Q_PROPERTY(QString errorText READ errorText NOTIFY errorOccurred)
 
 public:
     DocumentController(Project& project, QUndoStack& undoStack, AppSettings& settings,
@@ -56,6 +60,10 @@ public:
     [[nodiscard]] bool modified() const;
     [[nodiscard]] QStringList recentProjects() const;
     [[nodiscard]] bool recoveryAvailable() const { return m_recoveryAvailable; }
+    [[nodiscard]] QString statusText() const { return m_statusText; }
+    [[nodiscard]] QString errorText() const { return m_errorText; }
+
+    static constexpr int kStatusMs = 4000;
 
     Q_INVOKABLE void newProject();
     Q_INVOKABLE void open();
@@ -63,6 +71,8 @@ public:
     // Saves to the current folder; without one, asks for a name first.
     // Returns true when the project was written.
     Q_INVOKABLE bool save();
+    // "Save as": asks QML for a location (saveAsDialogRequested).
+    Q_INVOKABLE void chooseSaveLocation();
     // Called from the dialogs. `url` may be the project folder or a file in
     // it (project.json); saveAs adds the .hmiproj suffix when it is missing.
     Q_INVOKABLE bool openFolder(const QUrl& url);
@@ -99,6 +109,7 @@ Q_SIGNALS:
     void errorOccurred(const QString& message);
     // A short note for the status bar ("Saved", "Opened ...").
     void statusMessage(const QString& message);
+    void statusTextChanged();
 
 private:
     enum class Pending
@@ -116,6 +127,7 @@ private:
     bool writeTo(const QString& folder);
     void setFilePath(const QString& folder);
     void removeAutosave();
+    void reportError(const QString& message);
 
     Project& m_project;
     QUndoStack& m_undoStack;
@@ -123,6 +135,9 @@ private:
     QString m_autosaveFolder;
     QString m_filePath;
     QTimer m_autosaveTimer;
+    QTimer m_statusTimer;
+    QString m_statusText;
+    QString m_errorText;
     int m_autosavedIndex = -1;
     bool m_recoveryAvailable = false;
     bool m_closeApproved = false;

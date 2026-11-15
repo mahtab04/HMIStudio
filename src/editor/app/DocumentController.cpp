@@ -59,6 +59,22 @@ DocumentController::DocumentController(Project& project, QUndoStack& undoStack,
     connect(&m_settings, &AppSettings::recentProjectsChanged, this,
             &DocumentController::recentProjectsChanged);
 
+    m_statusTimer.setSingleShot(true);
+    m_statusTimer.setInterval(kStatusMs);
+    connect(&m_statusTimer, &QTimer::timeout, this,
+            [this]
+            {
+                m_statusText.clear();
+                Q_EMIT statusTextChanged();
+            });
+    connect(this, &DocumentController::statusMessage, this,
+            [this](const QString& message)
+            {
+                m_statusText = message;
+                m_statusTimer.start();
+                Q_EMIT statusTextChanged();
+            });
+
     m_recoveryAvailable =
         !m_autosaveFolder.isEmpty() &&
         QFileInfo::exists(
@@ -166,7 +182,7 @@ bool DocumentController::load(const QString& folder)
     auto loaded = ProjectSerializer::load(folder);
     if (!loaded)
     {
-        Q_EMIT errorOccurred(tr("Could not open the project: %1").arg(loaded.error().message));
+        reportError(tr("Could not open the project: %1").arg(loaded.error().message));
         if (loaded.error().code == ErrorCode::Io)
             m_settings.removeRecentProject(folder);
         return false;
@@ -189,6 +205,11 @@ bool DocumentController::save()
         return false;
     }
     return writeTo(m_filePath);
+}
+
+void DocumentController::chooseSaveLocation()
+{
+    Q_EMIT saveAsDialogRequested();
 }
 
 bool DocumentController::saveAs(const QUrl& url)
@@ -220,7 +241,7 @@ bool DocumentController::writeTo(const QString& folder)
 {
     if (auto saved = ProjectSerializer::save(m_project, folder); !saved)
     {
-        Q_EMIT errorOccurred(tr("Could not save the project: %1").arg(saved.error().message));
+        reportError(tr("Could not save the project: %1").arg(saved.error().message));
         return false;
     }
     m_undoStack.setClean();
@@ -273,7 +294,9 @@ bool DocumentController::requestClose()
 
 bool DocumentController::autosave()
 {
-    if (m_autosaveFolder.isEmpty() || !modified() || m_undoStack.index() == m_autosavedIndex)
+    // A copy still waiting to be recovered must not be overwritten.
+    if (m_autosaveFolder.isEmpty() || m_recoveryAvailable || !modified() ||
+        m_undoStack.index() == m_autosavedIndex)
         return false;
     if (auto saved = ProjectSerializer::save(m_project, m_autosaveFolder); !saved)
     {
@@ -310,7 +333,7 @@ void DocumentController::recover()
     Q_EMIT recoveryAvailableChanged();
     if (!loaded)
     {
-        Q_EMIT errorOccurred(tr("Could not recover the project: %1").arg(loaded.error().message));
+        reportError(tr("Could not recover the project: %1").arg(loaded.error().message));
         return;
     }
     m_project.replaceContents(std::move(**loaded));
@@ -329,6 +352,12 @@ void DocumentController::discardRecovery()
     m_recoveryAvailable = false;
     Q_EMIT recoveryAvailableChanged();
     removeAutosave();
+}
+
+void DocumentController::reportError(const QString& message)
+{
+    m_errorText = message;
+    Q_EMIT errorOccurred(message);
 }
 
 void DocumentController::removeAutosave()

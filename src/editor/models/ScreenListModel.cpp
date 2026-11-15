@@ -56,6 +56,11 @@ QHash<int, QByteArray> ScreenListModel::roleNames() const
     return {{NameRole, "name"}, {CurrentRole, "current"}};
 }
 
+QString ScreenListModel::nameAt(int row) const
+{
+    return data(index(row), NameRole).toString();
+}
+
 void ScreenListModel::currentChanged()
 {
     if (rowCount() > 0)
