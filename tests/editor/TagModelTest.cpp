@@ -324,7 +324,7 @@ private Q_SLOTS:
         QVERIFY(engine.isRunning());
         QCOMPARE(changed.count(), 1);
         QCOMPARE(simulation.screenTitle(), u"02 Filling"_s);
-        QCOMPARE(simulation.screenSize(), QSizeF(1280, 800));
+        QCOMPARE(simulation.screenSize(), Screen::kDefaultSize);
         QVERIFY(simulation.problems().isEmpty());
 
         // Typing a value writes it to the tag.

@@ -2,6 +2,7 @@
 
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
+#include "core/model/Screen.h"
 #include "core/model/ScreenBuilder.h"
 #include "core/objects/IoField.h"
 #include "core/objects/Pipe.h"
@@ -17,6 +18,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
+#include <cmath>
 #include <vector>
 
 namespace hmi
@@ -30,10 +32,23 @@ QString tr(const char* text)
     return QCoreApplication::translate("hmi::SampleProject", text);
 }
 
+// The layout is drawn on a 1280 x 800 grid and scaled evenly to the screen
+// (Screen::kDefaultSize), centred; bands as wide as the grid span the screen.
+constexpr double kGridWidth = 1280.0;
+constexpr double kScale = Screen::kDefaultSize.height() / 800.0;
+constexpr double kOffset = (Screen::kDefaultSize.width() - kGridWidth * kScale) / 2.0;
+
+QRectF at(double x, double y, double width, double height)
+{
+    if (width >= kGridWidth)
+        return {0.0, y * kScale, Screen::kDefaultSize.width(), height * kScale};
+    return {kOffset + x * kScale, y * kScale, width * kScale, height * kScale};
+}
+
 QFont fontOf(int pixelSize, bool bold = false)
 {
     QFont f;
-    f.setPixelSize(pixelSize);
+    f.setPixelSize(int(std::lround(pixelSize * kScale)));
     f.setBold(bold);
     return f;
 }
@@ -76,14 +91,15 @@ QJsonObject levelColours(double limit, const QString& normal, const QString& hig
 ObjectId valueCard(ScreenBuilder& b, double x, double y, const QString& label, const QString& unit,
                    int decimals)
 {
-    b.add(Rectangle::kTypeId, {x, y, 230, 116})
+    b.add(Rectangle::kTypeId, at(x, y, 230, 116))
         .with(Prop::FillColor, QColor(0xF4, 0xF5, 0xF7))
         .with(Prop::LineColor, QColor(0xC9, 0xCE, 0xD6))
         .with(Prop::CornerRadius, 6.0);
-    b.add(TextBox::kTypeId, {x + 20, y + 14, 190, 24})
+    b.add(TextBox::kTypeId, at(x + 20, y + 14, 190, 24))
         .with(Prop::Text, label)
+        .with(Prop::Font, fontOf(16))
         .with(Prop::TextColor, QColor(0x4A, 0x50, 0x58));
-    b.add(IoField::kTypeId, {x + 20, y + 46, 190, 50})
+    b.add(IoField::kTypeId, at(x + 20, y + 46, 190, 50))
         .with(Prop::Unit, unit)
         .with(Prop::Decimals, decimals)
         .with(Prop::Font, fontOf(28, true))
@@ -99,34 +115,34 @@ std::unique_ptr<Project> makeSampleProject()
     std::vector<Link> links;
 
     ScreenBuilder b(tr("02 Filling"));
-    b.size({1280, 800}).background(QColor(0xE6, 0xE8, 0xEB));
+    b.size(Screen::kDefaultSize).background(QColor(0xE6, 0xE8, 0xEB));
 
     // Header
-    b.add(Rectangle::kTypeId, {0, 0, 1280, 68})
+    b.add(Rectangle::kTypeId, at(0, 0, 1280, 68))
         .with(Prop::FillColor, QColor(0x2B, 0x2F, 0x36))
         .with(Prop::LineWidth, 0.0)
         .with(Prop::Name, tr("Header"));
-    b.add(TextBox::kTypeId, {28, 0, 600, 68})
+    b.add(TextBox::kTypeId, at(28, 0, 600, 68))
         .with(Prop::Text, tr("Filling Station · Line 3"))
         .with(Prop::Font, fontOf(22, true))
         .with(Prop::TextColor, QColor(Qt::white));
-    b.add(Rectangle::kTypeId, {80, 96, 240, 420})
+    b.add(Rectangle::kTypeId, at(80, 96, 240, 420))
         .with(Prop::FillColor, QColor(0xF4, 0xF5, 0xF7))
         .with(Prop::LineColor, QColor(0xC9, 0xCE, 0xD6))
         .with(Prop::CornerRadius, 6.0)
         .with(Prop::Name, tr("T-101 panel"));
 
     // Tank T-101: its level, and red when it is high.
-    b.add(TextBox::kTypeId, {80, 104, 240, 36})
+    b.add(TextBox::kTypeId, at(80, 104, 240, 36))
         .with(Prop::Text, tr("T-101"))
         .with(Prop::Font, fontOf(22, true))
         .with(Prop::HorizontalAlignment, EnumValue{TextBox::AlignHCenter});
-    b.add(Tank::kTypeId, {130, 146, 140, 280}).with(Prop::Name, tr("T-101"));
+    b.add(Tank::kTypeId, at(130, 146, 140, 280)).with(Prop::Name, tr("T-101"));
     const ObjectId tank = b.lastId();
     links.push_back({tank, Prop::Value, QStringLiteral("Level")});
     links.push_back({tank, Prop::FillColor, QStringLiteral("Level"), QStringLiteral("ranges"),
                      levelColours(85, QStringLiteral("#3B82F6"), QStringLiteral("#D64541"))});
-    b.add(IoField::kTypeId, {130, 440, 140, 48})
+    b.add(IoField::kTypeId, at(130, 440, 140, 48))
         .with(Prop::Unit, QStringLiteral("%"))
         .with(Prop::Decimals, 1)
         .with(Prop::Font, fontOf(24, true))
@@ -135,26 +151,28 @@ std::unique_ptr<Project> makeSampleProject()
 
     // Pipe from the tank through pump and valve to the filler; it flows
     // while the pump runs.
-    b.add(Pipe::kTypeId, {200, 516, 800, 64})
+    b.add(Pipe::kTypeId, at(200, 516, 800, 64))
         .with(Prop::Points, PointList{{0.0, 0.0}, {0.0, 1.0}, {1.0, 1.0}})
         .with(Prop::Name, tr("Feed line"));
     links.push_back({b.lastId(), Prop::Flowing, QStringLiteral("PumpRunning")});
-    b.add(Pump::kTypeId, {460, 540, 80, 80}).with(Prop::Name, tr("P-101"));
+    b.add(Pump::kTypeId, at(460, 540, 80, 80)).with(Prop::Name, tr("P-101"));
     links.push_back({b.lastId(), Prop::Running, QStringLiteral("PumpRunning")});
-    b.add(TextBox::kTypeId, {420, 626, 160, 28})
+    b.add(TextBox::kTypeId, at(420, 626, 160, 28))
         .with(Prop::Text, tr("P-101"))
+        .with(Prop::Font, fontOf(16))
         .with(Prop::HorizontalAlignment, EnumValue{TextBox::AlignHCenter});
-    b.add(Valve::kTypeId, {720, 548, 64, 64}).with(Prop::Name, tr("V-101"));
+    b.add(Valve::kTypeId, at(720, 548, 64, 64)).with(Prop::Name, tr("V-101"));
     links.push_back({b.lastId(), Prop::Open, QStringLiteral("PumpRunning")});
-    b.add(TextBox::kTypeId, {672, 626, 160, 28})
+    b.add(TextBox::kTypeId, at(672, 626, 160, 28))
         .with(Prop::Text, tr("V-101"))
+        .with(Prop::Font, fontOf(16))
         .with(Prop::HorizontalAlignment, EnumValue{TextBox::AlignHCenter});
-    b.add(Rectangle::kTypeId, {1000, 530, 230, 100})
+    b.add(Rectangle::kTypeId, at(1000, 530, 230, 100))
         .with(Prop::FillColor, QColor(0xF4, 0xF5, 0xF7))
         .with(Prop::LineWidth, 3.0)
         .with(Prop::CornerRadius, 6.0)
         .with(Prop::Name, tr("F-201"));
-    b.add(TextBox::kTypeId, {1020, 545, 200, 70})
+    b.add(TextBox::kTypeId, at(1020, 545, 200, 70))
         .with(Prop::Text, tr("F-201 Filler"))
         .with(Prop::Font, fontOf(20));
 
@@ -166,13 +184,13 @@ std::unique_ptr<Project> makeSampleProject()
                      QStringLiteral("Temperature")});
 
     // Banner: its colour and message follow the level.
-    b.add(Rectangle::kTypeId, {0, 720, 1280, 80})
+    b.add(Rectangle::kTypeId, at(0, 720, 1280, 80))
         .with(Prop::FillColor, QColor(0xF2, 0xA1, 0x3A))
         .with(Prop::LineWidth, 0.0)
         .with(Prop::Name, tr("Alarm banner"));
     links.push_back({b.lastId(), Prop::FillColor, QStringLiteral("Level"), QStringLiteral("ranges"),
                      levelColours(85, QStringLiteral("#3A9D5D"), QStringLiteral("#F2A13A"))});
-    b.add(TextBox::kTypeId, {28, 720, 900, 80})
+    b.add(TextBox::kTypeId, at(28, 720, 900, 80))
         .with(Prop::Text, tr("Warning · T-101 level approaching high limit"))
         .with(Prop::Font, fontOf(20, true))
         .with(Prop::Name, tr("Alarm text"));
