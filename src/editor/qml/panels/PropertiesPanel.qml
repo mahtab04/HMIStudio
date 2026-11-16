@@ -14,6 +14,7 @@ Pane {
     required property EditorController editor
     required property Theme theme
     required property PropertyModel properties
+    required property TagModel tags
 
     padding: panel.theme.padding
 
@@ -170,13 +171,25 @@ Pane {
                 }
 
                 function onEditRejected(message: string) {
-                    rejection.text = message
+                    if (!bindingPopup.visible)
+                        rejection.text = message
+                }
+                function onBindingRequested(row: int, name: string) {
+                    bindingPopup.edit(row, name)
                 }
                 function onTitleChanged() {
                     rejection.text = ""
                 }
             }
         }
+    }
+
+    BindingPopup {
+        id: bindingPopup
+
+        theme: panel.theme
+        properties: panel.properties
+        tags: panel.tags
     }
 
     // An imported SVG has parts the renderer will not draw: import it

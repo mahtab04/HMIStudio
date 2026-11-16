@@ -12,6 +12,7 @@
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "quick/CanvasItem.h"
@@ -62,6 +63,7 @@ private Q_SLOTS:
             {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
+            {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
         });
         engine.loadFromModule("HmiStudio.Editor", "Main");
         QCOMPARE(engine.rootObjects().size(), 1);
@@ -117,6 +119,23 @@ private Q_SLOTS:
         QVERIFY(menu);
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
+
+        // Simulating shows a play copy of the screen; stopping shows the
+        // document again.
+        QMetaObject::invokeMethod(menu, "close");
+        context.editor().startSimulation();
+        QVERIFY(context.editor().simulating());
+        const Screen* play = canvas->screenItem()->screen();
+        QVERIFY(play && play != &screen);
+        QCOMPARE(canvas->screenItem()->objectItemCount(), int(screen.objectCount()));
+        QVERIFY(context.selection().ids().empty());
+        if (const QString path = qEnvironmentVariable("HMI_SIMULATE_SCREENSHOT"); !path.isEmpty())
+        {
+            QTest::qWait(1500);
+            QVERIFY(window->grabWindow().save(path));
+        }
+        context.editor().stopSimulation();
+        QCOMPARE(canvas->screenItem()->screen(), &screen);
 
         if (const QString path = qEnvironmentVariable("HMI_SCREENSHOT"); !path.isEmpty())
         {

@@ -1,5 +1,6 @@
 #include "editor/app/AppContext.h"
 
+#include "comm/TagEngine.h"
 #include "core/model/Project.h"
 #include "editor/app/AppSettings.h"
 #include "editor/app/DocumentController.h"
@@ -10,6 +11,7 @@
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "editor/tools/ToolContext.h"
@@ -26,11 +28,13 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     , m_graphics(std::make_unique<GraphicLibrary>(m_project->assets()))
     , m_theme(std::make_unique<Theme>())
     , m_selection(std::make_unique<SelectionModel>())
+    , m_tagEngine(std::make_unique<TagEngine>())
     , m_toolContext(
           std::make_unique<ToolContext>(*m_project, m_undoStack, *m_selection, m_inputSettings))
     , m_editActions(std::make_unique<EditActions>(*m_toolContext))
     , m_toolboxDrag(std::make_unique<ToolboxDragController>(*m_toolContext))
-    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag))
+    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag,
+                                                  *m_tagEngine))
     , m_toolbox(std::make_unique<ToolboxModel>())
     , m_settings(std::make_unique<AppSettings>(paths.settingsFile))
 {
@@ -48,6 +52,7 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     m_properties = std::make_unique<PropertyModel>(*m_toolContext);
     m_layers = std::make_unique<LayerModel>(*m_toolContext);
     m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
+    m_tags = std::make_unique<TagModel>(*m_toolContext, *m_tagEngine);
 
     // Models follow the screen the editor shows.
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_properties.get(),
@@ -73,6 +78,7 @@ AppContext::~AppContext()
 {
     m_undoStack.clear();
     // Models listen to the project; they go before it.
+    m_tags.reset();
     m_screens.reset();
     m_layers.reset();
     m_properties.reset();

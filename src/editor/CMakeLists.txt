@@ -43,6 +43,8 @@ qt_add_qml_module(hmi_editor_lib
         commands/ScreenCommands.h
         commands/SetPropertyCommand.cpp
         commands/SetPropertyCommand.h
+        commands/TagCommands.cpp
+        commands/TagCommands.h
         commands/UngroupCommand.cpp
         commands/UngroupCommand.h
         models/LayerModel.cpp
@@ -53,6 +55,8 @@ qt_add_qml_module(hmi_editor_lib
         models/ScreenListModel.h
         models/SelectionModel.cpp
         models/SelectionModel.h
+        models/TagModel.cpp
+        models/TagModel.h
         models/ToolboxDragController.cpp
         models/ToolboxDragController.h
         models/ToolboxModel.cpp
@@ -82,6 +86,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/LayerRow.qml
         qml/panels/PropertiesPanel.qml
         qml/panels/properties/AssetEditor.qml
+        qml/panels/properties/BindingPopup.qml
         qml/panels/properties/BoolEditor.qml
         qml/panels/properties/ColorEditor.qml
         qml/panels/properties/EnumEditor.qml
@@ -92,6 +97,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/properties/PropertyLabel.qml
         qml/panels/properties/TextEditor.qml
         qml/panels/SelectionToolbar.qml
+        qml/panels/TagsPanel.qml
         qml/panels/StatusBar.qml
         qml/panels/ToolboxPanel.qml
         qml/panels/ToolboxTile.qml
@@ -152,6 +158,9 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/panel-bottom.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/panel-left.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/panel-right.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/link.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/play.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/stop.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/plus.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/unlock.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/arrow-down.svg"

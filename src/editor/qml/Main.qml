@@ -15,6 +15,7 @@ ApplicationWindow {
     required property PropertyModel properties
     required property LayerModel layers
     required property ScreenListModel screens
+    required property TagModel tags
 
     width: 1440
     height: 900
@@ -89,6 +90,7 @@ ApplicationWindow {
             toolbox: root.toolbox
             toolboxDrag: root.toolboxDrag
             layers: root.layers
+            enabled: !root.editor.simulating
         }
 
         SplitView {
@@ -112,6 +114,8 @@ ApplicationWindow {
                 SplitView.preferredHeight: root.theme.bottomPanelHeight
                 SplitView.minimumHeight: root.theme.controlHeight
                 theme: root.theme
+                tags: root.tags
+                editor: root.editor
             }
         }
 
@@ -122,6 +126,8 @@ ApplicationWindow {
             editor: root.editor
             theme: root.theme
             properties: root.properties
+            tags: root.tags
+            enabled: !root.editor.simulating
         }
     }
 
@@ -130,6 +136,10 @@ ApplicationWindow {
         theme: root.theme
     }
 
+    Shortcut {
+        sequence: "F5"
+        onActivated: root.editor.toggleSimulation()
+    }
     Shortcut {
         sequences: [StandardKey.New]
         onActivated: root.document.newProject()

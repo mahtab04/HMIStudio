@@ -315,6 +315,27 @@ the context menu and the touch toolbar all offer.
    comfortable density (keypad, picker, dialog).
 6. Test in `tests/editor/PropertyModelTest.cpp`.
 
+## Recipe: make a property bindable
+
+1. Set `bindable = true` on its descriptor (the `Describe::` builders take a
+   `bindable` argument). Only bindable properties accept a `Binding`, show
+   the link button in the properties panel and are read from files.
+2. Nothing else: `BindingEvaluator` converts the tag's value to the
+   property's kind through `Transform::toProperty` and sets it on the play
+   copy; `paint()` already reads the property.
+3. Test it in `BindingTest` or `SimulationTest` if the conversion is new
+   (for example a new value kind).
+
+## Recipe: add a transform
+
+1. Implement `Transform` in `core/tags/Binding.cpp` (kind, apply,
+   parameters, summary); keep it immutable.
+2. Register a factory in `TransformRegistry` that validates the parameters
+   and returns an error for bad ones.
+3. Add its kind and display name to `PropertyModel::transformKinds` /
+   `transformNames` and its parameter fields to `BindingPopup.qml`.
+4. Add apply, JSON round-trip and bad-parameter cases to `BindingTest`.
+
 ## Recipe: add a tag driver (from phase 6)
 
 1. Create `src/comm/drivers/<protocol>/` with `<Protocol>Driver` implementing

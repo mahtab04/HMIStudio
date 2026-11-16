@@ -12,6 +12,8 @@ RowLayout {
     required property Theme theme
     required property int index
     required property string name
+    required property bool bindable
+    required property string binding
     required property var components
     required property bool mixed
     required property bool readOnly
@@ -21,6 +23,10 @@ RowLayout {
     PropertyLabel {
         theme: row.theme
         text: row.name
+        properties: row.properties
+        rowIndex: row.index
+        bindable: row.bindable
+        binding: row.binding
     }
 
     Repeater {

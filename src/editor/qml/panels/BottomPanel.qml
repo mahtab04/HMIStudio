@@ -2,11 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Bottom panel for tags, alarms, scripts and output (later phases).
+// Bottom panel: tags, and later alarms, scripts and output.
 Pane {
     id: panel
 
     required property Theme theme
+    required property TagModel tags
+    required property EditorController editor
 
     padding: 0
 
@@ -15,9 +17,11 @@ Pane {
         spacing: 0
 
         TabBar {
+            id: tabs
+
             Layout.fillWidth: true
             TabButton {
-                text: qsTr("Tags")
+                text: panel.tags.tagCount > 0 ? qsTr("Tags (%1)").arg(panel.tags.tagCount) : qsTr("Tags")
                 implicitHeight: panel.theme.controlHeight
             }
             TabButton {
@@ -34,13 +38,37 @@ Pane {
             }
         }
 
-        Label {
+        StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: panel.theme.padding
-            text: qsTr("Tags and output are not available yet.")
-            color: panel.theme.textMuted
-            verticalAlignment: Text.AlignTop
+            Layout.topMargin: panel.theme.spacing / 2
+            currentIndex: tabs.currentIndex
+
+            TagsPanel {
+                theme: panel.theme
+                tags: panel.tags
+                editor: panel.editor
+            }
+            Label {
+                text: qsTr("Alarms come in a later version.")
+                color: panel.theme.textMuted
+                verticalAlignment: Text.AlignTop
+                leftPadding: panel.theme.padding
+            }
+            Label {
+                text: qsTr("Scripts come in a later version.")
+                color: panel.theme.textMuted
+                verticalAlignment: Text.AlignTop
+                leftPadding: panel.theme.padding
+            }
+            // Bindings that could not be applied while simulating.
+            Label {
+                text: panel.editor.simulationProblems.length > 0 ? panel.editor.simulationProblems.join("\n") : qsTr("No messages.")
+                color: panel.editor.simulationProblems.length > 0 ? panel.theme.warning : panel.theme.textMuted
+                verticalAlignment: Text.AlignTop
+                leftPadding: panel.theme.padding
+                wrapMode: Text.WordWrap
+            }
         }
     }
 }

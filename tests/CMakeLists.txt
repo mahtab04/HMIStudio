@@ -70,6 +70,7 @@ hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEdit
              LIBS hmi_editor_lib)
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(TagModelTest SOURCES editor/TagModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(LayerModelTest SOURCES editor/LayerModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(DocumentControllerTest SOURCES editor/DocumentControllerTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(EditorShellTest SOURCES editor/EditorShellTest.cpp

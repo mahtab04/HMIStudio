@@ -260,7 +260,7 @@ reloads it and saves it again byte for byte. Choices made here:
 - The clock shows a fixed time in the editor so screens draw the same
   every time.
 - The sample project still uses rectangles for its tank and pump; it can
-  move to the new symbols when it is next touched.
+  move to the new symbols when it is next touched (done in phase 6).
 
 Still open: trying the new types and the path tool on a real touch screen.
 
@@ -278,6 +278,38 @@ Still open: trying the new types and the path tool on a real touch screen.
 
 Done when: the filling-station demo screen animates its tank level, pump
 state and values from simulated tags.
+
+Status: implemented on `feat/phase-6-tags`. The sample "02 Filling" screen
+now uses the Tank, Pump, Valve, Pipe and I/O field objects, bound to five
+simulated tags (level as a sine, pump as a toggle, pressure, flow,
+temperature); Simulate (F5) animates it, and the level also drives the
+tank and banner colours and the banner text through value ranges.
+`TagsTest`, `BindingTest`, `SimulationTest` and `TagModelTest` cover the
+tag database, CSV, transforms, the engine's thread and coalescing, the play
+copy and the panels' models. Choices made here:
+
+- Play mode works on a copy of the current screen in a project of its own
+  (`BindingEvaluator`), so simulated values never reach the document, the
+  undo stack or the saved files; the canvas shows the copy while
+  simulating. Editing, undo and the toolbox and properties panels are off
+  meanwhile; the view can still be zoomed and panned. Esc or F5 stops.
+- Filtering is done inside `TagModel` instead of a separate proxy model:
+  one model for the table and the tag picker, with search over name, unit
+  and comment.
+- "Where used" walks the screens directly (`TagUsage`), groups included,
+  rather than through an `ObjectVisitor`; it needs only bindings.
+- Renaming a tag renames it in every binding in the same undo step;
+  deleting a tag keeps its bindings, which show the tag as missing.
+- Range maps are edited as text, one `from..to = value` per line and
+  `else = value` for the default.
+- Tags are saved in `tags.json`, always written, `{formatVersion, tags}`.
+- Only bindings of top-level objects are driven; those inside groups come
+  with phase 7.
+- Typing a value in the Value column while simulating writes it to the
+  tag; otherwise it is the tag's start value.
+
+Still open: operating objects in play mode (phase 7) and the touch layout
+of the tags table on a real touch screen.
 
 ## Phase 7 — Behaviour
 

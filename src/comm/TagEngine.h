@@ -1,5 +1,6 @@
 #pragma once
 
+#include "comm/IDriver.h"
 #include "core/tags/Tag.h"
 
 #include <QElapsedTimer>
@@ -17,7 +18,6 @@
 namespace hmi
 {
 
-class IDriver;
 class DriverHost;
 
 // Runs the tag sources and holds the current value of every tag (Facade

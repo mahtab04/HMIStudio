@@ -6,9 +6,11 @@
 #include "core/property/Prop.h"
 #include "core/property/PropertyDescriptor.h"
 #include "core/registry/ObjectRegistry.h"
+#include "core/tags/Binding.h"
 #include "editor/commands/ChangeStyleCommand.h"
 #include "editor/commands/ScreenCommands.h"
 #include "editor/commands/SetPropertyCommand.h"
+#include "editor/commands/TagCommands.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
 #include "render/GraphicFactory.h"
@@ -18,6 +20,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFontDatabase>
+#include <QJsonObject>
 #include <QLocale>
 #include <QUndoStack>
 #include <QUrl>
@@ -278,6 +281,26 @@ PropertyModel::PropertyModel(ToolContext& context, QObject* parent)
                 Q_EMIT titleChanged();
             });
     connect(&notifier, &DocumentNotifier::projectReset, this, &PropertyModel::refresh);
+    connect(&notifier, &DocumentNotifier::bindingChanged, this,
+            [this](ObjectId object, PropertyId property)
+            {
+                if (!m_context.selection().contains(object))
+                    return;
+                for (std::size_t i = 0; i < m_rows.size(); ++i)
+                {
+                    if (m_rows[i].descriptor && m_rows[i].descriptor->id == property)
+                        Q_EMIT dataChanged(index(int(i)), index(int(i)), {BindingRole});
+                }
+            });
+    // A renamed or removed tag changes how bindings read.
+    const auto bindingsChanged = [this]
+    {
+        if (!m_rows.empty())
+            Q_EMIT dataChanged(index(0), index(rowCount() - 1), {BindingRole});
+    };
+    connect(&notifier, &DocumentNotifier::tagAdded, this, bindingsChanged);
+    connect(&notifier, &DocumentNotifier::tagRemoved, this, bindingsChanged);
+    connect(&notifier, &DocumentNotifier::tagChanged, this, bindingsChanged);
     connect(&notifier, &DocumentNotifier::styleChanged, this,
             [this]
             {
@@ -478,6 +501,10 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
             return displayText(screenValue(row.field));
         case ComponentsRole:
             return QVariantList();
+        case BindableRole:
+            return false;
+        case BindingRole:
+            return QString();
         default:
             return {};
         }
@@ -540,6 +567,10 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     }
     case ComponentsRole:
         return components(objectValue(row, nullptr));
+    case BindableRole:
+        return d.bindable;
+    case BindingRole:
+        return bindingText(row);
     default:
         return {};
     }
@@ -552,6 +583,7 @@ QHash<int, QByteArray> PropertyModel::roleNames() const
         {EditorRole, "editor"},     {ValueRole, "value"},     {MixedRole, "mixed"},
         {ReadOnlyRole, "readOnly"}, {MinimumRole, "minimum"}, {MaximumRole, "maximum"},
         {OptionsRole, "options"},   {TextRole, "text"},       {ComponentsRole, "components"},
+        {BindableRole, "bindable"}, {BindingRole, "binding"},
     };
 }
 
@@ -824,6 +856,189 @@ void PropertyModel::onPropertyChanged(ObjectId object, PropertyId property)
     }
     if (property == Prop::Name)
         Q_EMIT titleChanged();
+}
+
+QStringList PropertyModel::transformKinds() const
+{
+    return {QStringLiteral("direct"), QStringLiteral("linear"), QStringLiteral("ranges"),
+            QStringLiteral("expression")};
+}
+
+QStringList PropertyModel::transformNames() const
+{
+    return {tr("Direct"), tr("Linear scaling"), tr("Value ranges"), tr("Expression")};
+}
+
+QString PropertyModel::bindingText(const Row& row) const
+{
+    const auto objects = selectedObjects();
+    if (objects.empty() || !row.descriptor)
+        return {};
+    const Binding* first = objects.front()->binding(row.descriptor->id);
+    for (const HmiObject* object : objects)
+    {
+        const Binding* binding = object->binding(row.descriptor->id);
+        if ((binding == nullptr) != (first == nullptr) || (binding && !(*binding == *first)))
+            return tr("(mixed)");
+    }
+    if (!first)
+        return {};
+    QString text = first->tag;
+    if (!m_context.project().tags().find(first->tag))
+        text = tr("%1 (missing)").arg(first->tag);
+    if (first->transform->kind() != QLatin1String("direct"))
+        text = tr("%1 · %2").arg(text, first->transform->summary());
+    return text;
+}
+
+QVariantMap PropertyModel::bindingInfo(int row) const
+{
+    if (row < 0 || std::size_t(row) >= m_rows.size() || !m_rows[std::size_t(row)].descriptor)
+        return {};
+    const auto objects = selectedObjects();
+    if (objects.empty())
+        return {};
+    const Binding* binding = objects.front()->binding(m_rows[std::size_t(row)].descriptor->id);
+    if (!binding)
+        return {};
+    return {{QStringLiteral("tag"), binding->tag},
+            {QStringLiteral("kind"), binding->transform->kind()},
+            {QStringLiteral("parameters"), binding->transform->parameters().toVariantMap()},
+            {QStringLiteral("summary"), binding->transform->summary()}};
+}
+
+bool PropertyModel::setBinding(int row, const QString& tag, const QString& kind,
+                               const QVariantMap& parameters)
+{
+    if (row < 0 || std::size_t(row) >= m_rows.size())
+        return false;
+    const PropertyDescriptor* d = m_rows[std::size_t(row)].descriptor;
+    if (!d || !d->bindable)
+        return reject(tr("This property cannot be bound to a tag."));
+    if (tag.trimmed().isEmpty())
+        return reject(tr("Pick a tag to bind to."));
+    auto transform = TransformRegistry::instance().create(
+        kind.isEmpty() ? QStringLiteral("direct") : kind, QJsonObject::fromVariantMap(parameters));
+    if (!transform)
+        return reject(transform.error().message);
+    const Binding binding{d->id, tag.trimmed(), std::move(*transform)};
+    std::vector<ObjectId> ids;
+    for (const HmiObject* object : selectedObjects())
+    {
+        const Binding* current = object->binding(d->id);
+        if (!current || !(*current == binding))
+            ids.push_back(object->id());
+    }
+    if (ids.empty())
+        return true;
+    m_context.undoStack().push(new SetBindingCommand(m_context.project(), m_context.screenId(),
+                                                     std::move(ids), d->id, binding));
+    return true;
+}
+
+void PropertyModel::removeBinding(int row)
+{
+    if (row < 0 || std::size_t(row) >= m_rows.size() || !m_rows[std::size_t(row)].descriptor)
+        return;
+    const PropertyId property = m_rows[std::size_t(row)].descriptor->id;
+    std::vector<ObjectId> ids;
+    for (const HmiObject* object : selectedObjects())
+    {
+        if (object->binding(property))
+            ids.push_back(object->id());
+    }
+    if (!ids.empty())
+        m_context.undoStack().push(new SetBindingCommand(m_context.project(), m_context.screenId(),
+                                                         std::move(ids), property, std::nullopt));
+}
+
+void PropertyModel::requestBinding(int row)
+{
+    if (data(index(row), BindableRole).toBool())
+        Q_EMIT bindingRequested(row, data(index(row), NameRole).toString());
+}
+
+namespace
+{
+
+QString rangeValueText(const QVariant& value)
+{
+    if (value.typeId() == QMetaType::Bool)
+        return value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+    if (value.typeId() == QMetaType::Double)
+        return QLocale::c().toString(value.toDouble(), 'g', 12);
+    return value.toString();
+}
+
+// A number, a flag or (for colours and texts) the text itself.
+QVariant rangeValue(const QString& text)
+{
+    const QString trimmed = text.trimmed();
+    bool isNumber = false;
+    const double number = QLocale::c().toDouble(trimmed, &isNumber);
+    if (isNumber)
+        return number;
+    if (trimmed == QLatin1String("true") || trimmed == QLatin1String("false"))
+        return trimmed == QLatin1String("true");
+    return trimmed;
+}
+
+} // namespace
+
+QString PropertyModel::rangesText(const QVariantMap& parameters) const
+{
+    QStringList lines;
+    for (const QVariant& entry : parameters.value(QStringLiteral("ranges")).toList())
+    {
+        const QVariantMap range = entry.toMap();
+        lines << QStringLiteral("%1..%2 = %3")
+                     .arg(rangeValueText(range.value(QStringLiteral("from"))),
+                          rangeValueText(range.value(QStringLiteral("to"))),
+                          rangeValueText(range.value(QStringLiteral("value"))));
+    }
+    if (parameters.contains(QStringLiteral("default")))
+        lines << QStringLiteral("else = %1")
+                     .arg(rangeValueText(parameters.value(QStringLiteral("default"))));
+    return lines.join(QLatin1Char('\n'));
+}
+
+QVariantMap PropertyModel::rangesParameters(const QString& text)
+{
+    QVariantList ranges;
+    QVariantMap parameters;
+    const QStringList lines = text.split(QLatin1Char('\n'));
+    for (qsizetype i = 0; i < lines.size(); ++i)
+    {
+        const QString line = lines[i].trimmed();
+        if (line.isEmpty())
+            continue;
+        const qsizetype equals = line.indexOf(QLatin1Char('='));
+        const QString left = equals < 0 ? QString() : line.left(equals).trimmed();
+        const QString right = equals < 0 ? QString() : line.mid(equals + 1).trimmed();
+        if (left == QLatin1String("else"))
+        {
+            parameters.insert(QStringLiteral("default"), rangeValue(right));
+            continue;
+        }
+        const qsizetype dots = left.indexOf(QLatin1String(".."));
+        bool fromOk = false;
+        bool toOk = false;
+        const double from =
+            dots < 0 ? 0.0 : QLocale::c().toDouble(left.left(dots).trimmed(), &fromOk);
+        const double to =
+            dots < 0 ? 0.0 : QLocale::c().toDouble(left.mid(dots + 2).trimmed(), &toOk);
+        if (!fromOk || !toOk || right.isEmpty())
+        {
+            reject(
+                tr("Line %1: write “from..to = value”, for example “0..50 = #2E9B4F”.").arg(i + 1));
+            return {};
+        }
+        ranges.append(QVariantMap{{QStringLiteral("from"), from},
+                                  {QStringLiteral("to"), to},
+                                  {QStringLiteral("value"), rangeValue(right)}});
+    }
+    parameters.insert(QStringLiteral("ranges"), ranges);
+    return parameters;
 }
 
 } // namespace hmi

@@ -57,13 +57,15 @@ public:
 
     // Re-applies the current tool's cursor (after a canvas is attached).
     void applyCursor();
+    // Pinch, wheel and two-finger pan: the view moves, nothing is edited.
+    // Returns false for gestures that are not navigation.
+    bool navigate(const PointerGesture& gesture);
 
 Q_SIGNALS:
     void toolChanged();
 
 private:
     [[nodiscard]] ITool& current() const;
-    bool navigate(const PointerGesture& gesture);
 
     ToolContext& m_context;
     std::unique_ptr<SelectTool> m_select;

@@ -137,6 +137,25 @@ ToolBar {
 
         ToolSeparator {}
 
+        // Play mode: simulated tags drive the screen; editing is off.
+        Button {
+            text: bar.editor.simulating ? qsTr("Stop") : qsTr("Simulate")
+            Accessible.name: bar.editor.simulating ? qsTr("Stop the simulation (Esc)") : qsTr("Simulate the screen with its tags (F5)")
+            ToolTip.text: Accessible.name
+            ToolTip.visible: hovered
+            ToolTip.delay: 600
+            implicitHeight: bar.theme.controlHeight
+            icon.source: bar.editor.simulating ? "qrc:/icons/stop.svg" : "qrc:/icons/play.svg"
+            icon.color: "transparent"
+            icon.width: bar.theme.iconSize
+            icon.height: bar.theme.iconSize
+            checked: bar.editor.simulating
+            focusPolicy: Qt.NoFocus
+            onClicked: bar.editor.toggleSimulation()
+        }
+
+        ToolSeparator {}
+
         ToolButton {
             text: qsTr("−")
             Accessible.name: qsTr("Zoom out")
