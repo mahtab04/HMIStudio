@@ -104,10 +104,13 @@ ApplicationWindow {
             Component.onDestruction: root.settings.centreSplitState = centreSplit.saveState()
 
             CanvasPanel {
+                objectName: "workArea"
                 SplitView.fillHeight: true
                 editor: root.editor
                 theme: root.theme
                 screens: root.screens
+                tags: root.tags
+                simulation: root.simulation
             }
 
             BottomPanel {
@@ -115,7 +118,6 @@ ApplicationWindow {
                 SplitView.preferredHeight: root.theme.bottomPanelHeight
                 SplitView.minimumHeight: root.theme.controlHeight
                 theme: root.theme
-                tags: root.tags
                 simulation: root.simulation
             }
         }

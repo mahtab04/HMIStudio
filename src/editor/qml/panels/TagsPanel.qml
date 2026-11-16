@@ -4,12 +4,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
-import Qt.labs.qmlmodels
+import QtQml.Models
 
-// The Tags tab: the project's tags as an editable table with search, add,
-// delete (with a warning for tags in use), "where used" and CSV import and
-// export. While simulating the Value column is live, and typing a value
-// writes it to the tag.
+// The HMI tags editor, shown in the main area like TIA Portal's tag table:
+// one row per tag, plain cells, double-click (or F2, or typing) to edit,
+// "<Add new>" at the end, several tags at once, delete with a warning for
+// tags in use, "where used" and CSV. While simulating, the Value column
+// shows live values; typing one writes it to the tag.
 Item {
     id: panel
 
@@ -17,8 +18,24 @@ Item {
     required property TagModel tags
     required property SimulationController simulation
 
-    property int currentRow: -1
     property string message
+    readonly property int currentRow: selection.hasSelection ? selection.currentIndex.row : -1
+
+    function selectRow(row: int) {
+        if (row < 0)
+            return
+        const index = panel.tags.index(row, 0)
+        selection.setCurrentIndex(index, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows)
+        table.positionViewAtRow(row, TableView.Contain)
+    }
+
+    function addTag() {
+        panel.message = ""
+        const row = panel.tags.addTag()
+        panel.selectRow(row)
+        if (row >= 0)
+            table.edit(panel.tags.index(row, 0))
+    }
 
     function deleteCurrent() {
         if (panel.currentRow < 0)
@@ -29,7 +46,6 @@ Item {
             return
         }
         panel.tags.removeTag(panel.currentRow)
-        panel.currentRow = -1
     }
 
     Connections {
@@ -38,86 +54,91 @@ Item {
         function onProblem(message: string) {
             panel.message = message
         }
-        function onModelReset() {
-            if (panel.currentRow >= panel.tags.rowCount())
-                panel.currentRow = -1
-        }
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: panel.theme.spacing / 2
+        spacing: 0
 
-        RowLayout {
+        // Toolbar
+        Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: panel.theme.padding
-            Layout.rightMargin: panel.theme.padding
-            spacing: panel.theme.spacing
+            Layout.preferredHeight: panel.theme.controlHeight + panel.theme.spacing
+            color: panel.theme.panel
 
-            TextField {
-                Layout.preferredWidth: panel.theme.sidePanelWidth
-                implicitHeight: panel.theme.controlHeight
-                placeholderText: qsTr("Search tags")
-                text: panel.tags.filterText
-                onTextEdited: panel.tags.filterText = text
-            }
-            Button {
-                text: qsTr("Add tag")
-                implicitHeight: panel.theme.controlHeight
-                focusPolicy: Qt.NoFocus
-                onClicked: {
-                    panel.message = ""
-                    panel.currentRow = panel.tags.addTag()
-                    table.positionViewAtRow(Math.max(0, panel.currentRow), TableView.Contain)
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: panel.theme.padding
+                anchors.rightMargin: panel.theme.padding
+                spacing: panel.theme.spacing
+
+                ToolButton {
+                    text: qsTr("Add")
+                    implicitHeight: panel.theme.controlHeight
+                    focusPolicy: Qt.NoFocus
+                    onClicked: panel.addTag()
                 }
-            }
-            Button {
-                text: qsTr("Delete")
-                implicitHeight: panel.theme.controlHeight
-                enabled: panel.currentRow >= 0
-                focusPolicy: Qt.NoFocus
-                onClicked: panel.deleteCurrent()
-            }
-            Button {
-                text: qsTr("Where used")
-                implicitHeight: panel.theme.controlHeight
-                enabled: panel.currentRow >= 0
-                focusPolicy: Qt.NoFocus
-                onClicked: {
-                    usesDialog.uses = panel.tags.whereUsed(panel.currentRow)
-                    usesDialog.open()
+                ToolButton {
+                    text: qsTr("Add several…")
+                    implicitHeight: panel.theme.controlHeight
+                    focusPolicy: Qt.NoFocus
+                    onClicked: severalDialog.open()
                 }
-            }
-            Item {
-                Layout.fillWidth: true
-            }
-            Label {
-                visible: panel.simulation.running
-                text: qsTr("● Simulating")
-                color: panel.theme.good
-            }
-            Button {
-                text: qsTr("Import CSV…")
-                implicitHeight: panel.theme.controlHeight
-                focusPolicy: Qt.NoFocus
-                onClicked: importDialog.open()
-            }
-            Button {
-                text: qsTr("Export CSV…")
-                implicitHeight: panel.theme.controlHeight
-                enabled: panel.tags.tagCount > 0
-                focusPolicy: Qt.NoFocus
-                onClicked: exportDialog.open()
+                ToolButton {
+                    text: qsTr("Delete")
+                    implicitHeight: panel.theme.controlHeight
+                    enabled: panel.currentRow >= 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: panel.deleteCurrent()
+                }
+                ToolButton {
+                    text: qsTr("Where used")
+                    implicitHeight: panel.theme.controlHeight
+                    enabled: panel.currentRow >= 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: {
+                        usesDialog.uses = panel.tags.whereUsed(panel.currentRow)
+                        usesDialog.open()
+                    }
+                }
+                ToolSeparator {}
+                ToolButton {
+                    text: qsTr("Import CSV…")
+                    implicitHeight: panel.theme.controlHeight
+                    focusPolicy: Qt.NoFocus
+                    onClicked: importDialog.open()
+                }
+                ToolButton {
+                    text: qsTr("Export CSV…")
+                    implicitHeight: panel.theme.controlHeight
+                    enabled: panel.tags.tagCount > 0
+                    focusPolicy: Qt.NoFocus
+                    onClicked: exportDialog.open()
+                }
+                Label {
+                    visible: panel.simulation.running
+                    text: qsTr("● Live values")
+                    color: panel.theme.good
+                }
+                TextField {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: panel.theme.sidePanelWidth
+                    Layout.minimumWidth: panel.theme.controlHeight * 3
+                    implicitHeight: panel.theme.controlHeight
+                    placeholderText: qsTr("Search tags")
+                    text: panel.tags.filterText
+                    onTextEdited: panel.tags.filterText = text
+                }
             }
         }
 
         Label {
             Layout.fillWidth: true
             Layout.leftMargin: panel.theme.padding
+            Layout.topMargin: panel.theme.spacing / 2
             visible: panel.message.length > 0
             text: panel.message
             color: panel.theme.warning
-            font: panel.theme.fontSmall
             elide: Text.ElideRight
         }
 
@@ -125,6 +146,7 @@ Item {
             id: header
 
             Layout.fillWidth: true
+            Layout.topMargin: panel.theme.spacing / 2
             syncView: table
             clip: true
             textRole: "display"
@@ -134,104 +156,195 @@ Item {
             id: table
 
             // Name, type, unit, minimum, maximum, simulation, period, comment, value.
-            readonly property var weights: [1.6, 1.0, 0.7, 0.8, 0.8, 1.0, 0.8, 2.0, 1.1]
-            readonly property real weightSum: 9.8
+            readonly property var weights: [1.8, 0.9, 0.7, 0.8, 0.8, 1.0, 0.8, 2.2, 1.0]
+            readonly property real weightSum: 10.0
 
+            // As tall as its rows, so "<Add new>" follows the last one.
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.maximumHeight: Math.max(1, table.contentHeight)
             clip: true
             model: panel.tags
             boundsBehavior: Flickable.StopAtBounds
             columnSpacing: 1
             rowSpacing: 1
+            selectionBehavior: TableView.SelectRows
+            selectionMode: TableView.SingleSelection
+            editTriggers: TableView.DoubleTapped | TableView.EditKeyPressed | TableView.AnyKeyPressed
+            selectionModel: ItemSelectionModel {
+                id: selection
+
+                model: panel.tags
+            }
             columnWidthProvider: column => Math.max(panel.theme.controlHeight * 2, table.width * table.weights[column] / table.weightSum - 1)
             ScrollBar.vertical: ScrollBar {}
             onWidthChanged: table.forceLayout()
+            Keys.onDeletePressed: panel.deleteCurrent()
 
-            delegate: DelegateChooser {
-                role: "editor"
+            // The grid lines are the background between the cells.
+            Rectangle {
+                parent: table.contentItem
+                z: -1
+                width: table.contentWidth
+                height: table.contentHeight
+                color: panel.theme.border
+            }
 
-                DelegateChoice {
-                    roleValue: "type"
-                    ChoiceCell {
-                        options: panel.tags.typeNames
+            delegate: Rectangle {
+                id: cell
+
+                required property int row
+                required property int column
+                required property var display
+                required property string editor
+                required property int choice
+                required property bool selected
+                required property bool current
+
+                readonly property bool live: cell.editor === "value" && panel.simulation.running
+
+                implicitHeight: panel.theme.controlHeight
+                color: cell.selected ? Qt.alpha(panel.theme.accent, 0.28) : cell.row % 2 ? panel.theme.panel : panel.theme.window
+                border.width: cell.current ? 1 : 0
+                border.color: panel.theme.accent
+
+                Label {
+                    anchors.fill: parent
+                    leftPadding: panel.theme.spacing
+                    rightPadding: panel.theme.spacing
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                    text: String(cell.display ?? "")
+                    color: cell.live ? panel.theme.good : panel.theme.text
+                    font.bold: cell.live
+                }
+
+                TableView.editDelegate: cell.editor === "type" || cell.editor === "simulation" ? choiceEditor : textEditor
+
+                Component {
+                    id: textEditor
+
+                    TextField {
+                        id: field
+
+                        anchors.fill: parent
+                        leftPadding: panel.theme.spacing
+                        text: String(cell.display ?? "")
+                        verticalAlignment: TextInput.AlignVCenter
+                        Component.onCompleted: field.selectAll()
+                        TableView.onCommit: {
+                            panel.message = ""
+                            if (field.text !== String(cell.display ?? ""))
+                                panel.tags.setCell(cell.row, cell.column, field.text)
+                        }
                     }
                 }
-                DelegateChoice {
-                    roleValue: "simulation"
-                    ChoiceCell {
-                        options: panel.tags.simulationNames
+
+                Component {
+                    id: choiceEditor
+
+                    ComboBox {
+                        id: combo
+
+                        anchors.fill: parent
+                        model: cell.editor === "type" ? panel.tags.typeNames : panel.tags.simulationNames
+                        currentIndex: cell.choice
+                        Component.onCompleted: combo.popup.open()
+                        onActivated: index => {
+                            panel.tags.setCell(cell.row, cell.column, index)
+                            table.closeEditor()
+                        }
                     }
-                }
-                DelegateChoice {
-                    TextCell {}
                 }
             }
 
             Label {
                 anchors.centerIn: parent
-                visible: table.rows === 0
-                text: panel.tags.tagCount === 0 ? qsTr("No tags yet. Add one, or import a CSV file.") : qsTr("No tag matches the search.")
+                visible: table.rows === 0 && panel.tags.tagCount > 0
+                text: qsTr("No tag matches the search.")
                 color: panel.theme.textMuted
             }
         }
+
+        // The last row adds a tag, as in TIA Portal.
+        ItemDelegate {
+            Layout.fillWidth: true
+            implicitHeight: panel.theme.controlHeight
+            leftPadding: panel.theme.spacing
+            text: qsTr("<Add new>")
+            font.italic: true
+            palette.windowText: panel.theme.accent
+            palette.buttonText: panel.theme.accent
+            focusPolicy: Qt.NoFocus
+            onClicked: panel.addTag()
+        }
+
+        Item {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+        }
     }
 
-    // A text or number cell; the shown value follows the model unless the
-    // cell is being edited.
-    component TextCell: TextField {
-        id: cell
+    // Several tags of one type at once: Name_1, Name_2, …
+    Dialog {
+        id: severalDialog
 
-        required property int row
-        required property int column
-        required property var display
-        required property string editor
-
-        implicitHeight: panel.theme.controlHeight
-        leftPadding: panel.theme.spacing
-        color: cell.editor === "value" && panel.simulation.running ? panel.theme.good : panel.theme.text
-        font.bold: cell.editor === "value" && panel.simulation.running
-        selectByMouse: true
-        background: Rectangle {
-            color: cell.row === panel.currentRow ? panel.theme.panelRaised : panel.theme.window
-            border.width: cell.activeFocus ? 1 : 0
-            border.color: panel.theme.accent
-        }
-        onActiveFocusChanged: if (cell.activeFocus)
-            panel.currentRow = cell.row
-        onEditingFinished: {
+        title: qsTr("Add several tags")
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        width: panel.theme.sidePanelWidth * 1.6
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: {
             panel.message = ""
-            panel.tags.setCell(cell.row, cell.column, cell.text)
-        }
-        Keys.onEscapePressed: {
-            cell.text = String(cell.display)
-            cell.focus = false
+            panel.selectRow(panel.tags.addTags(baseName.text, typeBox.currentIndex, countBox.value))
         }
 
-        Binding on text {
-            when: !cell.activeFocus
-            value: String(cell.display)
+        GridLayout {
+            width: panel.theme.sidePanelWidth * 1.4
+            columns: 2
+            columnSpacing: panel.theme.spacing
+            rowSpacing: panel.theme.spacing
+
+            Label {
+                text: qsTr("Name")
+            }
+            TextField {
+                id: baseName
+
+                Layout.fillWidth: true
+                implicitHeight: panel.theme.controlHeight
+                text: qsTr("Tag")
+            }
+            Label {
+                text: qsTr("Data type")
+            }
+            ComboBox {
+                id: typeBox
+
+                Layout.fillWidth: true
+                implicitHeight: panel.theme.controlHeight
+                model: panel.tags.typeNames
+                currentIndex: 1
+            }
+            Label {
+                text: qsTr("Count")
+            }
+            SpinBox {
+                id: countBox
+
+                Layout.fillWidth: true
+                implicitHeight: panel.theme.controlHeight
+                from: 1
+                to: 1000
+                value: 5
+                editable: true
+            }
+            Label {
+                Layout.columnSpan: 2
+                text: qsTr("Creates %1_1 … %1_%2").arg(baseName.text).arg(countBox.value)
+                color: panel.theme.textMuted
+            }
         }
-    }
-
-    component ChoiceCell: ComboBox {
-        id: choiceCell
-
-        required property int row
-        required property int column
-        required property int choice
-        required property var options
-
-        implicitHeight: panel.theme.controlHeight
-        model: choiceCell.options
-        currentIndex: choiceCell.choice
-        focusPolicy: Qt.NoFocus
-        onActivated: index => {
-            panel.currentRow = choiceCell.row
-            panel.tags.setCell(choiceCell.row, choiceCell.column, index)
-        }
-        onPressedChanged: if (choiceCell.pressed)
-            panel.currentRow = choiceCell.row
     }
 
     Dialog {
@@ -244,10 +357,7 @@ Item {
         anchors.centerIn: Overlay.overlay
         width: panel.theme.sidePanelWidth * 1.8
         standardButtons: Dialog.Yes | Dialog.Cancel
-        onAccepted: {
-            panel.tags.removeTag(panel.currentRow)
-            panel.currentRow = -1
-        }
+        onAccepted: panel.tags.removeTag(panel.currentRow)
 
         Label {
             width: panel.theme.sidePanelWidth * 1.5

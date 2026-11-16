@@ -116,7 +116,7 @@ QStringList TagModel::columnTitles() const
 
 QStringList TagModel::typeNames() const
 {
-    return {tr("Bool"), tr("Integer"), tr("Real"), tr("Text")};
+    return {tr("Bool"), tr("Int"), tr("Real"), tr("String")};
 }
 
 QStringList TagModel::simulationNames() const
@@ -176,10 +176,15 @@ QVariant TagModel::data(const QModelIndex& index, int role) const
         return typeNames().at(data(index, ChoiceRole).toInt());
     case UnitColumn:
         return tag->unit;
+    // A range means nothing for flags and texts.
     case MinimumColumn:
-        return tag->minimum;
+        return tag->type == Tag::Type::Bool || tag->type == Tag::Type::String
+                   ? QVariant(QString())
+                   : QVariant(tag->minimum);
     case MaximumColumn:
-        return tag->maximum;
+        return tag->type == Tag::Type::Bool || tag->type == Tag::Type::String
+                   ? QVariant(QString())
+                   : QVariant(tag->maximum);
     case SimulationColumn:
         return simulationNames().at(data(index, ChoiceRole).toInt());
     case PeriodColumn:
@@ -211,7 +216,8 @@ QHash<int, QByteArray> TagModel::roleNames() const
 
 bool TagModel::setData(const QModelIndex& index, const QVariant& value, int role)
 {
-    if (role != Qt::EditRole || !index.isValid())
+    // QML table edit delegates write the "display" role.
+    if ((role != Qt::EditRole && role != Qt::DisplayRole) || !index.isValid())
         return false;
     return setCell(index.row(), index.column(), value);
 }
@@ -347,6 +353,37 @@ int TagModel::addTag()
     if (!m_filter.isEmpty())
         setFilterText({});
     const auto it = std::ranges::find(m_rows, name);
+    return it == m_rows.end() ? -1 : int(it - m_rows.begin());
+}
+
+int TagModel::addTags(const QString& name, int typeIndex, int count)
+{
+    const QString stem = Tag::isValidName(name.trimmed()) ? name.trimmed() : tr("Tag");
+    if (count < 1 || typeIndex < 0 || typeIndex >= int(std::size(kTypes)))
+        return -1;
+    QUndoStack& stack = m_context.undoStack();
+    TagDatabase& db = m_context.project().tags();
+    stack.beginMacro(tr("Add %n tag(s)", nullptr, count));
+    QString first;
+    int n = 1;
+    for (int added = 0; added < count; ++n)
+    {
+        const QString candidate = QStringLiteral("%1_%2").arg(stem).arg(n);
+        if (db.indexOf(candidate))
+            continue;
+        Tag tag;
+        tag.name = candidate;
+        tag.type = kTypes[typeIndex];
+        tag.initial = tag.startValue();
+        if (first.isEmpty())
+            first = candidate;
+        stack.push(new AddTagCommand(m_context.project(), std::move(tag)));
+        ++added;
+    }
+    stack.endMacro();
+    if (!m_filter.isEmpty())
+        setFilterText({});
+    const auto it = std::ranges::find(m_rows, first);
     return it == m_rows.end() ? -1 : int(it - m_rows.begin());
 }
 

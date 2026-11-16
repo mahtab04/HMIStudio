@@ -164,6 +164,57 @@ private Q_SLOTS:
         QVERIFY(!project().tags().find(u"TankLevel"_s));
     }
 
+    void addingSeveral()
+    {
+        const int index = m_app->undoStack().index();
+        const int row = tags().addTags(u"Counter"_s, 1, 5); // Int
+        QCOMPARE(tags().rowCount(), 10);
+        QCOMPARE(tags().data(tags().index(row, TagModel::NameColumn), Qt::DisplayRole),
+                 QVariant(u"Counter_1"_s));
+        QCOMPARE(project().tags().find(u"Counter_5"_s)->type, Tag::Type::Int);
+        QCOMPARE(cell(u"Counter_3"_s, TagModel::TypeColumn).toString(), u"Int"_s);
+        QCOMPARE(m_app->undoStack().index(), index + 1); // one step
+
+        // Names in use are skipped.
+        tags().addTags(u"Counter"_s, 0, 2);
+        QVERIFY(project().tags().find(u"Counter_7"_s));
+        QCOMPARE(cell(u"Counter_7"_s, TagModel::MinimumColumn).toString(), QString()); // a flag
+        m_app->undoStack().undo();
+        m_app->undoStack().undo();
+        QCOMPARE(tags().rowCount(), 5);
+    }
+
+    void processTagInProperties()
+    {
+        // The process value's tag comes first, as a picker of the tags.
+        PropertyModel& model = m_app->properties();
+        m_app->selection().selectOnly(tank()->id());
+        const QModelIndex first = model.index(0);
+        QCOMPARE(model.data(first, PropertyModel::EditorRole).toString(), u"tag"_s);
+        QCOMPARE(model.data(first, PropertyModel::CategoryRole).toString(), u"Process"_s);
+        QCOMPARE(model.data(first, PropertyModel::ValueRole).toString(), u"Level"_s);
+        QCOMPARE(model.data(first, PropertyModel::OptionsRole).toStringList().size(), 5);
+
+        // Picking another tag keeps the transform; None removes the binding.
+        QVERIFY(model.setValue(0, u"Flow"_s));
+        QCOMPARE(tank()->binding(Prop::Value)->tag, u"Flow"_s);
+        QCOMPARE(model.data(first, PropertyModel::TextRole).toString(), u"Flow"_s);
+        QVERIFY(model.setValue(0, QString()));
+        QVERIFY(!tank()->binding(Prop::Value));
+        QCOMPARE(model.data(first, PropertyModel::TextRole).toString(), u"None"_s);
+        m_app->undoStack().undo();
+        m_app->undoStack().undo();
+        QCOMPARE(tank()->binding(Prop::Value)->tag, u"Level"_s);
+
+        // Objects without a process value have no such row.
+        for (const auto& object : project().screens().front()->objects())
+        {
+            if (object->name() == u"Header")
+                m_app->selection().selectOnly(object->id());
+        }
+        QVERIFY(model.data(model.index(0), PropertyModel::EditorRole).toString() != u"tag");
+    }
+
     void deletingKeepsBindingsAndSaysWhereUsed()
     {
         const int row = tagRow(u"Level"_s);

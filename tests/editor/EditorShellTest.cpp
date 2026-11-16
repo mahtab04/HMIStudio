@@ -136,6 +136,22 @@ private Q_SLOTS:
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
 
+        // The HMI tags tab opens the tag table in the work area.
+        auto* tagsTab = window->findChild<QQuickItem*>(QStringLiteral("tagsTab"));
+        QVERIFY(tagsTab);
+        QMetaObject::invokeMethod(tagsTab, "click");
+        QTRY_VERIFY(!canvas->isVisible());
+        if (const QString path = qEnvironmentVariable("HMI_TAGS_SCREENSHOT"); !path.isEmpty())
+        {
+            context.theme().setDensity(Theme::Density::Compact);
+            QTest::qWait(300);
+            QVERIFY(window->grabWindow().save(path));
+        }
+        auto* work = window->findChild<QQuickItem*>(QStringLiteral("workArea"));
+        QVERIFY(work);
+        work->setProperty("showingTags", false);
+        QTRY_VERIFY(canvas->isVisible());
+
         // The runtime simulation opens a window of its own showing a play
         // copy of the screen at its size; the editor keeps the document.
         QMetaObject::invokeMethod(menu, "close");

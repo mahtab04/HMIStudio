@@ -289,14 +289,16 @@ PropertyModel::PropertyModel(ToolContext& context, QObject* parent)
                 for (std::size_t i = 0; i < m_rows.size(); ++i)
                 {
                     if (m_rows[i].descriptor && m_rows[i].descriptor->id == property)
-                        Q_EMIT dataChanged(index(int(i)), index(int(i)), {BindingRole});
+                        Q_EMIT dataChanged(index(int(i)), index(int(i)),
+                                           {BindingRole, ValueRole, TextRole, MixedRole});
                 }
             });
     // A renamed or removed tag changes how bindings read.
     const auto bindingsChanged = [this]
     {
         if (!m_rows.empty())
-            Q_EMIT dataChanged(index(0), index(rowCount() - 1), {BindingRole});
+            Q_EMIT dataChanged(index(0), index(rowCount() - 1),
+                               {BindingRole, OptionsRole, ValueRole, TextRole});
     };
     connect(&notifier, &DocumentNotifier::tagAdded, this, bindingsChanged);
     connect(&notifier, &DocumentNotifier::tagRemoved, this, bindingsChanged);
@@ -366,6 +368,12 @@ void PropertyModel::refresh()
         std::ranges::stable_sort(
             rows, {}, [&categories](const Row& r)
             { return std::ranges::find(categories, r.descriptor->category) - categories.begin(); });
+        // The tag of the process value comes first, as in TIA Portal's
+        // "Process" settings.
+        const auto process = std::ranges::find_if(
+            rows, [](const Row& r) { return r.descriptor->process && r.descriptor->bindable; });
+        if (process != rows.end())
+            rows.insert(rows.begin(), Row{.descriptor = process->descriptor, .tag = true});
         m_rows = std::move(rows);
     }
     endResetModel();
@@ -454,6 +462,8 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     if (!checkIndex(index, CheckIndexOption::IndexIsValid | CheckIndexOption::ParentIsInvalid))
         return {};
     const Row& row = m_rows[std::size_t(index.row())];
+    if (row.tag)
+        return tagData(row, role);
 
     if (!row.descriptor)
     {
@@ -722,6 +732,8 @@ bool PropertyModel::setValue(int row, const QVariant& value)
     if (row < 0 || std::size_t(row) >= m_rows.size())
         return false;
     const Row& r = m_rows[std::size_t(row)];
+    if (r.tag)
+        return applyTag(r, value.toString());
     return r.descriptor ? applyObjectValue(r, value) : applyScreenValue(r.field, value);
 }
 
@@ -954,8 +966,11 @@ void PropertyModel::removeBinding(int row)
 
 void PropertyModel::requestBinding(int row)
 {
-    if (data(index(row), BindableRole).toBool())
-        Q_EMIT bindingRequested(row, data(index(row), NameRole).toString());
+    if (row < 0 || std::size_t(row) >= m_rows.size())
+        return;
+    const PropertyDescriptor* d = m_rows[std::size_t(row)].descriptor;
+    if (d && d->bindable)
+        Q_EMIT bindingRequested(row, QCoreApplication::translate("hmi::Property", d->displayName));
 }
 
 namespace
@@ -1039,6 +1054,95 @@ QVariantMap PropertyModel::rangesParameters(const QString& text)
     }
     parameters.insert(QStringLiteral("ranges"), ranges);
     return parameters;
+}
+
+QVariant PropertyModel::tagData(const Row& row, int role) const
+{
+    const PropertyId property = row.descriptor->id;
+    const auto objects = selectedObjects();
+    // The tag bound on the first object; mixed when the others differ.
+    const auto tagOf = [property](const HmiObject* object)
+    {
+        const Binding* binding = object->binding(property);
+        return binding ? binding->tag : QString();
+    };
+    const QString tag = objects.empty() ? QString() : tagOf(objects.front());
+    const bool mixed =
+        std::ranges::any_of(objects, [&](const HmiObject* object) { return tagOf(object) != tag; });
+    switch (role)
+    {
+    case KeyRole:
+        return QStringLiteral("processTag");
+    case NameRole:
+        return tr("Tag");
+    case CategoryRole:
+        return tr("Process");
+    case EditorRole:
+        return QStringLiteral("tag");
+    case ValueRole:
+        return mixed ? QString() : tag;
+    case MixedRole:
+        return mixed;
+    case ReadOnlyRole:
+    case BindableRole:
+        return false;
+    case OptionsRole:
+    {
+        QStringList names;
+        for (const Tag& t : m_context.project().tags().tags())
+            names << t.name;
+        return names;
+    }
+    case TextRole:
+        if (mixed)
+            return QString();
+        if (tag.isEmpty())
+            return tr("None");
+        return m_context.project().tags().find(tag) ? tag : tr("%1 (missing)").arg(tag);
+    case BindingRole:
+        // What the tag drives, for the tooltip: "Value", "Running".
+        return QCoreApplication::translate("hmi::Property", row.descriptor->displayName);
+    default:
+        return {};
+    }
+}
+
+bool PropertyModel::applyTag(const Row& row, const QString& tag)
+{
+    const PropertyId property = row.descriptor->id;
+    const QString name = tag.trimmed();
+    if (name.isEmpty())
+    {
+        std::vector<ObjectId> ids;
+        for (const HmiObject* object : selectedObjects())
+        {
+            if (object->binding(property))
+                ids.push_back(object->id());
+        }
+        if (!ids.empty())
+            m_context.undoStack().push(new SetBindingCommand(
+                m_context.project(), m_context.screenId(), std::move(ids), property, std::nullopt));
+        return true;
+    }
+    // A new tag keeps the transform of the binding there is; otherwise the
+    // value is used directly. One command per transform, in one undo step.
+    std::vector<std::pair<ObjectId, Binding>> changes;
+    for (const HmiObject* object : selectedObjects())
+    {
+        const Binding* current = object->binding(property);
+        Binding binding{property, name, current ? current->transform : Binding::direct()};
+        if (!current || !(*current == binding))
+            changes.emplace_back(object->id(), std::move(binding));
+    }
+    if (changes.empty())
+        return true;
+    QUndoStack& stack = m_context.undoStack();
+    stack.beginMacro(tr("Bind to %1").arg(name));
+    for (auto& [id, binding] : changes)
+        stack.push(new SetBindingCommand(m_context.project(), m_context.screenId(), {id}, property,
+                                         std::move(binding)));
+    stack.endMacro();
+    return true;
 }
 
 } // namespace hmi

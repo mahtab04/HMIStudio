@@ -297,6 +297,14 @@ copy and the panels' models. Choices made here:
   takes a new copy with the latest edits. Shift+F5 or closing the window
   stops it. The window is a `RuntimeView`, which the runtime (phase 9)
   will reuse.
+- Tags have their own editor in the work area, the "HMI tags" tab before
+  the screen tabs, laid out like TIA Portal's tag table: plain cells,
+  double-click or F2 to edit, "<Add new>" after the last row, and "Add
+  several…" for a run of tags of one type (Counter_1 … Counter_5).
+- Each object type marks its process value (`PropertyDescriptor::process`:
+  a tank's level, a pump's running state); the properties panel offers its
+  tag first, under Process, as a drop-down of the project's tags. Other
+  bindable properties keep the link button with the full binding editor.
 - Filtering is done inside `TagModel` instead of a separate proxy model:
   one model for the table and the tag picker, with search over name, unit
   and comment.

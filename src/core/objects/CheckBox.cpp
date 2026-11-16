@@ -30,8 +30,9 @@ std::span<const PropertyDescriptor> CheckBox::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {140.0, 28.0},
         {
-            Describe::flag(Prop::Checked, "checked", QT_TRANSLATE_NOOP("hmi::Property", "Checked"),
-                           Behaviour, true, true),
+            Describe::process(Describe::flag(Prop::Checked, "checked",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Checked"),
+                                             Behaviour, true, true)),
             Describe::text(QStringLiteral("Check box")),
             Describe::styled(Describe::color(Prop::AccentColor, "accentColor",
                                              QT_TRANSLATE_NOOP("hmi::Property", "Mark colour"),

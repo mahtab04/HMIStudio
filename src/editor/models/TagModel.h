@@ -76,6 +76,9 @@ public:
     Q_INVOKABLE bool setCell(int row, int column, const QVariant& value);
     // Adds a tag with a unique name; returns its row.
     Q_INVOKABLE int addTag();
+    // Adds `count` tags of a type named name_1, name_2, … (skipping names
+    // in use), in one undo step; returns the first one's row.
+    Q_INVOKABLE int addTags(const QString& name, int typeIndex, int count);
     Q_INVOKABLE void removeTag(int row);
     // Places a tag is used, as texts ("02 Filling · T-101 · Level").
     Q_INVOKABLE QStringList whereUsed(int row) const;

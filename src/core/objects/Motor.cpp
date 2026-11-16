@@ -31,8 +31,9 @@ std::span<const PropertyDescriptor> Motor::staticDescriptors()
         {100.0, 64.0},
         {
             Describe::stretchMode(),
-            Describe::flag(Prop::Running, "running", QT_TRANSLATE_NOOP("hmi::Property", "Running"),
-                           Behaviour, false, true),
+            Describe::process(Describe::flag(Prop::Running, "running",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Running"),
+                                             Behaviour, false, true)),
             Describe::color(Prop::OnColor, "onColor",
                             QT_TRANSLATE_NOOP("hmi::Property", "Running colour"), Appearance,
                             QColor(0x22, 0xA0, 0x55), true),

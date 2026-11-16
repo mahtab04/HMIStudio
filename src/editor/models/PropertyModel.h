@@ -43,7 +43,7 @@ public:
         NameRole,
         CategoryRole,
         EditorRole, // "number", "integer", "text", "color", "font", "enum", "bool", "point",
-                    // "size", "points", "asset"
+                    // "size", "points", "asset", "tag"
         ValueRole,
         MixedRole,
         ReadOnlyRole,
@@ -146,6 +146,8 @@ private:
     {
         const PropertyDescriptor* descriptor = nullptr; // object property
         ScreenField field = ScreenField::Name;          // screen row when descriptor is null
+        // The "Process · Tag" row: picks the tag of the process property.
+        bool tag = false;
     };
 
     [[nodiscard]] std::vector<HmiObject*> selectedObjects() const;
@@ -157,6 +159,8 @@ private:
     bool applyStyleValue(ScreenField field, const QVariant& value);
     void onPropertyChanged(ObjectId object, PropertyId property);
     [[nodiscard]] QString bindingText(const Row& row) const;
+    [[nodiscard]] QVariant tagData(const Row& row, int role) const;
+    bool applyTag(const Row& row, const QString& tag);
     bool reject(const QString& message);
     [[nodiscard]] static bool isBlank(const QVariant& value);
 

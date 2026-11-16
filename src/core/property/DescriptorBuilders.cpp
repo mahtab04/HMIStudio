@@ -77,8 +77,8 @@ PropertyDescriptor font(int pixelSize, bool bold)
 
 PropertyDescriptor value(double value)
 {
-    return number(Prop::Value, "value", QT_TRANSLATE_NOOP("hmi::Property", "Value"), Behaviour,
-                  value, std::nullopt, std::nullopt, true);
+    return process(number(Prop::Value, "value", QT_TRANSLATE_NOOP("hmi::Property", "Value"),
+                          Behaviour, value, std::nullopt, std::nullopt, true));
 }
 
 PropertyDescriptor minimum(double value)
@@ -186,6 +186,13 @@ constexpr EnumOption kOrientationOptions[] = {
      .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Vertical")},
 };
 } // namespace
+
+PropertyDescriptor process(PropertyDescriptor descriptor)
+{
+    descriptor.process = true;
+    descriptor.bindable = true;
+    return descriptor;
+}
 
 PropertyDescriptor styled(PropertyDescriptor descriptor, StyleRole role)
 {
