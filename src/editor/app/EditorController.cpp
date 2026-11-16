@@ -1,7 +1,5 @@
 #include "editor/app/EditorController.h"
 
-#include "comm/BindingEvaluator.h"
-#include "comm/TagEngine.h"
 #include "core/model/Project.h"
 #include "core/model/Screen.h"
 #include "core/registry/ObjectRegistry.h"
@@ -23,14 +21,11 @@ namespace hmi
 {
 
 EditorController::EditorController(ToolContext& context, EditActions& actions,
-                                   ToolboxDragController& toolboxDrag, TagEngine& tags,
-                                   QObject* parent)
+                                   ToolboxDragController& toolboxDrag, QObject* parent)
     : QObject(parent)
     , m_context(context)
     , m_actions(actions)
     , m_toolboxDrag(toolboxDrag)
-    , m_tags(tags)
-    , m_evaluator(std::make_unique<BindingEvaluator>(tags))
     , m_tools(new ToolController(context, this))
 {
     connect(m_tools, &ToolController::toolChanged, this, &EditorController::toolChanged);
@@ -71,13 +66,9 @@ EditorController::EditorController(ToolContext& context, EditActions& actions,
                     m_lastScreenIndex = *index;
                 Q_EMIT screenChanged();
             });
-    connect(m_evaluator.get(), &BindingEvaluator::problemsChanged, this,
-            &EditorController::simulationProblemsChanged);
     connect(&notifier, &DocumentNotifier::projectReset, this,
             [this]
             {
-                // A new or opened document ends play mode.
-                stopSimulation();
                 const Project& project = m_context.project();
                 if (project.screenCount() > 0)
                     showScreen(project.screens().front()->id());
@@ -89,10 +80,6 @@ EditorController::EditorController(ToolContext& context, EditActions& actions,
 EditorController::~EditorController()
 {
     m_context.setContextMenuRequest({});
-    // The canvas must not keep showing the play copy the evaluator owns.
-    if (m_simulating && m_canvas)
-        m_canvas->setScreen(nullptr, nullptr);
-    m_tags.stop();
 }
 
 void EditorController::attachCanvas(CanvasItem* canvas)
@@ -108,27 +95,13 @@ void EditorController::attachCanvas(CanvasItem* canvas)
     canvas->setInputSettings(m_context.input());
     canvas->setGraphics(m_context.graphics());
     canvas->setGridSpacing(kGridSpacing);
-    showOnCanvas();
+    canvas->setScreen(m_context.screen(), &m_context.project().notifier());
     canvas->setSelection(m_context.selection().ids());
 
-    connect(canvas, &CanvasItem::gesture, this,
-            [this](const PointerGesture& gesture)
-            {
-                // While simulating only the view moves (and the pan tool drags it).
-                if (!m_simulating || m_tools->tool() == ToolController::Tool::Pan)
-                    m_tools->handleGesture(gesture);
-                else
-                    (void)m_tools->navigate(gesture);
-            });
+    connect(canvas, &CanvasItem::gesture, m_tools, &ToolController::handleGesture);
     connect(canvas, &CanvasItem::keyPressed, this,
             [this](int key, Qt::KeyboardModifiers modifiers)
             {
-                if (m_simulating)
-                {
-                    if (key == Qt::Key_Escape)
-                        stopSimulation();
-                    return;
-                }
                 if (!m_tools->keyPress(key, modifiers))
                     handleKey(key, modifiers);
             });
@@ -150,7 +123,8 @@ void EditorController::showScreen(ScreenId id)
     m_context.setScreenId(id);
     if (const auto index = m_context.project().indexOf(id))
         m_lastScreenIndex = *index;
-    showOnCanvas();
+    if (m_canvas)
+        m_canvas->setScreen(m_context.screen(), &m_context.project().notifier());
     Q_EMIT currentScreenChanged();
     Q_EMIT screenChanged();
 }
@@ -182,8 +156,6 @@ void EditorController::setCurrentScreen(int index)
 
 void EditorController::addScreen()
 {
-    if (m_simulating)
-        return;
     Project& project = m_context.project();
     const QSizeF size = m_context.screen() ? m_context.screen()->size() : Screen::kDefaultSize;
     auto screen = std::make_unique<Screen>(tr("Screen %1").arg(project.screenCount() + 1), size);
@@ -194,8 +166,6 @@ void EditorController::addScreen()
 
 void EditorController::duplicateScreen(int index)
 {
-    if (m_simulating)
-        return;
     Project& project = m_context.project();
     if (index < 0 || std::size_t(index) >= project.screenCount())
         return;
@@ -208,8 +178,6 @@ void EditorController::duplicateScreen(int index)
 
 void EditorController::removeScreen(int index)
 {
-    if (m_simulating)
-        return;
     Project& project = m_context.project();
     if (index < 0 || std::size_t(index) >= project.screenCount() || !canRemoveScreen())
         return;
@@ -219,8 +187,6 @@ void EditorController::removeScreen(int index)
 
 void EditorController::renameScreen(int index, const QString& name)
 {
-    if (m_simulating)
-        return;
     Project& project = m_context.project();
     const QString trimmed = name.trimmed();
     if (index < 0 || std::size_t(index) >= project.screenCount() || trimmed.isEmpty())
@@ -256,8 +222,6 @@ void EditorController::panTool()
 
 void EditorController::createTool(const QString& typeKey)
 {
-    if (m_simulating)
-        return;
     const ObjectTypeInfo* info = ObjectRegistry::instance().findByKey(typeKey);
     if (!info)
     {
@@ -269,8 +233,6 @@ void EditorController::createTool(const QString& typeKey)
 
 void EditorController::toggleMultiSelect()
 {
-    if (m_simulating)
-        return;
     SelectionModel& selection = m_context.selection();
     selection.setMultiSelectMode(!selection.multiSelectMode());
 }
@@ -301,43 +263,31 @@ void EditorController::zoomToActualSize()
 
 void EditorController::undo()
 {
-    if (m_simulating)
-        return;
     m_context.undoStack().undo();
 }
 
 void EditorController::redo()
 {
-    if (m_simulating)
-        return;
     m_context.undoStack().redo();
 }
 
 void EditorController::selectAll()
 {
-    if (m_simulating)
-        return;
     m_actions.selectAll();
 }
 
 void EditorController::deleteSelection()
 {
-    if (m_simulating)
-        return;
     m_actions.deleteSelection();
 }
 
 void EditorController::duplicate()
 {
-    if (m_simulating)
-        return;
     m_actions.duplicate();
 }
 
 void EditorController::cut()
 {
-    if (m_simulating)
-        return;
     m_actions.cut();
 }
 
@@ -348,36 +298,26 @@ void EditorController::copy()
 
 void EditorController::paste()
 {
-    if (m_simulating)
-        return;
     m_actions.paste();
 }
 
 void EditorController::group()
 {
-    if (m_simulating)
-        return;
     m_actions.group();
 }
 
 void EditorController::ungroup()
 {
-    if (m_simulating)
-        return;
     m_actions.ungroup();
 }
 
 void EditorController::nudge(double dx, double dy)
 {
-    if (m_simulating)
-        return;
     m_actions.nudge({dx, dy});
 }
 
 void EditorController::align(Alignment alignment)
 {
-    if (m_simulating)
-        return;
     static constexpr EditActions::Alignment kMap[] = {
         EditActions::Alignment::Left,           EditActions::Alignment::HorizontalCentre,
         EditActions::Alignment::Right,          EditActions::Alignment::Top,
@@ -389,15 +329,11 @@ void EditorController::align(Alignment alignment)
 
 void EditorController::distribute(Qt::Orientation orientation)
 {
-    if (m_simulating)
-        return;
     m_actions.distribute(orientation);
 }
 
 void EditorController::matchSize(SizeMatch match)
 {
-    if (m_simulating)
-        return;
     static constexpr EditActions::SizeMatch kMap[] = {
         EditActions::SizeMatch::Width,
         EditActions::SizeMatch::Height,
@@ -409,8 +345,6 @@ void EditorController::matchSize(SizeMatch match)
 
 void EditorController::reorder(Order order)
 {
-    if (m_simulating)
-        return;
     static constexpr EditActions::Order kMap[] = {
         EditActions::Order::Forward,
         EditActions::Order::Backward,
@@ -423,15 +357,11 @@ void EditorController::reorder(Order order)
 
 void EditorController::applyProjectStyle()
 {
-    if (m_simulating)
-        return;
     m_actions.applyProjectStyle();
 }
 
 bool EditorController::handleKey(int key, Qt::KeyboardModifiers modifiers)
 {
-    if (m_simulating)
-        return false;
     const double step = modifiers.testFlag(Qt::ShiftModifier) ? kLargeNudge : 1.0;
     switch (key)
     {
@@ -449,66 +379,6 @@ bool EditorController::handleKey(int key, Qt::KeyboardModifiers modifiers)
     default:
         return false;
     }
-}
-
-void EditorController::showOnCanvas()
-{
-    // The canvas lets go of a play copy before the evaluator replaces or
-    // drops it: it disconnects from that copy's notifier.
-    const Screen* screen = m_context.screen();
-    if (m_simulating && screen)
-    {
-        if (m_canvas)
-            m_canvas->setScreen(nullptr, nullptr);
-        m_evaluator->show(*screen);
-        if (m_canvas)
-            m_canvas->setScreen(m_evaluator->playScreen(), &m_evaluator->playProject().notifier());
-        return;
-    }
-    if (m_canvas)
-        m_canvas->setScreen(screen, &m_context.project().notifier());
-    m_evaluator->clear();
-}
-
-void EditorController::startSimulation()
-{
-    if (m_simulating)
-        return;
-    // Play mode starts clean: no selection, no half-done gesture.
-    m_context.selection().clear();
-    m_tools->setTool(ToolController::Tool::Select);
-    m_tags.start(m_context.project().tags().tags());
-    m_simulating = true;
-    showOnCanvas();
-    Q_EMIT simulatingChanged();
-    Q_EMIT undoStateChanged();
-    Q_EMIT editStateChanged();
-}
-
-void EditorController::stopSimulation()
-{
-    if (!m_simulating)
-        return;
-    m_simulating = false;
-    showOnCanvas();
-    m_tags.stop();
-    Q_EMIT simulatingChanged();
-    Q_EMIT simulationProblemsChanged();
-    Q_EMIT undoStateChanged();
-    Q_EMIT editStateChanged();
-}
-
-void EditorController::toggleSimulation()
-{
-    if (m_simulating)
-        stopSimulation();
-    else
-        startSimulation();
-}
-
-QStringList EditorController::simulationProblems() const
-{
-    return m_simulating ? m_evaluator->problems() : QStringList();
 }
 
 void EditorController::updateSizeText()
@@ -597,12 +467,12 @@ bool EditorController::multiSelect() const
 
 bool EditorController::canUndo() const
 {
-    return !m_simulating && m_context.undoStack().canUndo();
+    return m_context.undoStack().canUndo();
 }
 
 bool EditorController::canRedo() const
 {
-    return !m_simulating && m_context.undoStack().canRedo();
+    return m_context.undoStack().canRedo();
 }
 
 QString EditorController::undoText() const

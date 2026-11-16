@@ -3,6 +3,7 @@
 
 #include "editor/models/TagModel.h"
 
+#include "comm/BindingEvaluator.h"
 #include "comm/TagEngine.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
@@ -12,6 +13,7 @@
 #include "editor/app/AppContext.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
+#include "editor/app/SimulationController.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/SelectionModel.h"
 
@@ -261,36 +263,45 @@ private Q_SLOTS:
 
     void simulating()
     {
-        EditorController& editor = m_app->editor();
+        SimulationController& simulation = m_app->simulation();
         TagEngine& engine = m_app->tagEngine();
-        QVERIFY(editor.canUndo() == false);
-        QVERIFY(tags().setCell(tagRow(u"Pressure"_s), TagModel::UnitColumn, u"psi"_s));
-        QVERIFY(editor.canUndo());
-
-        QSignalSpy changed(&editor, &EditorController::simulatingChanged);
-        editor.toggleSimulation();
-        QVERIFY(editor.simulating());
+        QSignalSpy changed(&simulation, &SimulationController::runningChanged);
+        simulation.toggle();
+        QVERIFY(simulation.isRunning());
         QVERIFY(engine.isRunning());
         QCOMPARE(changed.count(), 1);
-        QVERIFY(!editor.canUndo());
-        editor.undo(); // ignored while simulating
-        QCOMPARE(project().tags().find(u"Pressure"_s)->unit, u"psi"_s);
-        QVERIFY(editor.simulationProblems().isEmpty());
+        QCOMPARE(simulation.screenTitle(), u"02 Filling"_s);
+        QCOMPARE(simulation.screenSize(), QSizeF(1280, 800));
+        QVERIFY(simulation.problems().isEmpty());
 
         // Typing a value writes it to the tag.
         QVERIFY(tags().setCell(tagRow(u"PumpRunning"_s), TagModel::ValueColumn, u"true"_s));
         QCOMPARE(engine.value(u"PumpRunning"_s), TagValue(true));
         QTRY_COMPARE(cell(u"PumpRunning"_s, TagModel::ValueColumn).toString(), u"true"_s);
 
-        // Simulation never touches the document.
+        // The simulation drives a copy; the document never changes.
+        const Screen* play = simulation.evaluator().playScreen();
+        QVERIFY(play && play != project().screens().front().get());
         const double level = tank()->value<double>(Prop::Value);
-        QTRY_VERIFY(TagValues::toNumber(engine.value(u"Level"_s)).value_or(0) > 0.0);
+        QTRY_VERIFY(play->object(tank()->id())->value<double>(Prop::Value) != level);
         QCOMPARE(tank()->value<double>(Prop::Value), level);
 
-        editor.toggleSimulation();
-        QVERIFY(!editor.simulating());
+        // Editing goes on while it runs, as in TIA Portal; a restart picks
+        // the edits up.
+        QVERIFY(m_app->properties().rowCount() > 0);
+        m_app->selection().selectOnly(tank()->id());
+        QVERIFY(m_app->properties().setValue(propertyRow(u"name"_s), u"T-102"_s));
+        QCOMPARE(play->object(tank()->id())->name(), u"T-101"_s);
+        simulation.restart();
+        QVERIFY(simulation.isRunning());
+        QCOMPARE(simulation.evaluator().playScreen()->object(tank()->id())->name(), u"T-102"_s);
+        m_app->undoStack().undo();
+        QCOMPARE(tank()->name(), u"T-101"_s);
+
+        simulation.toggle();
+        QVERIFY(!simulation.isRunning());
         QVERIFY(!engine.isRunning());
-        QVERIFY(editor.canUndo());
+        QVERIFY(!simulation.evaluator().playScreen());
     }
 };
 

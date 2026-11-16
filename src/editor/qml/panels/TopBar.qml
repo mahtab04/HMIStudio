@@ -10,6 +10,7 @@ ToolBar {
     id: bar
 
     required property EditorController editor
+    required property SimulationController simulation
     required property Theme theme
     required property DocumentController document
     required property AppSettings settings
@@ -137,21 +138,29 @@ ToolBar {
 
         ToolSeparator {}
 
-        // Play mode: simulated tags drive the screen; editing is off.
+        // Runtime simulation in a window of its own, as in TIA Portal.
         Button {
-            text: bar.editor.simulating ? qsTr("Stop") : qsTr("Simulate")
-            Accessible.name: bar.editor.simulating ? qsTr("Stop the simulation (Esc)") : qsTr("Simulate the screen with its tags (F5)")
-            ToolTip.text: Accessible.name
-            ToolTip.visible: hovered
+            id: simulateButton
+
+            text: bar.simulation.running ? qsTr("Stop") : qsTr("Simulate")
+            Accessible.name: bar.simulation.running ? qsTr("Stop the runtime simulation (Shift+F5)") : qsTr("Start the runtime simulation of this screen (F5)")
+            ToolTip.text: simulateButton.Accessible.name
+            ToolTip.visible: simulateButton.hovered
             ToolTip.delay: 600
             implicitHeight: bar.theme.controlHeight
-            icon.source: bar.editor.simulating ? "qrc:/icons/stop.svg" : "qrc:/icons/play.svg"
+            icon.source: bar.simulation.running ? "qrc:/icons/stop.svg" : "qrc:/icons/play.svg"
             icon.color: "transparent"
             icon.width: bar.theme.iconSize
             icon.height: bar.theme.iconSize
-            checked: bar.editor.simulating
             focusPolicy: Qt.NoFocus
-            onClicked: bar.editor.toggleSimulation()
+            onClicked: bar.simulation.toggle()
+        }
+        IconButton {
+            visible: bar.simulation.running
+            theme: bar.theme
+            label: qsTr("Restart the simulation with your latest edits (F5)")
+            icon.source: "qrc:/icons/redo.svg"
+            onClicked: bar.simulation.restart()
         }
 
         ToolSeparator {}

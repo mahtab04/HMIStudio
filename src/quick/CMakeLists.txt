@@ -15,6 +15,8 @@ qt_add_qml_module(hmi_quick
         ICanvasView.h
         ObjectItem.cpp
         ObjectItem.h
+        RuntimeView.cpp
+        RuntimeView.h
         ScreenItem.cpp
         ScreenItem.h
         input/GestureRecognizer.cpp

@@ -6,19 +6,14 @@
 #include <QObject>
 #include <QPointF>
 #include <QPointer>
-#include <QStringList>
 #include <qqmlintegration.h>
-
-#include <memory>
 
 class QUndoStack;
 
 namespace hmi
 {
 
-class BindingEvaluator;
 class EditActions;
-class TagEngine;
 class SelectionModel;
 class ToolContext;
 class ToolController;
@@ -60,11 +55,6 @@ class EditorController : public QObject
     Q_PROPERTY(bool canMatchSize READ canMatchSize NOTIFY editStateChanged)
     Q_PROPERTY(bool snapEnabled READ snapEnabled WRITE setSnapEnabled NOTIFY snapEnabledChanged)
     Q_PROPERTY(QString sizeText READ sizeText NOTIFY sizeTextChanged)
-    // Play mode: tags are simulated and the canvas shows a copy of the
-    // current screen driven by its bindings. Editing is off meanwhile.
-    Q_PROPERTY(bool simulating READ simulating NOTIFY simulatingChanged)
-    Q_PROPERTY(
-        QStringList simulationProblems READ simulationProblems NOTIFY simulationProblemsChanged)
 
 public:
     enum Alignment
@@ -102,7 +92,7 @@ public:
     static constexpr double kGridSpacing = 8.0;
 
     EditorController(ToolContext& context, EditActions& actions, ToolboxDragController& toolboxDrag,
-                     TagEngine& tags, QObject* parent = nullptr);
+                     QObject* parent = nullptr);
     ~EditorController() override;
     EditorController(const EditorController&) = delete;
     EditorController& operator=(const EditorController&) = delete;
@@ -149,10 +139,6 @@ public:
     Q_INVOKABLE void reorder(hmi::EditorController::Order order);
     Q_INVOKABLE void applyProjectStyle();
 
-    Q_INVOKABLE void startSimulation();
-    Q_INVOKABLE void stopSimulation();
-    Q_INVOKABLE void toggleSimulation();
-
     // Keys the canvas tools did not use: arrows nudge, Delete removes.
     bool handleKey(int key, Qt::KeyboardModifiers modifiers);
 
@@ -183,8 +169,6 @@ public:
     [[nodiscard]] bool snapEnabled() const;
     void setSnapEnabled(bool enabled);
     [[nodiscard]] QString sizeText() const { return m_sizeText; }
-    [[nodiscard]] bool simulating() const noexcept { return m_simulating; }
-    [[nodiscard]] QStringList simulationProblems() const;
 
     [[nodiscard]] ToolController& tools() const noexcept { return *m_tools; }
 
@@ -201,8 +185,6 @@ Q_SIGNALS:
     void editStateChanged();
     void snapEnabledChanged();
     void sizeTextChanged();
-    void simulatingChanged();
-    void simulationProblemsChanged();
     // Right-click on the canvas; `viewPos` is in canvas coordinates.
     void contextMenuRequested(QPointF viewPos);
 
@@ -212,15 +194,10 @@ private:
     void showScreen(ScreenId id);
     void onScreenRemoved(ScreenId id);
     void updateSizeText();
-    // The screen the canvas shows: the play copy while simulating.
-    void showOnCanvas();
 
     ToolContext& m_context;
     EditActions& m_actions;
     ToolboxDragController& m_toolboxDrag;
-    TagEngine& m_tags;
-    std::unique_ptr<BindingEvaluator> m_evaluator;
-    bool m_simulating = false;
     ToolController* m_tools = nullptr;
     QPointer<CanvasItem> m_canvas;
     QPointF m_cursor;

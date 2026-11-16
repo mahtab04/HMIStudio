@@ -8,7 +8,7 @@ Pane {
 
     required property Theme theme
     required property TagModel tags
-    required property EditorController editor
+    required property SimulationController simulation
 
     padding: 0
 
@@ -47,7 +47,7 @@ Pane {
             TagsPanel {
                 theme: panel.theme
                 tags: panel.tags
-                editor: panel.editor
+                simulation: panel.simulation
             }
             Label {
                 text: qsTr("Alarms come in a later version.")
@@ -63,8 +63,8 @@ Pane {
             }
             // Bindings that could not be applied while simulating.
             Label {
-                text: panel.editor.simulationProblems.length > 0 ? panel.editor.simulationProblems.join("\n") : qsTr("No messages.")
-                color: panel.editor.simulationProblems.length > 0 ? panel.theme.warning : panel.theme.textMuted
+                text: panel.simulation.problems.length > 0 ? panel.simulation.problems.join("\n") : qsTr("No messages.")
+                color: panel.simulation.problems.length > 0 ? panel.theme.warning : panel.theme.textMuted
                 verticalAlignment: Text.AlignTop
                 leftPadding: panel.theme.padding
                 wrapMode: Text.WordWrap

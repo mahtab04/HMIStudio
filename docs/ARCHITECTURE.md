@@ -539,20 +539,22 @@ not being clean.
 
 ### 7.4 Simulation mode and runtime
 
-Simulate switches the editor to play mode: tools other than view
-navigation are disabled, and so are undo, the toolbox and the properties
-panel. `TagEngine` starts on the project's tags and `BindingEvaluator`
-makes a play copy of the current screen in a project of its own; the
-canvas shows that copy, and the evaluator sets its properties from tag
-values through each binding's transform. The copy's own `DocumentNotifier`
-reports the changes, so `ObjectItem`s repaint exactly as when editing,
-while the document, the undo stack and saved files never see a simulated
-value. Stopping shows the document again. From phase 7, input in play mode
+Simulate (`SimulationController`) works like TIA Portal's Runtime
+Simulator: `TagEngine` starts on the project's tags, `BindingEvaluator`
+makes a play copy of the current screen in a project of its own, and a
+separate simulator window shows that copy in a `RuntimeView` (a
+`ScreenItem` fitted into the window, without editor overlays). The
+evaluator sets the copy's properties from tag values through each
+binding's transform; the copy's own `DocumentNotifier` reports the
+changes, so `ObjectItem`s repaint exactly as when editing, while the
+document, the undo stack and saved files never see a simulated value. The
+editor stays editable; Restart takes a new copy. Closing the window
+stops the simulation. From phase 7, input in play mode
 goes to `RuntimeInputHandler`, which maps taps and drags to object events
 (button press, slider drag).
 
-The runtime executable is the same `ScreenItem` and `ObjectItem` in play
-mode inside a minimal QML window, with no editor code linked.
+The runtime executable is the same `RuntimeView`, `ScreenItem` and
+`ObjectItem` inside a minimal QML window, with no editor code linked.
 
 ### 7.5 Threads in Qt Quick
 

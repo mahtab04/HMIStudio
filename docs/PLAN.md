@@ -282,17 +282,21 @@ state and values from simulated tags.
 Status: implemented on `feat/phase-6-tags`. The sample "02 Filling" screen
 now uses the Tank, Pump, Valve, Pipe and I/O field objects, bound to five
 simulated tags (level as a sine, pump as a toggle, pressure, flow,
-temperature); Simulate (F5) animates it, and the level also drives the
+temperature); Simulate (F5) opens it in a runtime window and animates it, and the level also drives the
 tank and banner colours and the banner text through value ranges.
 `TagsTest`, `BindingTest`, `SimulationTest` and `TagModelTest` cover the
 tag database, CSV, transforms, the engine's thread and coalescing, the play
 copy and the panels' models. Choices made here:
 
-- Play mode works on a copy of the current screen in a project of its own
-  (`BindingEvaluator`), so simulated values never reach the document, the
-  undo stack or the saved files; the canvas shows the copy while
-  simulating. Editing, undo and the toolbox and properties panels are off
-  meanwhile; the view can still be zoomed and panned. Esc or F5 stops.
+- The runtime simulation opens in a window of its own, as TIA Portal's
+  Runtime Simulator does: the current screen at its size (smaller when
+  the desktop is), with nothing of the editor around it. It runs on a copy
+  of the screen in a project of its own (`BindingEvaluator`), so simulated
+  values never reach the document, the undo stack or the saved files, and
+  the editor stays fully editable meanwhile; Restart (F5 while running)
+  takes a new copy with the latest edits. Shift+F5 or closing the window
+  stops it. The window is a `RuntimeView`, which the runtime (phase 9)
+  will reuse.
 - Filtering is done inside `TagModel` instead of a separate proxy model:
   one model for the table and the tag picker, with search over name, unit
   and comment.

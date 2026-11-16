@@ -16,6 +16,7 @@ ApplicationWindow {
     required property LayerModel layers
     required property ScreenListModel screens
     required property TagModel tags
+    required property SimulationController simulation
 
     width: 1440
     height: 900
@@ -48,6 +49,7 @@ ApplicationWindow {
 
     header: TopBar {
         editor: root.editor
+        simulation: root.simulation
         theme: root.theme
         document: root.document
         settings: root.settings
@@ -90,7 +92,6 @@ ApplicationWindow {
             toolbox: root.toolbox
             toolboxDrag: root.toolboxDrag
             layers: root.layers
-            enabled: !root.editor.simulating
         }
 
         SplitView {
@@ -115,7 +116,7 @@ ApplicationWindow {
                 SplitView.minimumHeight: root.theme.controlHeight
                 theme: root.theme
                 tags: root.tags
-                editor: root.editor
+                simulation: root.simulation
             }
         }
 
@@ -127,7 +128,6 @@ ApplicationWindow {
             theme: root.theme
             properties: root.properties
             tags: root.tags
-            enabled: !root.editor.simulating
         }
     }
 
@@ -138,7 +138,20 @@ ApplicationWindow {
 
     Shortcut {
         sequence: "F5"
-        onActivated: root.editor.toggleSimulation()
+        onActivated: root.simulation.running ? root.simulation.restart() : root.simulation.start()
+    }
+    Shortcut {
+        sequence: "Shift+F5"
+        onActivated: root.simulation.stop()
+    }
+
+    // The runtime simulator opens in its own window while it runs.
+    Loader {
+        active: root.simulation.running
+        sourceComponent: SimulatorWindow {
+            simulation: root.simulation
+            theme: root.theme
+        }
     }
     Shortcut {
         sequences: [StandardKey.New]

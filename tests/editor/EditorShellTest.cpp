@@ -7,6 +7,7 @@
 #include "editor/app/DocumentController.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
+#include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
@@ -16,6 +17,7 @@
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "quick/CanvasItem.h"
+#include "quick/RuntimeView.h"
 #include "quick/ScreenItem.h"
 
 #include <QQmlApplicationEngine>
@@ -34,6 +36,19 @@ using namespace hmi;
 class EditorShellTest : public QObject
 {
     Q_OBJECT
+
+    // The runtime simulator's window, while it is open.
+    static QQuickWindow* simulatorWindow(QQmlApplicationEngine& engine)
+    {
+        for (QWindow* window : QGuiApplication::topLevelWindows())
+        {
+            auto* quick = qobject_cast<QQuickWindow*>(window);
+            if (quick && quick != engine.rootObjects().front() &&
+                quick->findChild<RuntimeView*>(QStringLiteral("runtimeView")))
+                return quick;
+        }
+        return nullptr;
+    }
 
 private Q_SLOTS:
     void initTestCase() { QQuickStyle::setStyle(QStringLiteral("Fusion")); }
@@ -64,6 +79,7 @@ private Q_SLOTS:
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
             {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
+            {QStringLiteral("simulation"), QVariant::fromValue(&context.simulation())},
         });
         engine.loadFromModule("HmiStudio.Editor", "Main");
         QCOMPARE(engine.rootObjects().size(), 1);
@@ -120,22 +136,29 @@ private Q_SLOTS:
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
 
-        // Simulating shows a play copy of the screen; stopping shows the
-        // document again.
+        // The runtime simulation opens a window of its own showing a play
+        // copy of the screen at its size; the editor keeps the document.
         QMetaObject::invokeMethod(menu, "close");
-        context.editor().startSimulation();
-        QVERIFY(context.editor().simulating());
-        const Screen* play = canvas->screenItem()->screen();
+        context.simulation().start();
+        QQuickWindow* simulator = nullptr;
+        QTRY_VERIFY((simulator = simulatorWindow(engine)) != nullptr);
+        QVERIFY(QTest::qWaitForWindowExposed(simulator));
+        auto* view = simulator->findChild<RuntimeView*>(QStringLiteral("runtimeView"));
+        QVERIFY(view);
+        const Screen* play = view->screenItem()->screen();
         QVERIFY(play && play != &screen);
-        QCOMPARE(canvas->screenItem()->objectItemCount(), int(screen.objectCount()));
-        QVERIFY(context.selection().ids().empty());
+        QCOMPARE(view->screenItem()->objectItemCount(), int(screen.objectCount()));
+        QCOMPARE(canvas->screenItem()->screen(), &screen);
+        QVERIFY(simulator->title().startsWith(screen.name()));
         if (const QString path = qEnvironmentVariable("HMI_SIMULATE_SCREENSHOT"); !path.isEmpty())
         {
             QTest::qWait(1500);
-            QVERIFY(window->grabWindow().save(path));
+            QVERIFY(simulator->grabWindow().save(path));
         }
-        context.editor().stopSimulation();
-        QCOMPARE(canvas->screenItem()->screen(), &screen);
+        // Closing the window stops the simulation.
+        simulator->close();
+        QTRY_VERIFY(!context.simulation().isRunning());
+        QTRY_VERIFY(simulatorWindow(engine) == nullptr);
 
         if (const QString path = qEnvironmentVariable("HMI_SCREENSHOT"); !path.isEmpty())
         {

@@ -6,6 +6,7 @@
 #include "editor/app/DocumentController.h"
 #include "editor/app/EditActions.h"
 #include "editor/app/EditorController.h"
+#include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
@@ -33,8 +34,7 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
           std::make_unique<ToolContext>(*m_project, m_undoStack, *m_selection, m_inputSettings))
     , m_editActions(std::make_unique<EditActions>(*m_toolContext))
     , m_toolboxDrag(std::make_unique<ToolboxDragController>(*m_toolContext))
-    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag,
-                                                  *m_tagEngine))
+    , m_editor(std::make_unique<EditorController>(*m_toolContext, *m_editActions, *m_toolboxDrag))
     , m_toolbox(std::make_unique<ToolboxModel>())
     , m_settings(std::make_unique<AppSettings>(paths.settingsFile))
 {
@@ -53,6 +53,7 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     m_layers = std::make_unique<LayerModel>(*m_toolContext);
     m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
     m_tags = std::make_unique<TagModel>(*m_toolContext, *m_tagEngine);
+    m_simulation = std::make_unique<SimulationController>(*m_toolContext, *m_tagEngine);
 
     // Models follow the screen the editor shows.
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_properties.get(),
@@ -78,6 +79,7 @@ AppContext::~AppContext()
 {
     m_undoStack.clear();
     // Models listen to the project; they go before it.
+    m_simulation.reset();
     m_tags.reset();
     m_screens.reset();
     m_layers.reset();

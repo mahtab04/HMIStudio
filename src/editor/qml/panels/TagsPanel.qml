@@ -15,7 +15,7 @@ Item {
 
     required property Theme theme
     required property TagModel tags
-    required property EditorController editor
+    required property SimulationController simulation
 
     property int currentRow: -1
     property string message
@@ -92,7 +92,7 @@ Item {
                 Layout.fillWidth: true
             }
             Label {
-                visible: panel.editor.simulating
+                visible: panel.simulation.running
                 text: qsTr("● Simulating")
                 color: panel.theme.good
             }
@@ -189,8 +189,8 @@ Item {
 
         implicitHeight: panel.theme.controlHeight
         leftPadding: panel.theme.spacing
-        color: cell.editor === "value" && panel.editor.simulating ? panel.theme.good : panel.theme.text
-        font.bold: cell.editor === "value" && panel.editor.simulating
+        color: cell.editor === "value" && panel.simulation.running ? panel.theme.good : panel.theme.text
+        font.bold: cell.editor === "value" && panel.simulation.running
         selectByMouse: true
         background: Rectangle {
             color: cell.row === panel.currentRow ? panel.theme.panelRaised : panel.theme.window
