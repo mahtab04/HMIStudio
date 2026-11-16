@@ -61,6 +61,9 @@ struct PropertyDescriptor
     bool bindable = false;
     // Set by the project style (HmiStyle) when not None.
     StyleRole styleRole = StyleRole::None;
+    // The object's process value (a level, a running state): the property
+    // the properties panel offers a tag for first. Bindable.
+    bool process = false;
 };
 
 // Checks `value` against the descriptor's type and constraint. Returns the

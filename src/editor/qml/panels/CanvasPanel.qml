@@ -5,13 +5,19 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import HmiStudio.Quick
 
-// Centre panel: screen tab, rulers and the canvas.
+// Centre panel, the work area: the "HMI tags" editor tab and one tab per
+// screen; a screen tab shows rulers and the canvas.
 ColumnLayout {
     id: panel
 
     required property EditorController editor
     required property Theme theme
     required property ScreenListModel screens
+    required property TagModel tags
+    required property SimulationController simulation
+
+    // The tag table is open instead of a screen.
+    property bool showingTags: false
 
     spacing: 0
 
@@ -37,6 +43,18 @@ ColumnLayout {
                 Row {
                     spacing: 2
 
+                    ToolButton {
+                        objectName: "tagsTab"
+                        text: panel.tags.tagCount > 0 ? qsTr("HMI tags (%1)").arg(panel.tags.tagCount) : qsTr("HMI tags")
+                        checked: panel.showingTags
+                        implicitHeight: panel.theme.controlHeight
+                        focusPolicy: Qt.NoFocus
+                        onClicked: panel.showingTags = true
+                    }
+                    ToolSeparator {
+                        implicitHeight: panel.theme.controlHeight
+                    }
+
                     Repeater {
                         model: panel.screens
 
@@ -48,10 +66,13 @@ ColumnLayout {
                             required property bool current
 
                             text: tab.name
-                            checked: tab.current
+                            checked: tab.current && !panel.showingTags
                             implicitHeight: panel.theme.controlHeight
                             focusPolicy: Qt.NoFocus
-                            onClicked: panel.editor.setCurrentScreen(tab.index)
+                            onClicked: {
+                                panel.showingTags = false
+                                panel.editor.setCurrentScreen(tab.index)
+                            }
                             onPressAndHold: {
                                 screenMenu.screenIndex = tab.index
                                 screenMenu.popup(tab)
@@ -71,23 +92,38 @@ ColumnLayout {
                         theme: panel.theme
                         label: qsTr("Add screen")
                         icon.source: "qrc:/icons/plus.svg"
-                        onClicked: panel.editor.addScreen()
+                        onClicked: {
+                            panel.showingTags = false
+                            panel.editor.addScreen()
+                        }
                     }
                 }
             }
             Label {
+                visible: !panel.showingTags
                 text: panel.editor.gridText
                 color: panel.theme.textMuted
             }
             Label {
+                visible: !panel.showingTags
                 text: panel.editor.zoomText
                 color: panel.theme.textMuted
             }
         }
     }
 
+    TagsPanel {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panel.showingTags
+        theme: panel.theme
+        tags: panel.tags
+        simulation: panel.simulation
+    }
+
     RowLayout {
         Layout.fillWidth: true
+        visible: !panel.showingTags
         spacing: 0
 
         Rectangle {
@@ -110,6 +146,7 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
+        visible: !panel.showingTags
         spacing: 0
 
         RulerItem {

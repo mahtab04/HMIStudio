@@ -10,6 +10,7 @@ ToolBar {
     id: bar
 
     required property EditorController editor
+    required property SimulationController simulation
     required property Theme theme
     required property DocumentController document
     required property AppSettings settings
@@ -133,6 +134,33 @@ ToolBar {
             icon.source: "qrc:/icons/redo.svg"
             enabled: bar.editor.canRedo
             onClicked: bar.editor.redo()
+        }
+
+        ToolSeparator {}
+
+        // Runtime simulation in a window of its own, as in TIA Portal.
+        Button {
+            id: simulateButton
+
+            text: bar.simulation.running ? qsTr("Stop") : qsTr("Simulate")
+            Accessible.name: bar.simulation.running ? qsTr("Stop the runtime simulation (Shift+F5)") : qsTr("Start the runtime simulation of this screen (F5)")
+            ToolTip.text: simulateButton.Accessible.name
+            ToolTip.visible: simulateButton.hovered
+            ToolTip.delay: 600
+            implicitHeight: bar.theme.controlHeight
+            icon.source: bar.simulation.running ? "qrc:/icons/stop.svg" : "qrc:/icons/play.svg"
+            icon.color: "transparent"
+            icon.width: bar.theme.iconSize
+            icon.height: bar.theme.iconSize
+            focusPolicy: Qt.NoFocus
+            onClicked: bar.simulation.toggle()
+        }
+        IconButton {
+            visible: bar.simulation.running
+            theme: bar.theme
+            label: qsTr("Restart the simulation with your latest edits (F5)")
+            icon.source: "qrc:/icons/redo.svg"
+            onClicked: bar.simulation.restart()
         }
 
         ToolSeparator {}

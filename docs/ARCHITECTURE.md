@@ -95,7 +95,7 @@ hmi_runtime (later) ────────────────────
 |---|---|---|
 | `hmi_core` | Project, Screen, HmiObject hierarchy, property system, tags, bindings, events, serialization, object registry, hit testing. Built as the static `hmi_core_impl`; consumers link the `hmi::core` interface target, which links it whole so self-registering types are kept | Core, Gui |
 | `hmi_render` | Graphic sources (raster, SVG), the SVG backend strategy, the image cache, the SVG import check; implements core's `IGraphicProvider` (section 14). Object painting itself stays in `hmi_core` | Gui, Svg |
-| `hmi_comm` | `IDriver`, simulator, OPC UA, S7, Modbus drivers, `TagEngine` | Core, Network |
+| `hmi_comm` | `IDriver`, `SimulatorDriver`, later OPC UA, S7, Modbus drivers; `TagEngine`; `BindingEvaluator` (play mode) | Core (Network with the first PLC driver) |
 | `hmi_quick` | `CanvasItem`, `ScreenItem`, `ObjectItem`, overlays, gesture recognizer; static QML module `HmiStudio.Quick` | Quick |
 | `hmi_editor_lib` | `AppContext`, `Theme`, controllers, panel models, undo commands, tools and the QML shell; static QML module `HmiStudio.Editor`, so tests link it without the app | Quick, QuickControls2, Svg; the `QtQuick.Dialogs` and `QtQml.Models` QML modules |
 | `hmi_editor` | The executable: `main.cpp` only; output name `HmiStudio` | as above |
@@ -130,8 +130,11 @@ hmi-studio/
 │  ├─ render/                # GraphicLibrary, GraphicCache, GraphicFactory,
 │  │                         # RasterGraphic, SvgGraphic, QtSvgBackend, SvgInspector
 │  ├─ comm/
-│  │  ├─ drivers/            # simulator/, opcua/, s7/, modbus/
-│  │  └─ TagEngine.*
+│  │  ├─ IDriver.h
+│  │  ├─ SimulatorDriver.*   # ramp, sine, random, toggle, manual
+│  │  ├─ TagEngine.*         # worker thread, coalesced updates
+│  │  ├─ BindingEvaluator.*  # play copy of a screen driven by tags
+│  │  └─ drivers/            # later: opcua/, s7/, modbus/
 │  ├─ quick/                 # C++ Qt Quick items
 │  │  ├─ CanvasItem.*        # viewport: zoom, pan, input
 │  │  ├─ ICanvasView.h       # what tools may ask of the canvas
@@ -536,13 +539,22 @@ not being clean.
 
 ### 7.4 Simulation mode and runtime
 
-Simulate switches `CanvasItem` to play mode: tools are disabled, input goes
-to `RuntimeInputHandler`, which maps taps and drags to object events
-(button press, slider drag). `TagEngine` starts, `BindingEvaluator` drives
-properties from tag values and `ObjectItem`s repaint.
+Simulate (`SimulationController`) works like TIA Portal's Runtime
+Simulator: `TagEngine` starts on the project's tags, `BindingEvaluator`
+makes a play copy of the current screen in a project of its own, and a
+separate simulator window shows that copy in a `RuntimeView` (a
+`ScreenItem` fitted into the window, without editor overlays). The
+evaluator sets the copy's properties from tag values through each
+binding's transform; the copy's own `DocumentNotifier` reports the
+changes, so `ObjectItem`s repaint exactly as when editing, while the
+document, the undo stack and saved files never see a simulated value. The
+editor stays editable; Restart takes a new copy. Closing the window
+stops the simulation. From phase 7, input in play mode
+goes to `RuntimeInputHandler`, which maps taps and drags to object events
+(button press, slider drag).
 
-The runtime executable is the same `ScreenItem` and `ObjectItem` in play
-mode inside a minimal QML window, with no editor code linked.
+The runtime executable is the same `RuntimeView`, `ScreenItem` and
+`ObjectItem` inside a minimal QML window, with no editor code linked.
 
 ### 7.5 Threads in Qt Quick
 
@@ -559,19 +571,28 @@ mode inside a minimal QML window, with no editor code linked.
 ```cpp
 class IDriver {
 public:
+    using Publish = std::function<void(const QString& tag, const TagValue& value)>;
     virtual ~IDriver() = default;
-    virtual Result<void> connect(const ConnectionConfig&) = 0;
-    virtual void disconnect() = 0;
-    virtual Result<TagValue> read(const TagAddress&) = 0;
-    virtual Result<void> write(const TagAddress&, const TagValue&) = 0;
-    virtual void subscribe(std::span<const TagAddress>, UpdateCallback) = 0;
+    virtual Result<void> start(std::span<const Tag> tags) = 0;
+    virtual void stop() = 0;
+    virtual Result<void> write(const QString& tag, const TagValue& value) = 0;
+    // Every TagEngine tick: report the values that changed.
+    virtual void poll(double seconds, const Publish& publish) = 0;
 };
 ```
 
-- Drivers run on a worker thread owned by `TagEngine`. The GUI thread never
-  blocks on network I/O.
-- Updates reach the GUI through queued signals and are coalesced to about
-  10–20 Hz, so a fast PLC cannot flood repaint.
+Connection settings and addresses (`Tag::connection`, `Tag::address`) are
+read by the driver from the tags it is started with; PLC drivers from
+phase 8 may extend the interface with subscriptions.
+
+- Drivers run on a worker thread owned by `TagEngine` and are polled every
+  `TagEngine::kTickMs` (50 ms). The GUI thread never blocks on I/O.
+- Values reach the GUI thread through queued calls and are announced at
+  most every `TagEngine::kPublishMs` (66 ms, about 15 Hz) as one
+  `valuesChanged` with the names that changed, so a fast PLC cannot flood
+  repaint. A write from the GUI is shown at once and sent to the driver.
+- `TagValue` is a `std::variant` of nothing, bool, integer, real and text;
+  `Tag::converted` turns any value into the tag's type.
 - `Result<T>` is `tl::expected<T, Error>` (C++20 has no `std::expected`).
   Exceptions are used only for programming errors.
 
@@ -621,8 +642,11 @@ MyLine.hmiproj/
   unchanged project writes byte-identical files.
 - `project.json` lists the screen files in screen order. Screen files are
   named `screens/<nn>_<name>.json`; renamed or deleted screens' old files
-  are removed on save. Files the project does not list (later `tags.json`,
-  the user's own files) are never touched.
+  are removed on save. Files the project does not list (the user's own
+  files) are never touched. `tags.json` holds the tag database and is
+  always written; a project without one has no tags. Bindings are stored
+  on their objects in the screen files, as `"bindings": [{property, tag,
+  transform: {kind, …parameters}}]`.
 - Every file carries `formatVersion`. `ProjectSerializer` runs a chain of
   migration functions from the file's version to the current one and
   refuses files from a newer version. Version 0 is a file without

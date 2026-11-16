@@ -34,6 +34,12 @@ Q_SIGNALS:
     void objectsReordered(hmi::ScreenId screen);
 
     void propertyChanged(hmi::ObjectId object, hmi::PropertyId property);
+    void bindingChanged(hmi::ObjectId object, hmi::PropertyId property);
+
+    // Tags of the project's TagDatabase. A rename reports old and new name.
+    void tagAdded(const QString& name);
+    void tagRemoved(const QString& name);
+    void tagChanged(const QString& oldName, const QString& newName);
 };
 
 } // namespace hmi

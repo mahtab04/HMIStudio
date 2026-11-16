@@ -53,6 +53,8 @@ namespace hmi::Describe
 
 // The same entry, set by the project style for `role`.
 [[nodiscard]] PropertyDescriptor styled(PropertyDescriptor descriptor, StyleRole role);
+// Marks the object's process value (see PropertyDescriptor::process).
+[[nodiscard]] PropertyDescriptor process(PropertyDescriptor descriptor);
 
 // Horizontal (0) or vertical (1), for bars and sliders.
 inline constexpr int kHorizontal = 0;

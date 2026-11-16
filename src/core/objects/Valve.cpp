@@ -28,20 +28,20 @@ std::span<const PropertyDescriptor> Valve::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {80.0, 60.0},
-        {
-            Describe::stretchMode(),
-            Describe::flag(Prop::Open, "open", QT_TRANSLATE_NOOP("hmi::Property", "Open"),
-                           Behaviour, true, true),
-            Describe::color(Prop::OnColor, "onColor",
-                            QT_TRANSLATE_NOOP("hmi::Property", "Open colour"), Appearance,
-                            QColor(0x22, 0xA0, 0x55), true),
-            Describe::color(Prop::OffColor, "offColor",
-                            QT_TRANSLATE_NOOP("hmi::Property", "Closed colour"), Appearance,
-                            QColor(0xDC, 0x26, 0x26), true),
-            Describe::lineColor(QColor(0x3A, 0x40, 0x48)),
-            Describe::lineWidth(2.0),
-        });
+        {80.0, 60.0}, {
+                          Describe::stretchMode(),
+                          Describe::process(Describe::flag(
+                              Prop::Open, "open", QT_TRANSLATE_NOOP("hmi::Property", "Open"),
+                              Behaviour, true, true)),
+                          Describe::color(Prop::OnColor, "onColor",
+                                          QT_TRANSLATE_NOOP("hmi::Property", "Open colour"),
+                                          Appearance, QColor(0x22, 0xA0, 0x55), true),
+                          Describe::color(Prop::OffColor, "offColor",
+                                          QT_TRANSLATE_NOOP("hmi::Property", "Closed colour"),
+                                          Appearance, QColor(0xDC, 0x26, 0x26), true),
+                          Describe::lineColor(QColor(0x3A, 0x40, 0x48)),
+                          Describe::lineWidth(2.0),
+                      });
     return table;
 }
 

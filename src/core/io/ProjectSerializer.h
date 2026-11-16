@@ -19,6 +19,7 @@ class Project;
 //
 //     MyLine.hmiproj/
 //     ├─ project.json          formatVersion, name, screen and asset lists
+//     ├─ tags.json             formatVersion, tags
 //     ├─ screens/01_overview.json …
 //     └─ assets/<content hash>.png …   images and SVG used by objects
 //
@@ -26,8 +27,8 @@ class Project;
 // project gives byte-identical files and diffs stay readable. Every file
 // carries `formatVersion`; older files are migrated on load, newer ones are
 // refused. Keys and objects this version does not know are kept and written
-// back. Files in the folder that the project does not list (tags and
-// connections from later phases, the user's own files) are never touched.
+// back. Files in the folder that the project does not list (connections
+// from later phases, the user's own files) are never touched.
 namespace ProjectSerializer
 {
 

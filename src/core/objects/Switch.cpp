@@ -30,8 +30,9 @@ std::span<const PropertyDescriptor> Switch::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {120.0, 36.0},
         {
-            Describe::flag(Prop::Checked, "checked", QT_TRANSLATE_NOOP("hmi::Property", "On"),
-                           Behaviour, false, true),
+            Describe::process(Describe::flag(Prop::Checked, "checked",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "On"), Behaviour,
+                                             false, true)),
             Describe::string(Prop::OnText, "onText", QT_TRANSLATE_NOOP("hmi::Property", "On text"),
                              Text, QStringLiteral("On")),
             Describe::string(Prop::OffText, "offText",

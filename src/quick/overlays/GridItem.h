@@ -7,10 +7,10 @@
 namespace hmi
 {
 
-// The screen's background and grid lines, below the objects, drawn in view
-// coordinates so lines stay one pixel wide at every zoom. When the grid would
-// be denser than kMinimumViewSpacing, every second line is dropped until it
-// is not. Owned and configured by CanvasItem.
+// The screen's background and grid dots, below the objects, drawn in view
+// coordinates so dots stay one pixel at every zoom. When the grid would be
+// denser than kMinimumViewSpacing, every second row and column is dropped
+// until it is not. Owned and configured by CanvasItem.
 class GridItem : public QQuickItem
 {
     Q_OBJECT

@@ -17,6 +17,7 @@ const auto kType = QStringLiteral("type");
 const auto kId = QStringLiteral("id");
 const auto kProps = QStringLiteral("props");
 const auto kChildren = QStringLiteral("children");
+const auto kBindings = QStringLiteral("bindings");
 
 QJsonArray pair(double a, double b)
 {
@@ -191,6 +192,19 @@ QJsonObject write(const HmiObject& object)
         json.insert(kType, info->key);
     json.insert(kId, object.id().toString());
     json.insert(kProps, props);
+    // Bindings this version reads, then any it could not (kept as found).
+    QJsonArray bindings;
+    for (const Binding& binding : object.bindings())
+    {
+        if (const PropertyDescriptor* d = findDescriptor(object.descriptors(), binding.property))
+            bindings.append(binding.toJson(*d));
+    }
+    for (const QJsonValue& kept : object.preservedJson().value(kBindings).toArray())
+        bindings.append(kept);
+    if (bindings.isEmpty())
+        json.remove(kBindings);
+    else
+        json.insert(kBindings, bindings);
     if (!object.children().empty())
     {
         QJsonArray children;
@@ -252,10 +266,21 @@ Result<std::unique_ptr<HmiObject>> read(const QJsonObject& json)
             return tl::unexpected(adopted.error());
     }
 
+    // Bindings: the ones this version can apply are set; others are kept.
+    QJsonArray unreadBindings;
+    for (const QJsonValue& entry : json.value(kBindings).toArray())
+    {
+        auto binding = Binding::fromJson(entry.toObject(), object->descriptors());
+        if (!binding || !object->setBinding(std::move(*binding)))
+            unreadBindings.append(entry);
+    }
+
     // Whatever this version did not understand stays with the object.
     QJsonObject preserved = json;
-    for (const QString& known : {kType, kId, kProps, kChildren})
+    for (const QString& known : {kType, kId, kProps, kChildren, kBindings})
         preserved.remove(known);
+    if (!unreadBindings.isEmpty())
+        preserved.insert(kBindings, unreadBindings);
     if (!unknownProps.isEmpty())
         preserved.insert(kProps, unknownProps);
     object->setPreservedJson(preserved);

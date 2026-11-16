@@ -20,6 +20,9 @@ class EditorController;
 class GraphicLibrary;
 class Project;
 class SelectionModel;
+class SimulationController;
+class TagEngine;
+class TagModel;
 class Theme;
 class ToolContext;
 class ToolboxDragController;
@@ -63,6 +66,9 @@ public:
     [[nodiscard]] PropertyModel& properties() const noexcept { return *m_properties; }
     [[nodiscard]] LayerModel& layers() const noexcept { return *m_layers; }
     [[nodiscard]] ScreenListModel& screens() const noexcept { return *m_screens; }
+    [[nodiscard]] TagEngine& tagEngine() const noexcept { return *m_tagEngine; }
+    [[nodiscard]] TagModel& tags() const noexcept { return *m_tags; }
+    [[nodiscard]] SimulationController& simulation() const noexcept { return *m_simulation; }
 
 private:
     InputSettings m_inputSettings;
@@ -71,6 +77,7 @@ private:
     std::unique_ptr<GraphicLibrary> m_graphics;
     std::unique_ptr<Theme> m_theme;
     std::unique_ptr<SelectionModel> m_selection;
+    std::unique_ptr<TagEngine> m_tagEngine;
     std::unique_ptr<ToolContext> m_toolContext;
     std::unique_ptr<EditActions> m_editActions;
     std::unique_ptr<ToolboxDragController> m_toolboxDrag;
@@ -81,6 +88,8 @@ private:
     std::unique_ptr<PropertyModel> m_properties;
     std::unique_ptr<LayerModel> m_layers;
     std::unique_ptr<ScreenListModel> m_screens;
+    std::unique_ptr<TagModel> m_tags;
+    std::unique_ptr<SimulationController> m_simulation;
 };
 
 } // namespace hmi

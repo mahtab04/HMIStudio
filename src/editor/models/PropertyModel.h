@@ -32,6 +32,9 @@ class PropertyModel : public QAbstractListModel
     QML_UNCREATABLE("PropertyModel is provided by the application")
     Q_PROPERTY(QString title READ title NOTIFY titleChanged)
     Q_PROPERTY(QStringList fontFamilies READ fontFamilies CONSTANT)
+    // Transform kinds for the binding editor, and their display names.
+    Q_PROPERTY(QStringList transformKinds READ transformKinds CONSTANT)
+    Q_PROPERTY(QStringList transformNames READ transformNames CONSTANT)
 
 public:
     enum Role
@@ -40,7 +43,7 @@ public:
         NameRole,
         CategoryRole,
         EditorRole, // "number", "integer", "text", "color", "font", "enum", "bool", "point",
-                    // "size", "points", "asset"
+                    // "size", "points", "asset", "tag"
         ValueRole,
         MixedRole,
         ReadOnlyRole,
@@ -49,6 +52,8 @@ public:
         OptionsRole,
         TextRole,       // the value as text for display and text fields
         ComponentsRole, // [x, y] of a point or [width, height] of a size
+        BindableRole,   // the property can be driven by a tag
+        BindingRole,    // "Tag · summary" of its binding, or empty
     };
 
     explicit PropertyModel(ToolContext& context, QObject* parent = nullptr);
@@ -59,6 +64,8 @@ public:
 
     [[nodiscard]] QString title() const;
     [[nodiscard]] QStringList fontFamilies() const;
+    [[nodiscard]] QStringList transformKinds() const;
+    [[nodiscard]] QStringList transformNames() const;
 
     // Sets the row's value on every selected object (or on the screen).
     // Returns false, and emits editRejected, when the value is not allowed.
@@ -86,6 +93,25 @@ public:
     Q_INVOKABLE bool importAsset(int row, const QUrl& file,
                                  hmi::PropertyModel::ImportMode mode = AskAboutSvg);
 
+    // The row's binding on the first selected object, for the binding
+    // editor: {tag, kind, parameters, summary}; empty when there is none.
+    Q_INVOKABLE QVariantMap bindingInfo(int row) const;
+    // Binds the row's property on every selected object to `tag` through a
+    // transform of `kind` with `parameters`. Rejected (editRejected) when the
+    // property is not bindable or the transform's parameters are invalid.
+    Q_INVOKABLE bool setBinding(int row, const QString& tag, const QString& kind,
+                                const QVariantMap& parameters);
+    Q_INVOKABLE void removeBinding(int row);
+    // The link button of a row was pressed: emits bindingRequested so the
+    // panel opens the binding editor for it.
+    Q_INVOKABLE void requestBinding(int row);
+    // The ranges of a "ranges" transform as editable text, one
+    // "from..to = value" per line and "else = value" for the default, and
+    // back. rangesParameters returns an empty map, and emits editRejected,
+    // for a line it cannot read.
+    Q_INVOKABLE QString rangesText(const QVariantMap& parameters) const;
+    Q_INVOKABLE QVariantMap rangesParameters(const QString& text);
+
     Q_INVOKABLE void beginEdit();
     Q_INVOKABLE void endEdit();
 
@@ -94,6 +120,7 @@ public:
 
 Q_SIGNALS:
     void titleChanged();
+    void bindingRequested(int row, const QString& name);
     void editRejected(const QString& message);
     // An SVG file has content that will not be drawn; QML asks whether to
     // import it as is or rasterize it, then calls importAsset again.
@@ -119,6 +146,8 @@ private:
     {
         const PropertyDescriptor* descriptor = nullptr; // object property
         ScreenField field = ScreenField::Name;          // screen row when descriptor is null
+        // The "Process · Tag" row: picks the tag of the process property.
+        bool tag = false;
     };
 
     [[nodiscard]] std::vector<HmiObject*> selectedObjects() const;
@@ -129,6 +158,9 @@ private:
     bool applyScreenValue(ScreenField field, const QVariant& value);
     bool applyStyleValue(ScreenField field, const QVariant& value);
     void onPropertyChanged(ObjectId object, PropertyId property);
+    [[nodiscard]] QString bindingText(const Row& row) const;
+    [[nodiscard]] QVariant tagData(const Row& row, int role) const;
+    bool applyTag(const Row& row, const QString& tag);
     bool reject(const QString& message);
     [[nodiscard]] static bool isBlank(const QVariant& value);
 

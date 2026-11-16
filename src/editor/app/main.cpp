@@ -3,10 +3,12 @@
 #include "editor/app/DocumentController.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
+#include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
+#include "editor/models/TagModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 
@@ -44,6 +46,8 @@ int main(int argc, char* argv[])
         {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
         {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
         {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
+        {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
+        {QStringLiteral("simulation"), QVariant::fromValue(&context.simulation())},
     });
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

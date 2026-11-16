@@ -7,14 +7,17 @@
 #include "editor/app/DocumentController.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
+#include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "quick/CanvasItem.h"
+#include "quick/RuntimeView.h"
 #include "quick/ScreenItem.h"
 
 #include <QQmlApplicationEngine>
@@ -33,6 +36,19 @@ using namespace hmi;
 class EditorShellTest : public QObject
 {
     Q_OBJECT
+
+    // The runtime simulator's window, while it is open.
+    static QQuickWindow* simulatorWindow(QQmlApplicationEngine& engine)
+    {
+        for (QWindow* window : QGuiApplication::topLevelWindows())
+        {
+            auto* quick = qobject_cast<QQuickWindow*>(window);
+            if (quick && quick != engine.rootObjects().front() &&
+                quick->findChild<RuntimeView*>(QStringLiteral("runtimeView")))
+                return quick;
+        }
+        return nullptr;
+    }
 
 private Q_SLOTS:
     void initTestCase() { QQuickStyle::setStyle(QStringLiteral("Fusion")); }
@@ -62,6 +78,8 @@ private Q_SLOTS:
             {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
+            {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
+            {QStringLiteral("simulation"), QVariant::fromValue(&context.simulation())},
         });
         engine.loadFromModule("HmiStudio.Editor", "Main");
         QCOMPARE(engine.rootObjects().size(), 1);
@@ -117,6 +135,80 @@ private Q_SLOTS:
         QVERIFY(menu);
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
+
+        // The HMI tags tab opens the tag table in the work area.
+        auto* tagsTab = window->findChild<QQuickItem*>(QStringLiteral("tagsTab"));
+        QVERIFY(tagsTab);
+        QMetaObject::invokeMethod(tagsTab, "click");
+        QTRY_VERIFY(!canvas->isVisible());
+
+        // A click on a cell makes its row current: Delete deletes that tag.
+        auto* table = window->findChild<QQuickItem*>(QStringLiteral("tagTable"));
+        auto* deleteButton = window->findChild<QQuickItem*>(QStringLiteral("deleteTagButton"));
+        QVERIFY(table && deleteButton);
+        QTRY_VERIFY(table->isVisible() && table->height() > 0);
+        QVERIFY(!deleteButton->isEnabled());
+        const auto cellItem = [&](int row, int column)
+        {
+            QQuickItem* item = nullptr;
+            QMetaObject::invokeMethod(table, "itemAtIndex", Q_RETURN_ARG(QQuickItem*, item),
+                                      Q_ARG(QModelIndex, context.tags().index(row, column)));
+            return item;
+        };
+        QQuickItem* nameCell = nullptr;
+        QTRY_VERIFY((nameCell = cellItem(4, TagModel::NameColumn)) != nullptr);
+        QTest::mouseClick(window, Qt::LeftButton, {},
+                          nameCell->mapToScene(QPointF(10, nameCell->height() / 2)).toPoint());
+        QTRY_VERIFY(deleteButton->isEnabled());
+        // Every row's type is a drop-down.
+        QQuickItem* typeCell = cellItem(4, TagModel::TypeColumn);
+        QVERIFY(typeCell);
+        QVERIFY(std::ranges::any_of(typeCell->childItems(), [](QQuickItem* child)
+                                    { return child->inherits("QQuickComboBox") && child->isVisible(); }));
+        // Temperature is bound on the screen: Delete asks first.
+        QMetaObject::invokeMethod(deleteButton, "click");
+        auto* deleteDialog = window->findChild<QObject*>(QStringLiteral("deleteTagDialog"));
+        QVERIFY(deleteDialog);
+        QTRY_VERIFY(deleteDialog->property("opened").toBool());
+        QMetaObject::invokeMethod(deleteDialog, "accept");
+        QTRY_COMPARE(context.tags().rowCount(), 4);
+        QVERIFY(!context.project().tags().find(QStringLiteral("Temperature")));
+        context.undoStack().undo();
+        QCOMPARE(context.tags().rowCount(), 5);
+        if (const QString path = qEnvironmentVariable("HMI_TAGS_SCREENSHOT"); !path.isEmpty())
+        {
+            context.theme().setDensity(Theme::Density::Compact);
+            QTest::qWait(300);
+            QVERIFY(window->grabWindow().save(path));
+        }
+        auto* work = window->findChild<QQuickItem*>(QStringLiteral("workArea"));
+        QVERIFY(work);
+        work->setProperty("showingTags", false);
+        QTRY_VERIFY(canvas->isVisible());
+
+        // The runtime simulation opens a window of its own showing a play
+        // copy of the screen at its size; the editor keeps the document.
+        QMetaObject::invokeMethod(menu, "close");
+        context.simulation().start();
+        QQuickWindow* simulator = nullptr;
+        QTRY_VERIFY((simulator = simulatorWindow(engine)) != nullptr);
+        QVERIFY(QTest::qWaitForWindowExposed(simulator));
+        auto* view = simulator->findChild<RuntimeView*>(QStringLiteral("runtimeView"));
+        QVERIFY(view);
+        const Screen* play = view->screenItem()->screen();
+        QVERIFY(play && play != &screen);
+        QCOMPARE(view->screenItem()->objectItemCount(), int(screen.objectCount()));
+        QCOMPARE(canvas->screenItem()->screen(), &screen);
+        QVERIFY(simulator->title().startsWith(screen.name()));
+        if (const QString path = qEnvironmentVariable("HMI_SIMULATE_SCREENSHOT"); !path.isEmpty())
+        {
+            QTest::qWait(1500);
+            QVERIFY(simulator->grabWindow().save(path));
+        }
+        // Closing the window stops the simulation.
+        simulator->close();
+        QTRY_VERIFY(!context.simulation().isRunning());
+        QTRY_VERIFY(simulatorWindow(engine) == nullptr);
 
         if (const QString path = qEnvironmentVariable("HMI_SCREENSHOT"); !path.isEmpty())
         {

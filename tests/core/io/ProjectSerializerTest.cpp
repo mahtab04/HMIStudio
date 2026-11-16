@@ -144,9 +144,9 @@ private Q_SLOTS:
 
         QVERIFY(ProjectSerializer::save(**loaded, second.path()));
         const auto a = filesIn(first.path());
-        QCOMPARE(a.keys(),
-                 (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
-                              u"screens/02_filling.json"_s, u"screens/03_empty_alarms.json"_s}));
+        QCOMPARE(a.keys(), (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
+                                        u"screens/02_filling.json"_s,
+                                        u"screens/03_empty_alarms.json"_s, u"tags.json"_s}));
         QCOMPARE(filesIn(second.path()), a);
 
         // Saving again over the same folder changes nothing.
@@ -247,9 +247,10 @@ private Q_SLOTS:
         (void)project->takeScreen(project->screens()[1]->id());
         project->screens()[1]->setName(u"Alarms"_s);
         QVERIFY(ProjectSerializer::save(*project, dir.path()));
-        QCOMPARE(filesIn(dir.path()).keys(),
-                 (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
-                              u"screens/02_alarms.json"_s, u"screens/notes.json"_s}));
+        QCOMPARE(
+            filesIn(dir.path()).keys(),
+            (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
+                         u"screens/02_alarms.json"_s, u"screens/notes.json"_s, u"tags.json"_s}));
     }
 
     void migratesVersionZero()

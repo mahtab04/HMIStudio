@@ -15,6 +15,8 @@ ApplicationWindow {
     required property PropertyModel properties
     required property LayerModel layers
     required property ScreenListModel screens
+    required property TagModel tags
+    required property SimulationController simulation
 
     width: 1440
     height: 900
@@ -47,6 +49,7 @@ ApplicationWindow {
 
     header: TopBar {
         editor: root.editor
+        simulation: root.simulation
         theme: root.theme
         document: root.document
         settings: root.settings
@@ -101,10 +104,13 @@ ApplicationWindow {
             Component.onDestruction: root.settings.centreSplitState = centreSplit.saveState()
 
             CanvasPanel {
+                objectName: "workArea"
                 SplitView.fillHeight: true
                 editor: root.editor
                 theme: root.theme
                 screens: root.screens
+                tags: root.tags
+                simulation: root.simulation
             }
 
             BottomPanel {
@@ -112,6 +118,7 @@ ApplicationWindow {
                 SplitView.preferredHeight: root.theme.bottomPanelHeight
                 SplitView.minimumHeight: root.theme.controlHeight
                 theme: root.theme
+                simulation: root.simulation
             }
         }
 
@@ -122,6 +129,7 @@ ApplicationWindow {
             editor: root.editor
             theme: root.theme
             properties: root.properties
+            tags: root.tags
         }
     }
 
@@ -130,6 +138,23 @@ ApplicationWindow {
         theme: root.theme
     }
 
+    Shortcut {
+        sequence: "F5"
+        onActivated: root.simulation.running ? root.simulation.restart() : root.simulation.start()
+    }
+    Shortcut {
+        sequence: "Shift+F5"
+        onActivated: root.simulation.stop()
+    }
+
+    // The runtime simulator opens in its own window while it runs.
+    Loader {
+        active: root.simulation.running
+        sourceComponent: SimulatorWindow {
+            simulation: root.simulation
+            theme: root.theme
+        }
+    }
     Shortcut {
         sequences: [StandardKey.New]
         onActivated: root.document.newProject()

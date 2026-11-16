@@ -198,7 +198,7 @@ private:
     bool m_previewWasActive = false;
 
     double m_gridSpacing = 8.0;
-    QColor m_gridColor{0, 0, 0, 0x14};
+    QColor m_gridColor{0, 0, 0, 0x66};
     QColor m_selectionColor{0x4C, 0x8D, 0xFF};
     QColor m_handleFillColor{Qt::white};
     QColor m_rubberBandColor{0x4C, 0x8D, 0xFF, 0x30};

@@ -5,6 +5,7 @@
 #include "core/model/PaintContext.h"
 #include "core/property/PropertyDescriptor.h"
 #include "core/property/PropertyValue.h"
+#include "core/tags/Binding.h"
 
 #include <QJsonObject>
 #include <QPainterPath>
@@ -99,10 +100,20 @@ public:
     // Validates and stores a value; notifies only if the value changed.
     Result<void> setProperty(PropertyId id, const PropertyValue& value);
 
-    // True when both objects have the same type and property values, and
-    // their children (if any) compare the same, in order. Ids are not
-    // compared.
+    // True when both objects have the same type, property values and
+    // bindings, and their children (if any) compare the same, in order. Ids
+    // are not compared.
     [[nodiscard]] bool hasSameProperties(const HmiObject& other) const;
+
+    // Tag bindings of this object's bindable properties, one per property.
+    [[nodiscard]] std::span<const Binding> bindings() const noexcept { return m_bindings; }
+    [[nodiscard]] const Binding* binding(PropertyId property) const;
+    // Adds or replaces the binding of `binding.property`. Fails if the
+    // property does not exist or is not bindable. Announced through the
+    // document's notifier (bindingChanged).
+    Result<void> setBinding(Binding binding);
+    // Returns whether there was a binding to remove.
+    bool removeBinding(PropertyId property);
 
     // Data from a file this version does not understand (unknown
     // properties, bindings of a newer format, ...). Kept with the object and
@@ -157,6 +168,7 @@ private:
     std::span<const PropertyDescriptor> m_descriptors;
     std::vector<PropertyValue> m_values;
     QJsonObject m_preserved;
+    std::vector<Binding> m_bindings;
     ObjectId m_id;
     DocumentNotifier* m_notifier = nullptr;
 };

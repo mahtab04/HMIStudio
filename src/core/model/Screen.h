@@ -27,7 +27,7 @@ class DocumentNotifier;
 class Screen
 {
 public:
-    static constexpr QSizeF kDefaultSize{1280.0, 800.0};
+    static constexpr QSizeF kDefaultSize{1920.0, 1080.0};
 
     explicit Screen(QString name, QSizeF size = kDefaultSize, ScreenId id = ScreenId::create());
     ~Screen();

@@ -31,6 +31,8 @@ hmi_add_test(ProjectTest SOURCES core/model/ProjectTest.cpp)
 hmi_add_test(GroupObjectTest SOURCES core/model/GroupObjectTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(ObjectJsonTest SOURCES core/io/ObjectJsonTest.cpp)
 hmi_add_test(HmiStyleTest SOURCES core/model/HmiStyleTest.cpp)
+hmi_add_test(TagsTest SOURCES core/tags/TagsTest.cpp)
+hmi_add_test(BindingTest SOURCES core/tags/BindingTest.cpp)
 hmi_add_test(ProjectSerializerTest SOURCES core/io/ProjectSerializerTest.cpp)
 hmi_add_test(PropertyDescriptorTest SOURCES core/property/PropertyDescriptorTest.cpp)
 hmi_add_test(ObjectRegistryTest SOURCES core/registry/ObjectRegistryTest.cpp)
@@ -44,6 +46,9 @@ hmi_add_test(AllObjectsTest SOURCES core/objects/AllObjectsTest.cpp core/objects
 
 # Graphics
 hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
+
+# Tags at runtime
+hmi_add_test(SimulationTest SOURCES comm/SimulationTest.cpp LIBS hmi_comm)
 
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
@@ -65,6 +70,7 @@ hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEdit
              LIBS hmi_editor_lib)
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(TagModelTest SOURCES editor/TagModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(LayerModelTest SOURCES editor/LayerModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(DocumentControllerTest SOURCES editor/DocumentControllerTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(EditorShellTest SOURCES editor/EditorShellTest.cpp
