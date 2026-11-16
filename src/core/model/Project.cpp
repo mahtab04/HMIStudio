@@ -9,6 +9,7 @@ Project::Project(QString name)
     : m_name(std::move(name))
     , m_notifier(std::make_unique<DocumentNotifier>())
 {
+    m_tags->setNotifier(m_notifier.get());
 }
 
 // Screens detach from the notifier first so nothing emits while the project
@@ -37,6 +38,7 @@ void Project::replaceContents(Project&& other)
     m_preserved = std::move(other.m_preserved);
     m_style = other.m_style;
     m_assets->takeFrom(*other.m_assets);
+    m_tags->takeFrom(*other.m_tags);
     m_screens = std::move(other.m_screens);
     other.m_screens.clear();
     for (const auto& screen : m_screens)

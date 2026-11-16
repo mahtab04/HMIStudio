@@ -22,6 +22,7 @@ HmiObject::HmiObject(const HmiObject& other)
     : m_descriptors(other.m_descriptors)
     , m_values(other.m_values)
     , m_preserved(other.m_preserved)
+    , m_bindings(other.m_bindings)
     , m_id(other.m_id)
 {
 }
@@ -128,12 +129,56 @@ Result<void> HmiObject::setProperty(PropertyId id, const PropertyValue& value)
 
 bool HmiObject::hasSameProperties(const HmiObject& other) const
 {
-    if (typeId() != other.typeId() || m_values != other.m_values)
+    if (typeId() != other.typeId() || m_values != other.m_values || m_bindings != other.m_bindings)
         return false;
     const auto mine = children();
     const auto theirs = other.children();
     return std::ranges::equal(mine, theirs, [](const auto& a, const auto& b)
                               { return a->hasSameProperties(*b); });
+}
+
+const Binding* HmiObject::binding(PropertyId property) const
+{
+    const auto it = std::ranges::find(m_bindings, property, &Binding::property);
+    return it == m_bindings.end() ? nullptr : &*it;
+}
+
+Result<void> HmiObject::setBinding(Binding binding)
+{
+    const PropertyDescriptor* d = findDescriptor(m_descriptors, binding.property);
+    if (!d || !d->bindable)
+        return makeError(
+            ErrorCode::UnknownProperty,
+            QStringLiteral("Property %1 cannot be bound to a tag").arg(binding.property.value()));
+    if (!Tag::isValidName(binding.tag))
+        return makeError(ErrorCode::InvalidArgument, QStringLiteral("A binding needs a tag"));
+    if (!binding.transform)
+        binding.transform = Binding::direct();
+    const PropertyId property = binding.property;
+    if (auto it = std::ranges::find(m_bindings, property, &Binding::property);
+        it != m_bindings.end())
+    {
+        if (*it == binding)
+            return {};
+        *it = std::move(binding);
+    }
+    else
+    {
+        m_bindings.push_back(std::move(binding));
+    }
+    if (m_notifier)
+        Q_EMIT m_notifier->bindingChanged(m_id, property);
+    return {};
+}
+
+bool HmiObject::removeBinding(PropertyId property)
+{
+    if (std::erase_if(m_bindings,
+                      [property](const Binding& b) { return b.property == property; }) == 0)
+        return false;
+    if (m_notifier)
+        Q_EMIT m_notifier->bindingChanged(m_id, property);
+    return true;
 }
 
 Result<void> HmiObject::setChildren(std::vector<std::unique_ptr<HmiObject>> children)

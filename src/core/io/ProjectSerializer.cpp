@@ -34,6 +34,8 @@ const auto kObjects = QStringLiteral("objects");
 const auto kAssets = QStringLiteral("assets");
 const auto kFile = QStringLiteral("file");
 const auto kStyle = QStringLiteral("style");
+const auto kTags = QStringLiteral("tags");
+const auto kTagsFile = QStringLiteral("tags.json");
 
 QString assetPath(const Asset& asset)
 {
@@ -254,6 +256,12 @@ std::vector<File> toFiles(const Project& project)
     else
         projectJson.insert(kAssets, assetList);
     files.emplace_back(QString::fromLatin1(kProjectFile), projectJson);
+
+    QJsonArray tags;
+    for (const Tag& tag : project.tags().tags())
+        tags.append(tag.toJson());
+    files.emplace_back(kTagsFile,
+                       QJsonObject{{kFormatVersion, kCurrentFormatVersion}, {kTags, tags}});
     files.insert(files.end(), std::make_move_iterator(screens.begin()),
                  std::make_move_iterator(screens.end()));
     return files;
@@ -294,6 +302,28 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
     }
     if (project->screenCount() == 0)
         return makeError(ErrorCode::BadFormat, QStringLiteral("The project has no screens"));
+
+    // Tags: a project without tags.json (older or hand-made) has none.
+    if (auto tagsRaw = read(kTagsFile))
+    {
+        auto tagsJson = migrate(std::move(*tagsRaw), kTagsFile);
+        if (!tagsJson)
+            return tl::unexpected(tagsJson.error());
+        for (const QJsonValue& entry : tagsJson->value(kTags).toArray())
+        {
+            auto tag = Tag::fromJson(entry.toObject());
+            if (!tag)
+                return makeError(ErrorCode::BadFormat,
+                                 QStringLiteral("%1: %2").arg(kTagsFile, tag.error().message));
+            if (auto inserted = project->tags().insert(std::move(*tag)); !inserted)
+                return makeError(ErrorCode::BadFormat,
+                                 QStringLiteral("%1: %2").arg(kTagsFile, inserted.error().message));
+        }
+    }
+    else if (tagsRaw.error().code != ErrorCode::Io)
+    {
+        return tl::unexpected(tagsRaw.error());
+    }
 
     if (readAsset)
     {

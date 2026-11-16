@@ -6,6 +6,7 @@
 #include "core/model/HmiStyle.h"
 #include "core/model/Ids.h"
 #include "core/model/Screen.h"
+#include "core/tags/TagDatabase.h"
 
 #include <QJsonObject>
 #include <QString>
@@ -51,6 +52,9 @@ public:
     [[nodiscard]] const HmiStyle& style() const noexcept { return m_style; }
     void setStyle(const HmiStyle& style);
 
+    // The project's tags; inside the project every change is announced.
+    [[nodiscard]] TagDatabase& tags() const noexcept { return *m_tags; }
+
     // Imported images and SVG files used by graphic objects.
     [[nodiscard]] AssetStore& assets() const noexcept { return *m_assets; }
 
@@ -76,6 +80,7 @@ private:
     HmiStyle m_style;
     std::unique_ptr<DocumentNotifier> m_notifier;
     std::unique_ptr<AssetStore> m_assets = std::make_unique<AssetStore>();
+    std::unique_ptr<TagDatabase> m_tags = std::make_unique<TagDatabase>();
     std::vector<std::unique_ptr<Screen>> m_screens;
 };
 

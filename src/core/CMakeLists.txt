@@ -124,6 +124,19 @@ add_library(hmi_core_impl STATIC
     property/PropertyValue.cpp
     property/PropertyValue.h
 
+    tags/Binding.cpp
+    tags/Binding.h
+    tags/Expression.cpp
+    tags/Expression.h
+    tags/Tag.cpp
+    tags/Tag.h
+    tags/TagCsv.cpp
+    tags/TagCsv.h
+    tags/TagDatabase.cpp
+    tags/TagDatabase.h
+    tags/TagUsage.cpp
+    tags/TagUsage.h
+
     registry/ObjectRegistry.cpp
     registry/ObjectRegistry.h
 
