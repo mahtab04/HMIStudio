@@ -1,10 +1,14 @@
 #include "editor/app/EditorController.h"
 
+#include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/model/Screen.h"
+#include "core/property/Prop.h"
+#include "core/property/PropertyDescriptor.h"
 #include "core/registry/ObjectRegistry.h"
 #include "editor/app/EditActions.h"
 #include "editor/commands/ScreenCommands.h"
+#include "editor/commands/SetPropertyCommand.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/tools/ToolContext.h"
@@ -158,7 +162,17 @@ void EditorController::addScreen()
 {
     Project& project = m_context.project();
     const QSizeF size = m_context.screen() ? m_context.screen()->size() : Screen::kDefaultSize;
-    auto screen = std::make_unique<Screen>(tr("Screen %1").arg(project.screenCount() + 1), size);
+    // Screen_1, Screen_2, ...
+    QString name;
+    for (int n = 1;; ++n)
+    {
+        name = tr("Screen_%1").arg(n);
+        const auto& screens = project.screens();
+        if (std::ranges::none_of(screens, [&name](const auto& s)
+                                 { return s->name().compare(name, Qt::CaseInsensitive) == 0; }))
+            break;
+    }
+    auto screen = std::make_unique<Screen>(name, size);
     const ScreenId id = screen->id();
     m_context.undoStack().push(new AddScreenCommand(project, std::move(screen)));
     showScreen(id);
@@ -195,8 +209,26 @@ void EditorController::renameScreen(int index, const QString& name)
     if (screen.name() == trimmed)
         return;
     ScreenSettings settings = ChangeScreenCommand::settingsOf(screen);
+    const QString oldName = screen.name();
     settings.name = trimmed;
-    m_context.undoStack().push(new ChangeScreenCommand(project, screen.id(), settings));
+    QUndoStack& stack = m_context.undoStack();
+    stack.beginMacro(tr("Rename screen %1 to %2").arg(oldName, trimmed));
+    stack.push(new ChangeScreenCommand(project, screen.id(), settings));
+    // Screen windows refer to screens by name; they follow the rename.
+    for (const auto& other : project.screens())
+    {
+        std::vector<ObjectId> windows;
+        for (const auto& object : other->objects())
+        {
+            if (findDescriptor(object->descriptors(), Prop::ScreenName) &&
+                object->value<QString>(Prop::ScreenName) == oldName)
+                windows.push_back(object->id());
+        }
+        if (!windows.empty())
+            stack.push(new SetPropertyCommand(project, other->id(), std::move(windows),
+                                              Prop::ScreenName, trimmed));
+    }
+    stack.endMacro();
 }
 
 int EditorController::currentScreenIndex() const
