@@ -29,8 +29,8 @@ std::span<const PropertyDescriptor> Circle::staticDescriptors()
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table =
         withCommonDescriptors({80.0, 80.0}, {
-                                                Describe::fillColor(QColor(0xEE, 0xF0, 0xF2)),
-                                                Describe::lineColor(QColor(0x2B, 0x2F, 0x36)),
+                                                Describe::fillColor(QColor(0xC6, 0xD0, 0xDE)),
+                                                Describe::lineColor(QColor(0x4F, 0x5F, 0x78)),
                                                 Describe::lineWidth(1.0),
                                             });
     return table;

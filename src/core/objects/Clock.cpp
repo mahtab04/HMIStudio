@@ -44,22 +44,23 @@ std::span<const PropertyDescriptor> Clock::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {120.0, 120.0},
-        {
-            Describe::stretchMode(),
-            Describe::choice(Prop::ClockMode, "clockMode",
-                             QT_TRANSLATE_NOOP("hmi::Property", "Style"), Appearance, Analog,
-                             kModeOptions),
-            Describe::styled(Describe::fillColor(QColor(Qt::white),
-                                                 QT_TRANSLATE_NOOP("hmi::Property", "Face colour")),
-                             StyleRole::Face),
-            Describe::lineColor(QColor(0x2B, 0x2F, 0x36)),
-            Describe::color(Prop::AccentColor, "accentColor",
-                            QT_TRANSLATE_NOOP("hmi::Property", "Second hand colour"), Appearance,
-                            QColor(0xDC, 0x26, 0x26)),
-            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-            Describe::font(20, true),
-        });
+        {150.0, 150.0}, {
+                            Describe::stretchMode(),
+                            Describe::choice(Prop::ClockMode, "clockMode",
+                                             QT_TRANSLATE_NOOP("hmi::Property", "Style"),
+                                             Appearance, Analog, kModeOptions),
+                            Describe::fillColor(QColor(0x3A, 0x3F, 0x47),
+                                                QT_TRANSLATE_NOOP("hmi::Property", "Face colour")),
+                            Describe::color(Prop::BackgroundColor, "backgroundColor",
+                                            QT_TRANSLATE_NOOP("hmi::Property", "Rim colour"),
+                                            Appearance, QColor(0xD9, 0xDC, 0xE1)),
+                            Describe::lineColor(QColor(0xC9, 0xCE, 0xD6)),
+                            Describe::color(Prop::AccentColor, "accentColor",
+                                            QT_TRANSLATE_NOOP("hmi::Property", "Hand colour"),
+                                            Appearance, QColor(0x6E, 0xC6, 0xFF)),
+                            Describe::textColor(QColor(0x9A, 0xA1, 0xAB), StyleRole::None),
+                            Describe::font(14, true),
+                        });
     return table;
 }
 
@@ -75,44 +76,87 @@ void Clock::paint(QPainter& painter, const PaintContext& context) const
     [[maybe_unused]] const QSizeF size = designSize();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
+    const QColor faceColor = value<QColor>(Prop::FillColor);
+    const QColor accent = value<QColor>(Prop::AccentColor);
     if (value<EnumValue>(Prop::ClockMode).value == Digital)
     {
-        PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
-                               value<QColor>(Prop::LineColor), 4.0);
-        PaintHelpers::drawText(painter, *this, bounds, Qt::AlignCenter,
-                               QStringLiteral("%1:%2:%3")
-                                   .arg(kHour, 2, 10, QChar(u'0'))
-                                   .arg(kMinute, 2, 10, QChar(u'0'))
-                                   .arg(kSecond, 2, 10, QChar(u'0')));
+        const QRectF panel(0, size.height() * 0.3, size.width(), size.height() * 0.4);
+        PaintHelpers::drawFace(painter, panel, faceColor, value<QColor>(Prop::BackgroundColor),
+                               6.0);
+        QFont digits = value<QFont>(Prop::Font);
+        digits.setPixelSize(std::max(1, int(panel.height() * 0.5)));
+        painter.setFont(digits);
+        painter.setPen(accent);
+        painter.drawText(panel, Qt::AlignCenter,
+                         QStringLiteral("%1:%2:%3")
+                             .arg(kHour, 2, 10, QChar(u'0'))
+                             .arg(kMinute, 2, 10, QChar(u'0'))
+                             .arg(kSecond, 2, 10, QChar(u'0')));
         return;
     }
     const double side = std::min(size.width(), size.height());
-    const QRectF face((size.width() - side) / 2.0 + 1.0, (size.height() - side) / 2.0 + 1.0,
-                      side - 2.0, side - 2.0);
-    const QPointF centre = face.center();
-    const double radius = face.width() / 2.0;
-    painter.setPen(QPen(value<QColor>(Prop::LineColor), 2.0));
-    painter.setBrush(value<QColor>(Prop::FillColor));
-    painter.drawEllipse(face);
+    const QPointF centre(size.width() / 2.0, size.height() / 2.0);
+    const double radius = side / 2.0 - 1.0;
+
+    // Rim, then the dark face.
+    const QColor rim = value<QColor>(Prop::BackgroundColor);
+    QLinearGradient rimShade(centre - QPointF(0, radius), centre + QPointF(0, radius));
+    rimShade.setColorAt(0.0, rim.lighter(115));
+    rimShade.setColorAt(1.0, rim.darker(135));
+    painter.setPen(QPen(rim.darker(150), 1.0));
+    painter.setBrush(rimShade);
+    painter.drawEllipse(centre, radius, radius);
+    const double faceRadius = radius * 0.9;
+    QRadialGradient face(centre - QPointF(0, faceRadius * 0.4), faceRadius * 1.3);
+    face.setColorAt(0.0, faceColor.lighter(135));
+    face.setColorAt(1.0, faceColor.darker(115));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(face);
+    painter.drawEllipse(centre, faceRadius, faceRadius);
+
     // Clockwise from 12 o'clock.
     const auto at = [&](double turns, double r)
     {
         const double a = turns * 2.0 * std::numbers::pi;
         return centre + QPointF(std::sin(a) * r, -std::cos(a) * r);
     };
-    for (int i = 0; i < 12; ++i)
-        painter.drawLine(at(i / 12.0, radius * 0.9), at(i / 12.0, radius * 0.78));
-    const auto hand = [&](double turns, double length, double width, const QColor& color)
+    const QColor tick = value<QColor>(Prop::LineColor);
+    for (int i = 0; i < 60; ++i)
     {
-        QPen pen(color, width);
+        const bool major = i % 5 == 0;
+        if (!major && context.lowDetail())
+            continue;
+        painter.setPen(QPen(tick, major ? radius * 0.03 : radius * 0.012));
+        painter.drawLine(at(i / 60.0, faceRadius * 0.95),
+                         at(i / 60.0, faceRadius * (major ? 0.82 : 0.89)));
+    }
+    if (!context.lowDetail())
+    {
+        QFont numbers = value<QFont>(Prop::Font);
+        numbers.setPixelSize(std::max(1, int(radius * 0.17)));
+        painter.setFont(numbers);
+        painter.setPen(value<QColor>(Prop::TextColor));
+        for (int h = 1; h <= 12; ++h)
+        {
+            const QPointF p = at(h / 12.0, faceRadius * 0.66);
+            painter.drawText(QRectF(p - QPointF(radius * 0.15, radius * 0.12),
+                                    QSizeF(radius * 0.3, radius * 0.24)),
+                             Qt::AlignCenter, QString::number(h));
+        }
+    }
+    const auto hand = [&](double turns, double length, double tail, double width)
+    {
+        QPen pen(accent, width);
         pen.setCapStyle(Qt::RoundCap);
         painter.setPen(pen);
-        painter.drawLine(centre, at(turns, radius * length));
+        painter.drawLine(at(turns + 0.5, radius * tail), at(turns, radius * length));
     };
-    const QColor line = value<QColor>(Prop::LineColor);
-    hand((kHour + kMinute / 60.0) / 12.0, 0.5, std::max(2.5, radius / 14.0), line);
-    hand(kMinute / 60.0, 0.75, std::max(2.0, radius / 20.0), line);
-    hand(kSecond / 60.0, 0.82, 1.0, value<QColor>(Prop::AccentColor));
+    hand((kHour + kMinute / 60.0) / 12.0, 0.48, 0.0, radius * 0.075);
+    hand(kMinute / 60.0, 0.74, 0.0, radius * 0.05);
+    hand(kSecond / 60.0, 0.8, 0.16, std::max(1.0, radius * 0.015));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(accent);
+    painter.drawEllipse(centre, radius * 0.07, radius * 0.07);
 }
 
 void Clock::accept(ObjectVisitor& visitor)

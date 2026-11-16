@@ -5,9 +5,10 @@
 namespace hmi
 {
 
-// Shows the time, analogue or digital. The editor always shows 10:10:30,
-// so screens look the same every time they are drawn; the runtime shows
-// the current time.
+// Shows the time: an analogue dark face with numbers, minute ticks and
+// light hands, or digits. The editor always shows 10:10:30, so screens
+// look the same every time they are drawn; the runtime shows the current
+// time. Scaled as a picture.
 class Clock final : public ElementObject
 {
 public:

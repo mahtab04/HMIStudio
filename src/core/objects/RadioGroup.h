@@ -5,8 +5,8 @@
 namespace hmi
 {
 
-// A set of mutually exclusive options, one per line; `selectedIndex` is the
-// chosen one.
+// A framed set of mutually exclusive options, one per line, with shaded
+// round buttons; `selectedIndex` is the chosen one.
 class RadioGroup final : public ElementObject
 {
 public:

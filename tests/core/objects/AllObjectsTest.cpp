@@ -120,16 +120,31 @@ private Q_SLOTS:
     // large rectangle). Types whose content keeps its size on purpose are
     // left out: fields and lists keep their font size, as in WinCC, lists
     // and tables show more rows when taller, and a shape's line width (a
-    // pipe's diameter) is a property that resizing does not change.
+    // pipe's diameter) is a property that resizing does not change, nor are
+    // the numbers of a bar's or slider's scale.
     void growsAsOneWhenScaledEvenly_data()
     {
         QTest::addColumn<ObjectTypeId>("type");
-        const QStringList fixedContent{u"ioField"_s,         u"listBox"_s,         u"alarmView"_s,
-                                       u"recipeView"_s,      u"diagnosticsView"_s, u"browser"_s,
-                                       u"symbolicIoField"_s, u"screenWindow"_s,    u"graphicView"_s,
-                                       u"textBox"_s,         u"button"_s,          u"line"_s,
-                                       u"polyline"_s,        u"polygon"_s,         u"rectangle"_s,
-                                       u"ellipse"_s,         u"circle"_s,          u"pipe"_s};
+        const QStringList fixedContent{u"ioField"_s,
+                                       u"listBox"_s,
+                                       u"alarmView"_s,
+                                       u"recipeView"_s,
+                                       u"diagnosticsView"_s,
+                                       u"browser"_s,
+                                       u"symbolicIoField"_s,
+                                       u"screenWindow"_s,
+                                       u"graphicView"_s,
+                                       u"textBox"_s,
+                                       u"button"_s,
+                                       u"line"_s,
+                                       u"polyline"_s,
+                                       u"polygon"_s,
+                                       u"rectangle"_s,
+                                       u"ellipse"_s,
+                                       u"circle"_s,
+                                       u"pipe"_s,
+                                       u"bar"_s,
+                                       u"slider"_s};
         for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
         {
             if (info.inToolbox && !fixedContent.contains(info.key))

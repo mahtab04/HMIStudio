@@ -3,6 +3,7 @@
 #include "core/model/HmiObject.h"
 #include "core/property/Prop.h"
 
+#include <QFontMetricsF>
 #include <QPainter>
 #include <QPainterPathStroker>
 
@@ -56,12 +57,62 @@ void drawFace(QPainter& painter, const QRectF& rect, const QColor& fill, const Q
 {
     painter.save();
     painter.setPen(QPen(line, 1.0));
-    QLinearGradient shade(rect.topLeft(), rect.bottomLeft());
-    shade.setColorAt(0.0, fill.lighter(108));
-    shade.setColorAt(1.0, fill.darker(108));
-    painter.setBrush(shade);
+    painter.setBrush(fill);
+    painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius);
+    painter.restore();
+}
+
+void drawRaisedFace(QPainter& painter, const QRectF& rect, const QColor& fill, const QColor& line,
+                    double radius)
+{
+    painter.save();
     const QRectF r = rect.adjusted(0.5, 0.5, -0.5, -0.5);
+    QLinearGradient shade(r.topLeft(), r.bottomLeft());
+    shade.setColorAt(0.0, fill.lighter(118));
+    shade.setColorAt(0.48, fill.lighter(104));
+    shade.setColorAt(0.52, fill);
+    shade.setColorAt(1.0, fill.darker(114));
+    painter.setPen(QPen(line, 1.0));
+    painter.setBrush(shade);
     painter.drawRoundedRect(r, radius, radius);
+    // A thin highlight inside the top edge.
+    QColor highlight(Qt::white);
+    highlight.setAlpha(130);
+    painter.setPen(QPen(highlight, 1.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(r.adjusted(1, 1, -1, -1), std::max(0.0, radius - 1),
+                            std::max(0.0, radius - 1));
+    painter.restore();
+}
+
+void drawScale(QPainter& painter, const QLineF& axis, QPointF outward, double tickLength,
+               double minimum, double maximum, const QColor& color, const QFont& font, bool labels)
+{
+    painter.save();
+    painter.setPen(QPen(color, 1.0));
+    painter.setFont(font);
+    constexpr int kMajor = 5;
+    constexpr int kMinor = 2; // minor ticks between two numbers
+    const QFontMetricsF metrics(font);
+    for (int i = 0; i <= kMajor * kMinor; ++i)
+    {
+        const double t = double(i) / (kMajor * kMinor);
+        const QPointF at = axis.pointAt(t);
+        const bool major = i % kMinor == 0;
+        painter.drawLine(at, at + outward * (major ? tickLength : tickLength * 0.55));
+        if (major && labels)
+        {
+            const double number = minimum + (maximum - minimum) * t;
+            const QString text = QString::number(number, 'g', 4);
+            const QSizeF box(metrics.horizontalAdvance(text) + 2, metrics.height());
+            // Place the label centred one tick length beyond the tick.
+            const QPointF centre =
+                at + outward * (tickLength + 2) +
+                QPointF(outward.x() * box.width() / 2.0, outward.y() * box.height() / 2.0);
+            painter.drawText(QRectF(centre - QPointF(box.width() / 2.0, box.height() / 2.0), box),
+                             Qt::AlignCenter, text);
+        }
+    }
     painter.restore();
 }
 

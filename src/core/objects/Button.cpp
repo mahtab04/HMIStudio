@@ -28,13 +28,13 @@ std::span<const PropertyDescriptor> Button::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {120.0, 44.0},
+        {120.0, 40.0},
         {
             Describe::text(QStringLiteral("Button")),
-            Describe::fillColor(QColor(0xDD, 0xE3, 0xEA)),
-            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
+            Describe::fillColor(QColor(0xC9, 0xCE, 0xD6)),
+            Describe::styled(Describe::lineColor(QColor(0x7C, 0x85, 0x90)), StyleRole::Line),
             Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-            Describe::font(16, true),
+            Describe::font(14),
         });
     return table;
 }
@@ -49,8 +49,9 @@ void Button::paint(QPainter& painter, const PaintContext& context) const
     [[maybe_unused]] const QSizeF size = geometry().size();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
-    PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
-                           value<QColor>(Prop::LineColor), std::min(6.0, size.height() / 4.0));
+    PaintHelpers::drawRaisedFace(painter, bounds, value<QColor>(Prop::FillColor),
+                                 value<QColor>(Prop::LineColor),
+                                 std::min(4.0, size.height() / 4.0));
     PaintHelpers::drawText(painter, *this, bounds.adjusted(4, 0, -4, 0),
                            Qt::AlignCenter | Qt::TextWordWrap, value<QString>(Prop::Text));
 }

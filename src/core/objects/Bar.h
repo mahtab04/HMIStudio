@@ -5,9 +5,9 @@
 namespace hmi
 {
 
-// A bar graph: the part of the bar between minimum and value is filled,
-// vertically from the bottom or horizontally from the left, with an
-// optional scale.
+// A bar graph in a dark body: the part of the track between minimum and
+// value is filled, vertically from the bottom or horizontally from the
+// left, beside a numbered scale.
 class Bar final : public ElementObject
 {
 public:

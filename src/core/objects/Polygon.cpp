@@ -28,8 +28,8 @@ std::span<const PropertyDescriptor> Polygon::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {100.0, 100.0},
         {
-            Describe::fillColor(QColor(0xEE, 0xF0, 0xF2)),
-            Describe::lineColor(QColor(0x2B, 0x2F, 0x36)),
+            Describe::fillColor(QColor(0xC6, 0xD0, 0xDE)),
+            Describe::lineColor(QColor(0x4F, 0x5F, 0x78)),
             Describe::lineWidth(1.0),
             Describe::points(
                 PointList{{0.5, 0.0}, {1.0, 0.38}, {0.81, 1.0}, {0.19, 1.0}, {0.0, 0.38}}, 3),

@@ -28,7 +28,7 @@ std::span<const PropertyDescriptor> SymbolicIoField::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {140.0, 36.0},
+        {140.0, 34.0},
         {
             Describe::items(QStringLiteral("Stopped;Running;Fault")),
             Describe::integer(Prop::SelectedIndex, "selectedIndex",
@@ -39,7 +39,7 @@ std::span<const PropertyDescriptor> SymbolicIoField::staticDescriptors()
                              StyleRole::Face),
             Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
             Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-            Describe::font(16),
+            Describe::font(14),
         });
     return table;
 }
@@ -59,14 +59,18 @@ void SymbolicIoField::paint(QPainter& painter, const PaintContext& context) cons
     const QStringList items = Describe::splitItems(value<QString>(Prop::Items));
     const int index = value<int>(Prop::SelectedIndex);
     const QString shown = index < items.size() ? items[index] : QStringLiteral("#%1").arg(index);
-    const double arrow = size.height() * 0.5;
-    PaintHelpers::drawText(painter, *this, bounds.adjusted(6, 0, -arrow - 6, 0),
+    const double button = std::min(size.height(), size.width() / 3.0);
+    const QRectF drop(size.width() - button, 0, button, size.height());
+    PaintHelpers::drawText(painter, *this, bounds.adjusted(6, 0, -button - 4, 0),
                            Qt::AlignLeft | Qt::AlignVCenter, shown);
-    const QPointF tip(size.width() - arrow / 2.0 - 4.0, size.height() / 2.0 + arrow / 6.0);
+    PaintHelpers::drawRaisedFace(painter, drop.adjusted(2, 2, -2, -2), QColor(0xC9, 0xCE, 0xD6),
+                                 QColor(0x7C, 0x85, 0x90), 2.0);
+    const double a = button * 0.18;
+    const QPointF c = drop.center() + QPointF(0, a * 0.35);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(value<QColor>(Prop::TextColor));
-    painter.drawPolygon(QPolygonF{tip + QPointF(-arrow / 4.0, -arrow / 4.0),
-                                  tip + QPointF(arrow / 4.0, -arrow / 4.0), tip});
+    painter.setBrush(QColor(0x2B, 0x2F, 0x36));
+    painter.drawPolygon(
+        QPolygonF{c + QPointF(-a, -a * 0.7), c + QPointF(a, -a * 0.7), c + QPointF(0, a * 0.5)});
 }
 
 void SymbolicIoField::accept(ObjectVisitor& visitor)
