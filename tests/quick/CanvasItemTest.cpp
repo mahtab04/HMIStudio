@@ -64,6 +64,20 @@ private Q_SLOTS:
         QCOMPARE(m_canvas->mapSceneToView({0, 0}), QPointF(24, 24));
     }
 
+    void staysFittedWhenResizedUntilZoomed()
+    {
+        // Twice the room: still the whole screen, centred, larger.
+        m_canvas->setSize(QSizeF(1648, 1248));
+        QCOMPARE(m_canvas->zoom(), 2.0);
+        QCOMPARE(m_canvas->panOffset(), QPointF(24, 24));
+        // After a zoom by hand, resizing keeps the user's view.
+        m_canvas->setZoomCentered(1.5);
+        m_canvas->setSize(QSizeF(848, 648));
+        QCOMPARE(m_canvas->zoom(), 1.5);
+        m_canvas->fitScreen();
+        QCOMPARE(m_canvas->zoom(), 1.0);
+    }
+
     void createsOneItemPerObject()
     {
         ScreenItem* screenItem = m_canvas->screenItem();

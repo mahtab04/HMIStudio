@@ -178,6 +178,7 @@ private:
     double m_settledZoom = 0.0;
     QPointF m_pan;
     bool m_needsFit = true;
+    bool m_fitted = false; // the view is the fit; resizing refits
 
     // What a tool shows instead of the model while a gesture runs.
     struct Preview
