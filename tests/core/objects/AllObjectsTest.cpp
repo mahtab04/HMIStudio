@@ -8,6 +8,7 @@
 #include "core/io/ObjectJson.h"
 #include "core/model/HmiObject.h"
 #include "core/objects/ObjectContract.h"
+#include "core/objects/PaintHelpers.h"
 #include "core/registry/ObjectRegistry.h"
 
 #include <QPainter>
@@ -333,6 +334,79 @@ private Q_SLOTS:
         }
         painter.end();
         QVERIFY(sheet.save(path));
+    }
+
+    // Controls grow as a whole: their text, rows and scales follow the
+    // smaller of the width and height ratios to the default size.
+    void contentGrowsWithTheObject()
+    {
+        const ObjectTypeInfo* info = ObjectRegistry::instance().find(ObjectTypeId{"alarmView"});
+        QVERIFY(info);
+        auto view = info->create(ObjectId::create());
+        const QSizeF design = view->geometry().size();
+        QCOMPARE(PaintHelpers::contentScale(*view), 1.0);
+        (void)view->setProperty(Prop::Width, design.width() * 3.0);
+        (void)view->setProperty(Prop::Height, design.height() * 2.0);
+        QCOMPARE(PaintHelpers::contentScale(*view), 2.0);
+        const int pixels = view->value<QFont>(Prop::Font).pixelSize();
+        QCOMPARE(PaintHelpers::scaledFont(*view, 2.0).pixelSize(), pixels * 2);
+        (void)view->setProperty(Prop::Width, design.width() * 40.0);
+        (void)view->setProperty(Prop::Height, design.height() * 40.0);
+        QCOMPARE(PaintHelpers::contentScale(*view), 8.0); // capped
+    }
+
+    // Set HMI_GROW_SHEET=<file.png> to compare each toolbox type magnified
+    // three times (left, how it should look) with the type resized to three
+    // times its size (right): text, rows and scales should grow alike.
+    void growSheet()
+    {
+        const QString path = qEnvironmentVariable("HMI_GROW_SHEET");
+        if (path.isEmpty())
+            QSKIP("Set HMI_GROW_SHEET to save the sheet");
+        constexpr double kFactor = 3.0;
+        constexpr double kPageHeight = 3600.0;
+        std::vector<std::unique_ptr<HmiObject>> objects;
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (info.inToolbox)
+                objects.push_back(info.create(ObjectId::create()));
+        }
+        // Pages of rows, saved as <name>_1.png, <name>_2.png, ...
+        int page = 0;
+        std::size_t next = 0;
+        while (next < objects.size())
+        {
+            QImage sheet(2400, int(kPageHeight), QImage::Format_ARGB32_Premultiplied);
+            sheet.fill(QColor(0xE6, 0xE8, 0xEB));
+            QPainter painter(&sheet);
+            painter.setRenderHint(QPainter::Antialiasing);
+            double y = 10.0;
+            while (next < objects.size())
+            {
+                HmiObject& object = *objects[next];
+                const QSizeF design = object.geometry().size();
+                if (y > 10.0 && y + design.height() * kFactor > kPageHeight)
+                    break;
+                painter.save();
+                painter.translate(10, y);
+                painter.scale(kFactor, kFactor);
+                object.paint(painter, PaintContext{});
+                painter.restore();
+                (void)object.setProperty(Prop::Width, design.width() * kFactor);
+                (void)object.setProperty(Prop::Height, design.height() * kFactor);
+                painter.save();
+                painter.translate(20 + design.width() * kFactor, y);
+                object.paint(painter, PaintContext{});
+                painter.restore();
+                y += design.height() * kFactor + 20.0;
+                ++next;
+            }
+            painter.end();
+            const QString file = QString(path).replace(QStringLiteral(".png"),
+                                                       QStringLiteral("_%1.png").arg(++page));
+            QVERIFY(sheet.scaled(sheet.size() / 3, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+                        .save(file));
+        }
     }
 };
 

@@ -53,7 +53,7 @@ void ScreenWindow::paint(QPainter& painter, const PaintContext& context) const
         screen.isEmpty()
             ? QCoreApplication::translate("hmi::Objects", "Screen window (no screen)")
             : QCoreApplication::translate("hmi::Objects", "Screen window: %1").arg(screen),
-        value<QColor>(Prop::FillColor));
+        value<QColor>(Prop::FillColor), PaintHelpers::contentScale(*this));
 }
 
 void ScreenWindow::accept(ObjectVisitor& visitor)

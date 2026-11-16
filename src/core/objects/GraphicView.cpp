@@ -85,7 +85,7 @@ void GraphicView::paint(QPainter& painter, const PaintContext& context) const
         painter, bounds,
         asset.isEmpty() ? QCoreApplication::translate("hmi::Objects", "No graphic")
                         : QCoreApplication::translate("hmi::Objects", "Missing graphic"),
-        QColor(0xF4, 0xF5, 0xF7));
+        QColor(0xF4, 0xF5, 0xF7), PaintHelpers::contentScale(*this));
 }
 
 void GraphicView::accept(ObjectVisitor& visitor)

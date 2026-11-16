@@ -99,7 +99,8 @@ void Slider::paint(QPainter& painter, const PaintContext& context) const
         PaintHelpers::drawScale(painter, axis, vertical ? QPointF(1, 0) : QPointF(0, 1),
                                 across * 0.1, value<double>(Prop::Minimum),
                                 value<double>(Prop::Maximum), value<QColor>(Prop::LineColor),
-                                value<QFont>(Prop::Font), !context.lowDetail());
+                                PaintHelpers::scaledFont(*this, PaintHelpers::contentScale(*this)),
+                                !context.lowDetail());
     }
 
     QRadialGradient shine(current - QPointF(knob * 0.15, knob * 0.18), knob * 0.65);

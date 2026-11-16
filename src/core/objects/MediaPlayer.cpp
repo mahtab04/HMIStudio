@@ -51,8 +51,9 @@ void MediaPlayer::paint(QPainter& painter, const PaintContext& context) const
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
     painter.fillRect(bounds, value<QColor>(Prop::FillColor));
+    const double k = PaintHelpers::contentScale(*this);
     const double controls =
-        value<bool>(Prop::ShowControls) ? std::min(32.0, size.height() / 4.0) : 0.0;
+        value<bool>(Prop::ShowControls) ? std::min(32.0 * k, size.height() / 4.0) : 0.0;
     const QRectF picture(0, 0, size.width(), size.height() - controls);
     const double play = std::min(picture.width(), picture.height()) * 0.25;
     const QPointF c = picture.center();
@@ -64,8 +65,8 @@ void MediaPlayer::paint(QPainter& painter, const PaintContext& context) const
     {
         painter.fillRect(QRectF(0, picture.bottom(), size.width(), controls),
                          QColor(0x37, 0x3C, 0x44));
-        painter.fillRect(QRectF(controls, picture.bottom() + controls / 2.0 - 1.5,
-                                size.width() - controls - 10, 3),
+        painter.fillRect(QRectF(controls, picture.bottom() + controls / 2.0 - 1.5 * k,
+                                size.width() - controls - 10 * k, 3 * k),
                          QColor(0x9A, 0xA1, 0xAB));
     }
 }

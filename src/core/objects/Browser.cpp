@@ -57,14 +57,16 @@ void Browser::paint(QPainter& painter, const PaintContext& context) const
                            value<QColor>(Prop::LineColor), 2.0);
     if (!value<bool>(Prop::ShowToolbar))
         return;
-    const double bar = std::min(30.0, size.height() / 3.0);
+    // The address bar grows with the browser.
+    const double k = PaintHelpers::contentScale(*this);
+    const double bar = std::min(30.0 * k, size.height() / 3.0);
     painter.fillRect(QRectF(1, 1, size.width() - 2, bar), QColor(0xE5, 0xE7, 0xEB));
-    const QRectF field(bar, 5, size.width() - bar - 8, bar - 10);
+    const QRectF field(bar, bar / 6.0, size.width() - bar - 8 * k, bar * 2.0 / 3.0);
     painter.setPen(QPen(value<QColor>(Prop::LineColor), 1.0));
     painter.setBrush(Qt::white);
-    painter.drawRoundedRect(field, 4, 4);
-    PaintHelpers::drawText(painter, *this, field.adjusted(6, 0, -6, 0),
-                           Qt::AlignLeft | Qt::AlignVCenter, value<QString>(Prop::Url));
+    painter.drawRoundedRect(field, 4 * k, 4 * k);
+    PaintHelpers::drawText(painter, *this, field.adjusted(6 * k, 0, -6 * k, 0),
+                           Qt::AlignLeft | Qt::AlignVCenter, value<QString>(Prop::Url), k);
 }
 
 void Browser::accept(ObjectVisitor& visitor)

@@ -102,7 +102,6 @@ ObjectId valueCard(ScreenBuilder& b, double x, double y, const QString& label, c
     b.add(IoField::kTypeId, at(x + 20, y + 46, 190, 50))
         .with(Prop::Unit, unit)
         .with(Prop::Decimals, decimals)
-        .with(Prop::Font, fontOf(28, true))
         .with(Prop::Name, label);
     return b.lastId();
 }
@@ -145,7 +144,6 @@ std::unique_ptr<Project> makeSampleProject()
     b.add(IoField::kTypeId, at(130, 440, 140, 48))
         .with(Prop::Unit, QStringLiteral("%"))
         .with(Prop::Decimals, 1)
-        .with(Prop::Font, fontOf(24, true))
         .with(Prop::Name, tr("T-101 level"));
     links.push_back({b.lastId(), Prop::Value, QStringLiteral("Level")});
 
