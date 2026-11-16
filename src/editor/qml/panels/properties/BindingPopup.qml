@@ -10,6 +10,7 @@ import QtQuick.Layouts
 Dialog {
     id: dialog
 
+    objectName: "bindingPopup"
     required property Theme theme
     required property PropertyModel properties
     required property TagModel tags
@@ -90,10 +91,13 @@ Dialog {
         ListView {
             id: tagList
 
+            objectName: "bindingTagList"
             Layout.fillWidth: true
             Layout.preferredHeight: dialog.theme.controlHeight * 5
             clip: true
-            model: dialog.tags.namesMatching(search.text)
+            // Read again each time the dialog opens (and as tags come and
+            // go), so it lists the tags of the table as they are now.
+            model: dialog.visible && dialog.tags.tagCount >= 0 ? dialog.tags.namesMatching(search.text) : []
             boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: ScrollBar {}
 
@@ -110,7 +114,7 @@ Dialog {
             Label {
                 anchors.centerIn: parent
                 visible: tagList.count === 0
-                text: dialog.tags.tagCount === 0 ? qsTr("No tags yet: add them in the Tags panel.") : qsTr("No tag matches.")
+                text: dialog.tags.tagCount === 0 ? qsTr("No tags yet: add them in the HMI tags tab.") : qsTr("No tag matches.")
                 color: dialog.theme.textMuted
             }
         }

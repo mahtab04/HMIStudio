@@ -146,6 +146,42 @@ private Q_SLOTS:
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
 
+        // The binding dialog lists the tags as they are when it opens.
+        {
+            const int row = [&]
+            {
+                for (int i = 0; i < context.properties().rowCount(); ++i)
+                {
+                    if (context.properties()
+                            .data(context.properties().index(i), PropertyModel::BindableRole)
+                            .toBool())
+                        return i;
+                }
+                return -1;
+            }();
+            QVERIFY(row >= 0);
+            auto* popup = window->findChild<QObject*>(QStringLiteral("bindingPopup"));
+            auto* list = window->findChild<QQuickItem*>(QStringLiteral("bindingTagList"));
+            QVERIFY(popup && list);
+            context.properties().requestBinding(row);
+            QTRY_VERIFY(popup->property("opened").toBool());
+            QTRY_COMPARE(list->property("count").toInt(), 5);
+            QMetaObject::invokeMethod(popup, "close");
+            QTRY_VERIFY(!popup->property("visible").toBool());
+
+            context.tags().removeTag(0);
+            context.tags().addTag();
+            context.properties().requestBinding(row);
+            QTRY_VERIFY(popup->property("opened").toBool());
+            QTRY_COMPARE(list->property("count").toInt(), 5);
+            const QVariant names = list->property("model");
+            QVERIFY(names.toStringList().contains(QStringLiteral("Tag_1")));
+            QVERIFY(!names.toStringList().contains(QStringLiteral("Level")));
+            QMetaObject::invokeMethod(popup, "close");
+            context.undoStack().undo();
+            context.undoStack().undo();
+        }
+
         // The HMI tags tab opens the tag table in the work area.
         auto* tagsTab = window->findChild<QQuickItem*>(QStringLiteral("tagsTab"));
         QVERIFY(tagsTab);
