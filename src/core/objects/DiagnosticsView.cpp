@@ -60,17 +60,19 @@ void DiagnosticsView::paint(QPainter& painter, const PaintContext& context) cons
     [[maybe_unused]] const QSizeF size = geometry().size();
     [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
     Q_UNUSED(context)
+    // Rows and text grow with the view.
+    const double k = PaintHelpers::contentScale(*this);
     PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
                            value<QColor>(Prop::LineColor), 2.0);
     double top = 1.0;
-    const double rowHeight = std::max(16.0, value<QFont>(Prop::Font).pixelSize() * 1.7);
+    const double rowHeight = std::max(16.0, value<QFont>(Prop::Font).pixelSize() * 1.7) * k;
     if (value<bool>(Prop::ShowToolbar))
     {
         painter.fillRect(QRectF(1, top, size.width() - 2, rowHeight),
                          value<QColor>(Prop::BackgroundColor));
-        PaintHelpers::drawText(painter, *this, QRectF(6, top, size.width() - 12, rowHeight),
+        PaintHelpers::drawText(painter, *this, QRectF(6 * k, top, size.width() - 12 * k, rowHeight),
                                Qt::AlignLeft | Qt::AlignVCenter,
-                               QCoreApplication::translate("hmi::Objects", "Diagnostics"));
+                               QCoreApplication::translate("hmi::Objects", "Diagnostics"), k);
         top += rowHeight;
     }
     const QStringList columns = Describe::splitItems(value<QString>(Prop::Columns));
@@ -83,8 +85,8 @@ void DiagnosticsView::paint(QPainter& painter, const PaintContext& context) cons
         const QRectF cell(i * columnWidth, top, columnWidth, rowHeight);
         if (i > 0)
             painter.drawLine(cell.topLeft(), QPointF(cell.left(), size.height() - 1));
-        PaintHelpers::drawText(painter, *this, cell.adjusted(6, 0, -4, 0),
-                               Qt::AlignLeft | Qt::AlignVCenter, columns[i]);
+        PaintHelpers::drawText(painter, *this, cell.adjusted(6 * k, 0, -4 * k, 0),
+                               Qt::AlignLeft | Qt::AlignVCenter, columns[i], k);
     }
     top += rowHeight;
     painter.setPen(QPen(value<QColor>(Prop::LineColor), 1.0));

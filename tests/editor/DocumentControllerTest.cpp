@@ -8,12 +8,15 @@
 #include "core/model/Project.h"
 #include "core/model/ScreenBuilder.h"
 #include "core/objects/Rectangle.h"
+#include "core/objects/ScreenWindow.h"
 #include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
 #include "editor/app/AppContext.h"
 #include "editor/app/AppSettings.h"
 #include "editor/app/EditActions.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
@@ -251,6 +254,40 @@ private Q_SLOTS:
         QCOMPARE(recent.count(u"C:/p2"_s), 1);
     }
 
+    void screenWindowsFollowRenamedScreens()
+    {
+        EditorController& editor = m_app->editor();
+        Project& project = m_app->project();
+        Screen& overview = *project.screens()[0];
+        auto window =
+            ObjectRegistry::instance().find(ScreenWindow::kTypeId)->create(ObjectId::create());
+        (void)window->setProperty(Prop::ScreenName, u"Details"_s);
+        const ObjectId id = window->id();
+        QVERIFY(overview.insertObject(std::move(window)));
+
+        // The Screen property is picked from the other screens, not bound.
+        m_app->selection().selectOnly(id);
+        PropertyModel& model = m_app->properties();
+        int row = -1;
+        for (int i = 0; i < model.rowCount(); ++i)
+        {
+            if (model.data(model.index(i), PropertyModel::KeyRole).toString() == u"screenName")
+                row = i;
+        }
+        QVERIFY(row >= 0);
+        QCOMPARE(model.data(model.index(row), PropertyModel::EditorRole).toString(), u"screen"_s);
+        QCOMPARE(model.data(model.index(row), PropertyModel::OptionsRole).toStringList(),
+                 QStringList{u"Details"_s});
+        QVERIFY(!model.data(model.index(row), PropertyModel::BindableRole).toBool());
+
+        // Renaming the screen updates the window, in one step.
+        editor.renameScreen(1, u"Motors"_s);
+        QCOMPARE(overview.object(id)->value<QString>(Prop::ScreenName), u"Motors"_s);
+        m_app->undoStack().undo();
+        QCOMPARE(project.screens()[1]->name(), u"Details"_s);
+        QCOMPARE(overview.object(id)->value<QString>(Prop::ScreenName), u"Details"_s);
+    }
+
     void screensAddDuplicateRenameDelete()
     {
         EditorController& editor = m_app->editor();
@@ -260,7 +297,7 @@ private Q_SLOTS:
         editor.addScreen();
         QCOMPARE(project.screenCount(), std::size_t(3));
         QCOMPARE(editor.currentScreenIndex(), 2);
-        QCOMPARE(editor.screenTitle(), u"Screen 3"_s);
+        QCOMPARE(editor.screenTitle(), u"Screen_1"_s); // TIA style, next free number
 
         editor.duplicateScreen(0);
         QCOMPARE(project.screenCount(), std::size_t(4));

@@ -134,7 +134,7 @@ void DocumentController::perform(Pending action)
     case Pending::NewProject:
     {
         Project fresh(untitledName());
-        (void)fresh.insertScreen(std::make_unique<Screen>(tr("Screen 1")));
+        (void)fresh.insertScreen(std::make_unique<Screen>(tr("Screen_1")));
         m_project.replaceContents(std::move(fresh));
         m_undoStack.clear();
         setFilePath({});

@@ -98,6 +98,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/properties/NumberKeypad.qml
         qml/panels/properties/PairEditor.qml
         qml/panels/properties/PropertyLabel.qml
+        qml/panels/properties/ScreenPickerEditor.qml
         qml/panels/properties/TagPickerEditor.qml
         qml/panels/properties/TextEditor.qml
         qml/panels/SelectionToolbar.qml

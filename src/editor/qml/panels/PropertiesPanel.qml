@@ -60,6 +60,14 @@ Pane {
                 role: "editor"
 
                 DelegateChoice {
+                    roleValue: "screen"
+                    ScreenPickerEditor {
+                        width: list.width
+                        properties: panel.properties
+                        theme: panel.theme
+                    }
+                }
+                DelegateChoice {
                     roleValue: "tag"
                     TagPickerEditor {
                         width: list.width

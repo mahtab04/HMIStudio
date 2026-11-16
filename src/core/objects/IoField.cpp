@@ -69,8 +69,10 @@ void IoField::paint(QPainter& painter, const PaintContext& context) const
     Q_UNUSED(context)
     PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
                            value<QColor>(Prop::LineColor), 3.0);
-    PaintHelpers::drawText(painter, *this, bounds.adjusted(6, 0, -6, 0),
-                           Qt::AlignRight | Qt::AlignVCenter, displayText());
+    // The value grows with the field.
+    const double k = PaintHelpers::contentScale(*this);
+    PaintHelpers::drawText(painter, *this, bounds.adjusted(6 * k, 0, -6 * k, 0),
+                           Qt::AlignRight | Qt::AlignVCenter, displayText(), k);
 }
 
 QString IoField::displayText() const

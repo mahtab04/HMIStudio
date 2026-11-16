@@ -95,6 +95,16 @@ private Q_SLOTS:
         QTRY_VERIFY(canvas->zoom() < 1.0); // fitted into the canvas area
         QVERIFY(context.editor().selectToolActive());
 
+        // The zoom strip under the canvas: presets and a slider over log2(zoom).
+        QVERIFY(window->findChild<QQuickItem*>(QStringLiteral("zoomBox")));
+        const double fitted = canvas->zoom();
+        context.editor().chooseZoom(4); // 100 %
+        QCOMPARE(canvas->zoom(), 1.0);
+        context.editor().setZoomLevel(1.0);
+        QCOMPARE(canvas->zoom(), 2.0);
+        context.editor().chooseZoom(0); // fit
+        QCOMPARE(canvas->zoom(), fitted);
+
         // Switching density resizes the controls.
         auto* header = window->property("header").value<QQuickItem*>();
         QVERIFY(header);
@@ -135,6 +145,42 @@ private Q_SLOTS:
         QVERIFY(menu);
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
+
+        // The binding dialog lists the tags as they are when it opens.
+        {
+            const int row = [&]
+            {
+                for (int i = 0; i < context.properties().rowCount(); ++i)
+                {
+                    if (context.properties()
+                            .data(context.properties().index(i), PropertyModel::BindableRole)
+                            .toBool())
+                        return i;
+                }
+                return -1;
+            }();
+            QVERIFY(row >= 0);
+            auto* popup = window->findChild<QObject*>(QStringLiteral("bindingPopup"));
+            auto* list = window->findChild<QQuickItem*>(QStringLiteral("bindingTagList"));
+            QVERIFY(popup && list);
+            context.properties().requestBinding(row);
+            QTRY_VERIFY(popup->property("opened").toBool());
+            QTRY_COMPARE(list->property("count").toInt(), 5);
+            QMetaObject::invokeMethod(popup, "close");
+            QTRY_VERIFY(!popup->property("visible").toBool());
+
+            context.tags().removeTag(0);
+            context.tags().addTag();
+            context.properties().requestBinding(row);
+            QTRY_VERIFY(popup->property("opened").toBool());
+            QTRY_COMPARE(list->property("count").toInt(), 5);
+            const QVariant names = list->property("model");
+            QVERIFY(names.toStringList().contains(QStringLiteral("Tag_1")));
+            QVERIFY(!names.toStringList().contains(QStringLiteral("Level")));
+            QMetaObject::invokeMethod(popup, "close");
+            context.undoStack().undo();
+            context.undoStack().undo();
+        }
 
         // The HMI tags tab opens the tag table in the work area.
         auto* tagsTab = window->findChild<QQuickItem*>(QStringLiteral("tagsTab"));

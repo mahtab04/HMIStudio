@@ -305,6 +305,10 @@ copy and the panels' models. Choices made here:
   a tank's level, a pump's running state); the properties panel offers its
   tag first, under Process, as a drop-down of the project's tags. Other
   bindable properties keep the link button with the full binding editor.
+- The screen editor follows TIA Portal: no rulers, and zoom in a strip
+  under the work area (fit, a slider and a drop-down of percentages)
+  instead of the top bar. `RulerItem` stays in `hmi_quick` for a later
+  "show rulers" option.
 - Filtering is done inside `TagModel` instead of a separate proxy model:
   one model for the table and the tag picker, with search over name, unit
   and comment.

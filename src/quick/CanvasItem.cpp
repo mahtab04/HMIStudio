@@ -102,6 +102,7 @@ void CanvasItem::fitScreen()
     const QPointF pan((width() - size.width() * zoom) / 2.0,
                       (height() - size.height() * zoom) / 2.0);
     setView(zoom, pan);
+    m_fitted = true;
 }
 
 void CanvasItem::setZoomCentered(double zoom)
@@ -115,11 +116,13 @@ void CanvasItem::zoomAt(QPointF viewPos, double factor)
         return;
     const double zoom = std::clamp(m_zoom * factor, kMinZoom, kMaxZoom);
     const QPointF scene = mapViewToScene(viewPos);
+    m_fitted = false;
     setView(zoom, viewPos - scene * zoom);
 }
 
 void CanvasItem::panBy(QPointF viewDelta)
 {
+    m_fitted = false;
     setView(m_zoom, m_pan + viewDelta);
 }
 
@@ -375,7 +378,9 @@ void CanvasItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeom
     m_grid->setSize(newGeometry.size());
     m_guideOverlay->setSize(newGeometry.size());
     m_overlay->setSize(newGeometry.size());
-    if (m_needsFit && newGeometry.width() > 0 && newGeometry.height() > 0)
+    // A fitted screen stays fitted as panels open, close or are dragged,
+    // until the user zooms or pans.
+    if ((m_needsFit || m_fitted) && newGeometry.width() > 0 && newGeometry.height() > 0)
         fitScreen();
     else
         applyView();

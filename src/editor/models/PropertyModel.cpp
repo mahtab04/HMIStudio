@@ -531,6 +531,10 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
         return QCoreApplication::translate("hmi::Property", d.category);
     case EditorRole:
         // A graphic is a string id, but picked from files, not typed.
+        // A graphic is a string id, but picked from files; a screen window's
+        // screen is picked from the project's screens.
+        if (d.id == Prop::ScreenName)
+            return QStringLiteral("screen");
         return d.id == Prop::Asset ? QStringLiteral("asset") : editorFor(valueKind(d.defaultValue));
     case ValueRole:
         return objectValue(row, nullptr);
@@ -549,6 +553,16 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     case OptionsRole:
     {
         QStringList options;
+        if (d.id == Prop::ScreenName)
+        {
+            // Every screen but the one being edited: a screen cannot show itself.
+            for (const auto& screen : m_context.project().screens())
+            {
+                if (screen->id() != m_context.screenId())
+                    options << screen->name();
+            }
+            return options;
+        }
         for (const EnumOption& option : d.constraint.enumOptions)
             options << QCoreApplication::translate("hmi::Property", option.displayName);
         return options;

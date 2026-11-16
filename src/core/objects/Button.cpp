@@ -52,8 +52,10 @@ void Button::paint(QPainter& painter, const PaintContext& context) const
     PaintHelpers::drawRaisedFace(painter, bounds, value<QColor>(Prop::FillColor),
                                  value<QColor>(Prop::LineColor),
                                  std::min(4.0, size.height() / 4.0));
-    PaintHelpers::drawText(painter, *this, bounds.adjusted(4, 0, -4, 0),
-                           Qt::AlignCenter | Qt::TextWordWrap, value<QString>(Prop::Text));
+    // The label grows with the button.
+    const double k = PaintHelpers::contentScale(*this);
+    PaintHelpers::drawText(painter, *this, bounds.adjusted(4 * k, 0, -4 * k, 0),
+                           Qt::AlignCenter | Qt::TextWordWrap, value<QString>(Prop::Text), k);
 }
 
 void Button::accept(ObjectVisitor& visitor)

@@ -171,7 +171,13 @@ Example: a `Gauge`.
    shape and a JSON round trip. Add a `GaugeTest` only for behaviour of
    your own (a hit shape that must exclude corners, a computed text). Run
    `AllObjectsTest` with `HMI_OBJECT_SHEET=<file.png>` to look at every type
-   on one sheet. `ToolboxTest` counts the toolbox entries; update the count.
+   on one sheet, and with `HMI_GROW_SHEET=<file.png>` to check it grows as
+   a whole. `ToolboxTest` counts the toolbox entries; update the count.
+   Resizing must not leave tiny parts in a big frame: pictures use
+   `Describe::stretchMode()`, labelled controls `PaintHelpers::scaleToHeight`,
+   and controls with toolbars, rows, text or scales multiply those sizes by
+   `PaintHelpers::contentScale` (fonts through `drawText(..., k)` or
+   `scaledFont`), keeping line widths. A text box keeps its font exact.
 8. Do not write a new `QQuickItem` or QML for the object, and do not touch
    the toolbox, property panel or serializer. `ObjectItem` hosts every type.
    If that is not enough, the descriptor system is missing something; extend

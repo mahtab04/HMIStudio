@@ -27,13 +27,13 @@ std::span<const PropertyDescriptor> ScreenWindow::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {320.0, 200.0}, {
-                            Describe::string(Prop::ScreenName, "screenName",
-                                             QT_TRANSLATE_NOOP("hmi::Property", "Screen"),
-                                             Behaviour, QString(), true),
-                            Describe::fillColor(QColor(0xF4, 0xF5, 0xF7),
-                                                QT_TRANSLATE_NOOP("hmi::Property", "Background")),
-                        });
+        {320.0, 200.0},
+        {
+            Describe::string(Prop::ScreenName, "screenName",
+                             QT_TRANSLATE_NOOP("hmi::Property", "Screen"), Behaviour, QString()),
+            Describe::fillColor(QColor(0xF4, 0xF5, 0xF7),
+                                QT_TRANSLATE_NOOP("hmi::Property", "Background")),
+        });
     return table;
 }
 
@@ -53,7 +53,7 @@ void ScreenWindow::paint(QPainter& painter, const PaintContext& context) const
         screen.isEmpty()
             ? QCoreApplication::translate("hmi::Objects", "Screen window (no screen)")
             : QCoreApplication::translate("hmi::Objects", "Screen window: %1").arg(screen),
-        value<QColor>(Prop::FillColor));
+        value<QColor>(Prop::FillColor), PaintHelpers::contentScale(*this));
 }
 
 void ScreenWindow::accept(ObjectVisitor& visitor)

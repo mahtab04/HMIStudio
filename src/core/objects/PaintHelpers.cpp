@@ -42,10 +42,10 @@ QPainterPath strokeArea(const QPainterPath& path, double width)
 }
 
 void drawText(QPainter& painter, const HmiObject& object, const QRectF& rect, int flags,
-              const QString& text)
+              const QString& text, double scale)
 {
     painter.save();
-    painter.setFont(object.value<QFont>(Prop::Font));
+    painter.setFont(scaledFont(object, scale));
     painter.setPen(object.value<QColor>(Prop::TextColor));
     painter.setClipRect(rect, Qt::IntersectClip);
     painter.drawText(rect, flags, text);
@@ -117,7 +117,7 @@ void drawScale(QPainter& painter, const QLineF& axis, QPointF outward, double ti
 }
 
 void drawPlaceholder(QPainter& painter, const QRectF& rect, const QString& title,
-                     const QColor& background)
+                     const QColor& background, double scale)
 {
     painter.save();
     painter.setBrush(background);
@@ -126,10 +126,11 @@ void drawPlaceholder(QPainter& painter, const QRectF& rect, const QString& title
     painter.setPen(pen);
     painter.drawRect(rect.adjusted(0.5, 0.5, -0.5, -0.5));
     QFont font = painter.font();
-    font.setPixelSize(12);
+    font.setPixelSize(std::max(1, int(std::lround(12 * scale))));
     painter.setFont(font);
     painter.setPen(QColor(0x4B, 0x52, 0x5C));
-    painter.drawText(rect.adjusted(6, 4, -6, -4), Qt::AlignLeft | Qt::AlignTop, title);
+    painter.drawText(rect.adjusted(6 * scale, 4 * scale, -6 * scale, -4 * scale),
+                     Qt::AlignLeft | Qt::AlignTop, title);
     painter.restore();
 }
 
@@ -143,6 +144,34 @@ QSizeF scaleToHeight(QPainter& painter, const HmiObject& object)
     const double s = size.height() / *design;
     painter.scale(s, s);
     return {size.width() / s, *design};
+}
+
+double contentScale(const HmiObject& object)
+{
+    const auto defaultOf = [&object](PropertyId id)
+    {
+        const PropertyDescriptor* d = findDescriptor(object.descriptors(), id);
+        const double* value = d ? std::get_if<double>(&d->defaultValue) : nullptr;
+        return value ? *value : 0.0;
+    };
+    const double width = defaultOf(Prop::Width);
+    const double height = defaultOf(Prop::Height);
+    const QSizeF size = object.geometry().size();
+    if (width <= 0.0 || height <= 0.0 || size.isEmpty())
+        return 1.0;
+    return std::clamp(std::min(size.width() / width, size.height() / height), 0.5, 8.0);
+}
+
+QFont scaledFont(const HmiObject& object, double scale)
+{
+    QFont font = object.value<QFont>(Prop::Font);
+    if (scale == 1.0)
+        return font;
+    if (font.pixelSize() > 0)
+        font.setPixelSize(std::max(1, int(std::lround(font.pixelSize() * scale))));
+    else if (font.pointSizeF() > 0)
+        font.setPointSizeF(font.pointSizeF() * scale);
+    return font;
 }
 
 double fraction(double value, double minimum, double maximum)

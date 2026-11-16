@@ -59,8 +59,9 @@ void ListBox::paint(QPainter& painter, const PaintContext& context) const
     Q_UNUSED(context)
     PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
                            value<QColor>(Prop::LineColor), 2.0);
+    const double k = PaintHelpers::contentScale(*this);
     const QStringList items = Describe::splitItems(value<QString>(Prop::Items));
-    const double rowHeight = std::max(18.0, value<QFont>(Prop::Font).pixelSize() * 1.6);
+    const double rowHeight = std::max(18.0, value<QFont>(Prop::Font).pixelSize() * 1.6) * k;
     painter.save();
     painter.setClipRect(bounds.adjusted(1, 1, -1, -1));
     for (int i = 0; i < items.size() && i * rowHeight < size.height(); ++i)
@@ -68,8 +69,8 @@ void ListBox::paint(QPainter& painter, const PaintContext& context) const
         const QRectF row(1.0, 1.0 + i * rowHeight, size.width() - 2.0, rowHeight);
         if (i == value<int>(Prop::SelectedIndex))
             painter.fillRect(row, value<QColor>(Prop::AccentColor));
-        PaintHelpers::drawText(painter, *this, row.adjusted(6, 0, -6, 0),
-                               Qt::AlignLeft | Qt::AlignVCenter, items[i]);
+        PaintHelpers::drawText(painter, *this, row.adjusted(6 * k, 0, -6 * k, 0),
+                               Qt::AlignLeft | Qt::AlignVCenter, items[i], k);
     }
     painter.restore();
 }

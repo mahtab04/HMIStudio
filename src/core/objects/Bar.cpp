@@ -99,7 +99,8 @@ void Bar::paint(QPainter& painter, const PaintContext& context) const
                      : QLineF(track.left(), track.top() - 3, track.right(), track.top() - 3);
         PaintHelpers::drawScale(painter, axis, vertical ? QPointF(-1, 0) : QPointF(0, -1), tick,
                                 value<double>(Prop::Minimum), value<double>(Prop::Maximum),
-                                value<QColor>(Prop::LineColor), value<QFont>(Prop::Font),
+                                value<QColor>(Prop::LineColor),
+                                PaintHelpers::scaledFont(*this, PaintHelpers::contentScale(*this)),
                                 !context.lowDetail());
     }
 }

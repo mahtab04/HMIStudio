@@ -61,8 +61,9 @@ void SymbolicIoField::paint(QPainter& painter, const PaintContext& context) cons
     const QString shown = index < items.size() ? items[index] : QStringLiteral("#%1").arg(index);
     const double button = std::min(size.height(), size.width() / 3.0);
     const QRectF drop(size.width() - button, 0, button, size.height());
-    PaintHelpers::drawText(painter, *this, bounds.adjusted(6, 0, -button - 4, 0),
-                           Qt::AlignLeft | Qt::AlignVCenter, shown);
+    const double k = PaintHelpers::contentScale(*this);
+    PaintHelpers::drawText(painter, *this, bounds.adjusted(6 * k, 0, -button - 4 * k, 0),
+                           Qt::AlignLeft | Qt::AlignVCenter, shown, k);
     PaintHelpers::drawRaisedFace(painter, drop.adjusted(2, 2, -2, -2), QColor(0xC9, 0xCE, 0xD6),
                                  QColor(0x7C, 0x85, 0x90), 2.0);
     const double a = button * 0.18;

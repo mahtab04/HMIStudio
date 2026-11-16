@@ -54,7 +54,8 @@ void FxTrendView::paint(QPainter& painter, const PaintContext& context) const
     Q_UNUSED(context)
     PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
                            value<QColor>(Prop::LineColor), 2.0);
-    const QRectF plot = bounds.adjusted(8, 8, -8, -8);
+    const double k = PaintHelpers::contentScale(*this);
+    const QRectF plot = bounds.adjusted(8 * k, 8 * k, -8 * k, -8 * k);
     if (plot.width() <= 0 || plot.height() <= 0)
         return;
     painter.setPen(QPen(value<QColor>(Prop::BackgroundColor), 1.0));
@@ -84,7 +85,7 @@ void FxTrendView::paint(QPainter& painter, const PaintContext& context) const
             const double y = std::pow(x, 1.5 + t) * 0.85 + 0.05;
             line.append(QPointF(plot.left() + plot.width() * x, plot.bottom() - plot.height() * y));
         }
-        painter.setPen(QPen(kColors[t], 2.0));
+        painter.setPen(QPen(kColors[t], 2.0 * std::min(k, 2.0)));
         painter.drawPolyline(line);
     }
 }
