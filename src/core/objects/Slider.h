@@ -5,8 +5,8 @@
 namespace hmi
 {
 
-// Sets a value by dragging a handle along a track at runtime; in the
-// editor it shows the handle at `value`.
+// Sets a value by dragging a knob along a track at runtime, over a
+// numbered scale; in the editor it shows the knob at `value`.
 class Slider final : public ElementObject
 {
 public:

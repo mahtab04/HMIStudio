@@ -35,9 +35,19 @@ namespace PaintHelpers
 void drawText(QPainter& painter, const HmiObject& object, const QRectF& rect, int flags,
               const QString& text);
 
-// A rounded, shaded face used by buttons and fields.
+// A flat face with an outline: fields, lists, panels.
 void drawFace(QPainter& painter, const QRectF& rect, const QColor& fill, const QColor& line,
               double radius);
+
+// A raised, glossy face: buttons and the drop-down button of a field.
+void drawRaisedFace(QPainter& painter, const QRectF& rect, const QColor& fill, const QColor& line,
+                    double radius);
+
+// A linear scale along `axis` (a line in local coordinates, from the
+// minimum to the maximum): five numbered divisions with minor ticks.
+// Ticks point away from `towards`; labels sit beyond the ticks.
+void drawScale(QPainter& painter, const QLineF& axis, QPointF outward, double tickLength,
+               double minimum, double maximum, const QColor& color, const QFont& font, bool labels);
 
 // Placeholder frame for objects whose content only exists at runtime
 // (controls, touch areas): a dashed outline with a title in the corner.

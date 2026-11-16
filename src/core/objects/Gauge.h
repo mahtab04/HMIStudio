@@ -5,8 +5,9 @@
 namespace hmi
 {
 
-// A round dial: a 270 degree scale from minimum to maximum, a needle at
-// `value` and the value as text.
+// A round dial: a 270 degree scale band with numbered ticks from minimum to
+// maximum, a value arc and needle at `value`, and the value as digits in a
+// dark centre. Scaled as a picture.
 class Gauge final : public ElementObject
 {
 public:

@@ -150,7 +150,7 @@ hmi-studio/
 │     │                      # PropertyModel, LayerModel, ScreenListModel; later TagModel
 │     └─ qml/                # Main.qml, panels/, controls/
 ├─ tests/                    # core/, quick/, editor/, mirroring src/
-├─ resources/icons/          # single-colour SVG icons
+├─ resources/icons/          # SVG icons: two-tone toolbox icons, single-colour tool icons
 ├─ docs/                     # ARCHITECTURE.md, PLAN.md, HMI Editor@2x.png
 └─ .claude/skills/hmi-studio-dev/SKILL.md   # rules and recipes
 ```
@@ -801,5 +801,8 @@ composites. Consequences and how they are handled:
   are axis-aligned one-pixel rectangles snapped to whole pixels.
 - **Level of detail.** `PaintContext` carries the current zoom; below a
   threshold objects skip small text and tick marks.
-- **Icons.** Toolbox and toolbar icons are single-colour SVGs recoloured from
-  the theme.
+- **Icons.** Toolbar and panel icons are single-colour SVGs recoloured from
+  the theme. Toolbox icons are two-tone filled SVGs (blue body, light
+  outline, green, red or yellow only where they carry meaning) drawn in
+  their own colours, larger than toolbar icons, in the spirit of the TIA
+  Portal toolbox but drawn for this project.

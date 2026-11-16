@@ -16,9 +16,11 @@ ToolButton {
     text: tile.name
     display: AbstractButton.TextUnderIcon
     icon.source: tile.iconSource
-    icon.width: tile.theme.iconSize
-    icon.height: tile.theme.iconSize
-    icon.color: tile.theme.text
+    // Toolbox icons are larger than toolbar icons, so their detail shows.
+    icon.width: Math.round(tile.theme.iconSize * 1.5)
+    icon.height: Math.round(tile.theme.iconSize * 1.5)
+    // Toolbox icons are drawn in their own colours, not tinted.
+    icon.color: "transparent"
     font: tile.theme.fontSmall
     checked: tile.editor.createType === tile.key
     focusPolicy: Qt.NoFocus

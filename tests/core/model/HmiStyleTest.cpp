@@ -3,6 +3,7 @@
 #include "core/io/ProjectSerializer.h"
 #include "core/model/Project.h"
 #include "core/model/ScreenBuilder.h"
+#include "core/objects/CheckBox.h"
 #include "core/objects/Gauge.h"
 #include "core/objects/IoField.h"
 #include "core/objects/Motor.h"
@@ -35,19 +36,24 @@ private Q_SLOTS:
         QCOMPARE(field.value<QColor>(Prop::LineColor), style.line);
         QCOMPARE(field.value<QColor>(Prop::TextColor), style.text);
         QCOMPARE(field.value<QFont>(Prop::Font).family(), u"Courier"_s);
-        QCOMPARE(field.value<QFont>(Prop::Font).pixelSize(), 16); // size kept
+        QCOMPARE(field.value<QFont>(Prop::Font).pixelSize(), 14); // size kept
         QVERIFY(!style.applyTo(field));                           // nothing left to change
 
+        CheckBox box;
+        QVERIFY(style.applyTo(box));
+        QCOMPARE(box.value<QColor>(Prop::AccentColor), style.accent);
+        // A slider's green track is its own colour, not the accent.
         Slider slider;
-        QVERIFY(style.applyTo(slider));
-        QCOMPARE(slider.value<QColor>(Prop::AccentColor), style.accent);
+        style.applyTo(slider);
+        QVERIFY(slider.value<QColor>(Prop::AccentColor) != style.accent);
 
-        // The gauge's red needle and the motor's white badge text are not
-        // style colours.
+        // A gauge's dial and value colours, and the motor's white badge text,
+        // are their own design, not style colours.
         Gauge gauge;
+        const Gauge plain;
         style.applyTo(gauge);
-        QCOMPARE(gauge.value<QColor>(Prop::AccentColor), QColor(0xDC, 0x26, 0x26));
-        QCOMPARE(gauge.value<QColor>(Prop::FillColor), style.face);
+        QCOMPARE(gauge.value<QColor>(Prop::AccentColor), plain.value<QColor>(Prop::AccentColor));
+        QCOMPARE(gauge.value<QColor>(Prop::FillColor), plain.value<QColor>(Prop::FillColor));
         Motor motor;
         style.applyTo(motor);
         QCOMPARE(motor.value<QColor>(Prop::TextColor), QColor(Qt::white));

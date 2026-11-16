@@ -159,9 +159,13 @@ Example: a `Gauge`.
    point registers with `HMI_REGISTER_PATH_OBJECT(…, Points)` or
    `OrthogonalPoints` and has a `Describe::points` property; `PathTool`
    places it.
-6. Add the toolbox icon to `resources/icons/` as a single-colour 24 × 24 SVG
-   drawn in black (the toolbox recolours it from `Theme`), and list it in the
-   `hmi_icons` resource in `src/editor/CMakeLists.txt`.
+6. Add the toolbox icon to `resources/icons/` as a 24 × 24 two-tone SVG in
+   the toolbox palette (body `#4C7EE0`, outline `#A9C7FF`, dark detail
+   `#24467F`, light detail `#EAF1FF`; green `#5CC46A`, red `#E5533D`,
+   yellow `#F2C230` only where they mean something). The toolbox shows it
+   in its own colours on the dark panel. List it in the `hmi_icons`
+   resource in `src/editor/CMakeLists.txt`. Icons for toolbar buttons stay
+   single-colour black; `IconButton` recolours them from `Theme`.
 7. `AllObjectsTest` picks up every registered toolbox type by itself: the
    contract (defaults, clone, rejections, registration), painting, the hit
    shape and a JSON round trip. Add a `GaugeTest` only for behaviour of

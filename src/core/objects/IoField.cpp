@@ -38,7 +38,7 @@ std::span<const PropertyDescriptor> IoField::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {120.0, 36.0},
+        {120.0, 34.0},
         {
             Describe::value(0.0),
             Describe::integer(Prop::Decimals, "decimals",
@@ -52,7 +52,7 @@ std::span<const PropertyDescriptor> IoField::staticDescriptors()
                              StyleRole::Face),
             Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
             Describe::textColor(QColor(0x1F, 0x23, 0x28)),
-            Describe::font(16),
+            Describe::font(14),
         });
     return table;
 }

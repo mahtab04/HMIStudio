@@ -7,7 +7,7 @@ namespace hmi
 
 // Shows a text chosen by a number (0 = first entry, ...), for states such
 // as Stopped / Running / Fault; in input mode it offers the texts as a
-// drop-down at runtime.
+// drop-down at runtime, opened by the button at the right.
 class SymbolicIoField final : public ElementObject
 {
 public:

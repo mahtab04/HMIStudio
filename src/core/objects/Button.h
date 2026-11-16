@@ -5,8 +5,8 @@
 namespace hmi
 {
 
-// A push button with a caption. What it does when pressed is set with
-// events in phase 7.
+// A raised push button with a caption. What it does when pressed is set
+// with events in phase 7.
 class Button final : public ElementObject
 {
 public:
