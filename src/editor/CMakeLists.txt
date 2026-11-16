@@ -175,6 +175,7 @@ target_include_directories(hmi_editor_lib PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/models")
 target_link_libraries(hmi_editor_lib PUBLIC
     hmi_quick
+    hmi_comm
     hmi_render
     hmi_quickplugin
     Qt6::Quick

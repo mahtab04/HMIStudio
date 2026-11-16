@@ -47,6 +47,9 @@ hmi_add_test(AllObjectsTest SOURCES core/objects/AllObjectsTest.cpp core/objects
 # Graphics
 hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
 
+# Tags at runtime
+hmi_add_test(SimulationTest SOURCES comm/SimulationTest.cpp LIBS hmi_comm)
+
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
 hmi_add_test(GestureRecognizerTest SOURCES quick/GestureRecognizerTest.cpp LIBS hmi_quick)
