@@ -8,7 +8,9 @@
 #include "core/objects/Ellipse.h"
 #include "core/objects/Rectangle.h"
 #include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/tools/ObjectPlacement.h"
 #include "editor/tools/ToolContext.h"
 
 #include <QClipboard>
@@ -325,6 +327,38 @@ private Q_SLOTS:
         QVERIFY(!m_actions->reorder(EditActions::Order::Forward));
         QVERIFY(!m_actions->reorder(EditActions::Order::ToFront));
         QCOMPARE(m_stack.count(), 0);
+    }
+
+    void applyProjectStyleIsOneStep()
+    {
+        HmiStyle style;
+        style.text = QColor(0x12, 0x34, 0x56);
+        m_project->setStyle(style);
+        auto field = ObjectRegistry::instance().create(ObjectTypeId{"ioField"});
+        const ObjectId id = field->id();
+        QVERIFY(m_screen->insertObject(std::move(field)));
+        checkUndoable({id, m_a}, [this] { return m_actions->applyProjectStyle(); });
+        QCOMPARE(m_screen->object(id)->value<QColor>(Prop::TextColor), style.text);
+        QVERIFY(!m_actions->applyProjectStyle()); // already styled
+    }
+
+    void newObjectsTakeTheStyleAndPastedOnesKeepTheirs()
+    {
+        HmiStyle style;
+        style.face = QColor(0x22, 0x22, 0x22);
+        m_project->setStyle(style);
+        {
+            auto field = ObjectRegistry::instance().create(ObjectTypeId{"ioField"});
+            const auto added = ObjectPlacement::add(*m_context, std::move(field));
+            QVERIFY(added);
+            QCOMPARE(m_screen->object(*added)->value<QColor>(Prop::FillColor), style.face);
+        }
+        // A copy keeps the colour it had when copied.
+        m_project->setStyle(HmiStyle{});
+        QVERIFY(m_actions->copy());
+        QVERIFY(m_actions->paste());
+        QCOMPARE(m_screen->object(m_selection.ids().front())->value<QColor>(Prop::FillColor),
+                 style.face);
     }
 };
 

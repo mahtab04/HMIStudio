@@ -1,0 +1,66 @@
+#include "core/objects/Button.h"
+
+#include "core/model/ObjectVisitor.h"
+#include "core/objects/PaintHelpers.h"
+#include "core/property/CommonDescriptors.h"
+#include "core/property/DescriptorBuilders.h"
+#include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
+
+#include <QPainter>
+
+#include <algorithm>
+
+namespace hmi
+{
+
+namespace
+{
+
+} // namespace
+
+Button::Button(ObjectId id)
+    : ElementObject(staticDescriptors(), id)
+{
+}
+
+std::span<const PropertyDescriptor> Button::staticDescriptors()
+{
+    using namespace PropertyCategory;
+    static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
+        {120.0, 44.0},
+        {
+            Describe::text(QStringLiteral("Button")),
+            Describe::fillColor(QColor(0xDD, 0xE3, 0xEA)),
+            Describe::styled(Describe::lineColor(QColor(0x9A, 0xA1, 0xAB)), StyleRole::Line),
+            Describe::textColor(QColor(0x1F, 0x23, 0x28)),
+            Describe::font(16, true),
+        });
+    return table;
+}
+
+std::unique_ptr<HmiObject> Button::clone() const
+{
+    return std::unique_ptr<HmiObject>(new Button(*this));
+}
+
+void Button::paint(QPainter& painter, const PaintContext& context) const
+{
+    [[maybe_unused]] const QSizeF size = geometry().size();
+    [[maybe_unused]] const QRectF bounds(QPointF(0, 0), size);
+    Q_UNUSED(context)
+    PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
+                           value<QColor>(Prop::LineColor), std::min(6.0, size.height() / 4.0));
+    PaintHelpers::drawText(painter, *this, bounds.adjusted(4, 0, -4, 0),
+                           Qt::AlignCenter | Qt::TextWordWrap, value<QString>(Prop::Text));
+}
+
+void Button::accept(ObjectVisitor& visitor)
+{
+    visitor.visit(*this);
+}
+
+} // namespace hmi
+
+HMI_REGISTER_OBJECT(hmi::Button, "button", QT_TRANSLATE_NOOP("hmi::ObjectRegistry", "Button"),
+                    hmi::ObjectCategory::Elements, ":/icons/button.svg")

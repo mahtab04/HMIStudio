@@ -237,6 +237,33 @@ their properties; live behaviour comes in phase 7.
 
 Done when: all 36 toolbox entries can be placed, edited, saved and reloaded.
 
+Status: implemented on `feat/phase-5-objects`. `ToolboxTest` counts the 36
+entries (8 basic objects, 12 elements, 8 controls, 8 process symbols);
+`AllObjectsTest` runs the object contract, painting, hit shape and a JSON
+round trip for each; `ProjectSerializerTest` saves one of every type,
+reloads it and saves it again byte for byte. Choices made here:
+
+- `PathTool` is the plan's `PipeTool`, shared by every type placed point
+  by point: pipes route at right angles, polylines and polygons freely.
+  Points are stored relative to the bounds, so resizing scales a path;
+  editing single points after placing (other than as text in the
+  properties panel) is not there yet.
+- Assets live in memory in the project's `AssetStore` and are written on
+  save, only while used; there is no separate "remove unused assets"
+  command because unused ones are simply not saved.
+- The second SVG backend is not built: Qt SVG drew the test set, and
+  `ISvgBackend` is ready for one when a file needs it.
+- HMI style: the project style sets field, outline, text and accent
+  colours and the font family of new objects, through style roles on the
+  descriptors. Named style sets per object (several styles in a project)
+  are left for later.
+- The clock shows a fixed time in the editor so screens draw the same
+  every time.
+- The sample project still uses rectangles for its tank and pump; it can
+  move to the new symbols when it is next touched.
+
+Still open: trying the new types and the path tool on a real touch screen.
+
 ## Phase 6 — Tags and simulation
 
 - `Tag`, `TagDatabase`, `TagModel` with filter proxy, tags `TableView` with

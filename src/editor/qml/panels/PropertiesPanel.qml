@@ -83,6 +83,22 @@ Pane {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "asset"
+                    AssetEditor {
+                        width: list.width
+                        properties: panel.properties
+                        theme: panel.theme
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "points"
+                    TextEditor {
+                        width: list.width
+                        properties: panel.properties
+                        theme: panel.theme
+                    }
+                }
+                DelegateChoice {
                     roleValue: "color"
                     ColorEditor {
                         width: list.width
@@ -146,6 +162,13 @@ Pane {
             Connections {
                 target: panel.properties
 
+                function onSvgImportQuestion(row: int, file: url, elements: string) {
+                    svgDialog.row = row
+                    svgDialog.file = file
+                    svgDialog.elements = elements
+                    svgDialog.open()
+                }
+
                 function onEditRejected(message: string) {
                     rejection.text = message
                 }
@@ -153,6 +176,43 @@ Pane {
                     rejection.text = ""
                 }
             }
+        }
+    }
+
+    // An imported SVG has parts the renderer will not draw: import it
+    // anyway, or as a picture of how it looks now.
+    Dialog {
+        id: svgDialog
+
+        property int row: -1
+        property url file
+        property string elements
+
+        title: qsTr("SVG content not supported")
+        width: panel.theme.sidePanelWidth * 1.6
+        modal: true
+        anchors.centerIn: Overlay.overlay
+        footer: DialogButtonBox {
+            Button {
+                text: qsTr("Import as is")
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                onClicked: panel.properties.importAsset(svgDialog.row, svgDialog.file, PropertyModel.ImportAsIs)
+            }
+            Button {
+                text: qsTr("Rasterize")
+                DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                onClicked: panel.properties.importAsset(svgDialog.row, svgDialog.file, PropertyModel.Rasterize)
+            }
+            Button {
+                text: qsTr("Cancel")
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+            }
+        }
+
+        Label {
+            width: panel.theme.sidePanelWidth * 1.3
+            wrapMode: Text.WordWrap
+            text: qsTr("This file uses %1, which will not be drawn. Import it as it is, or rasterize it to a picture?").arg(svgDialog.elements)
         }
     }
 }

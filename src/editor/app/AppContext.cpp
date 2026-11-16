@@ -13,6 +13,7 @@
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
 #include "editor/tools/ToolContext.h"
+#include "render/GraphicLibrary.h"
 
 #include <QDir>
 #include <QStandardPaths>
@@ -22,6 +23,7 @@ namespace hmi
 
 AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     : m_project(std::move(project))
+    , m_graphics(std::make_unique<GraphicLibrary>(m_project->assets()))
     , m_theme(std::make_unique<Theme>())
     , m_selection(std::make_unique<SelectionModel>())
     , m_toolContext(
@@ -34,6 +36,7 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
 {
     Q_ASSERT(m_project && m_project->screenCount() > 0);
     m_toolContext->setScreenId(m_project->screens().front()->id());
+    m_toolContext->setGraphics(m_graphics.get());
 
     const QString autosave =
         !paths.autosaveFolder.isEmpty()

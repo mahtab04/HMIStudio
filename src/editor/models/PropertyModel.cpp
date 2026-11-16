@@ -1,19 +1,26 @@
 #include "editor/models/PropertyModel.h"
 
+#include "core/graphics/AssetStore.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/property/Prop.h"
 #include "core/property/PropertyDescriptor.h"
 #include "core/registry/ObjectRegistry.h"
+#include "editor/commands/ChangeStyleCommand.h"
 #include "editor/commands/ScreenCommands.h"
 #include "editor/commands/SetPropertyCommand.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
+#include "render/GraphicFactory.h"
+#include "render/SvgInspector.h"
 
 #include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
 #include <QFontDatabase>
 #include <QLocale>
 #include <QUndoStack>
+#include <QUrl>
 
 #include <algorithm>
 #include <cmath>
@@ -46,6 +53,8 @@ QString editorFor(ValueKind kind)
         return QStringLiteral("font");
     case ValueKind::Enum:
         return QStringLiteral("enum");
+    case ValueKind::Points:
+        return QStringLiteral("points");
     case ValueKind::String:
     case ValueKind::Tag:
         break;
@@ -69,6 +78,34 @@ std::optional<double> toNumber(const QVariant& value)
     bool ok = false;
     const double number = value.toDouble(&ok);
     return ok && std::isfinite(number) ? std::optional(number) : std::nullopt;
+}
+
+// Points as "x,y x,y …" with a decimal point whatever the locale: commas
+// already separate the coordinates.
+QString pointsText(const QPolygonF& points)
+{
+    QStringList parts;
+    for (const QPointF& p : points)
+        parts << QStringLiteral("%1,%2").arg(p.x(), 0, 'g', 4).arg(p.y(), 0, 'g', 4);
+    return parts.join(u' ');
+}
+
+std::optional<QPolygonF> parsePoints(const QString& text)
+{
+    QPolygonF points;
+    const QStringList parts = text.split(u' ', Qt::SkipEmptyParts);
+    for (const QString& part : parts)
+    {
+        const QStringList xy = part.split(u',');
+        bool okX = false;
+        bool okY = false;
+        const double x = xy.value(0).toDouble(&okX);
+        const double y = xy.value(1).toDouble(&okY);
+        if (xy.size() != 2 || !okX || !okY)
+            return std::nullopt;
+        points.append(QPointF(x, y));
+    }
+    return points;
 }
 
 // Short, locale-aware text for a value, as the panel shows it.
@@ -111,6 +148,8 @@ QString displayText(const QVariant& value)
             text += QCoreApplication::translate("hmi::PropertyModel", ", italic");
         return text;
     }
+    case QMetaType::QPolygonF:
+        return pointsText(value.value<QPolygonF>());
     case QMetaType::Bool:
         return value.toBool() ? QCoreApplication::translate("hmi::PropertyModel", "Yes")
                               : QCoreApplication::translate("hmi::PropertyModel", "No");
@@ -150,6 +189,8 @@ QVariant toVariant(const PropertyDescriptor& descriptor, const PropertyValue& va
         return std::get<QFont>(value);
     case ValueKind::Tag:
         return std::get<TagRef>(value).tagName;
+    case ValueKind::Points:
+        return QVariant::fromValue(std::get<PointList>(value));
     case ValueKind::Enum:
     {
         const auto options = descriptor.constraint.enumOptions;
@@ -200,6 +241,14 @@ std::optional<PropertyValue> fromVariant(const PropertyDescriptor& descriptor,
         if (value.typeId() == QMetaType::QFont)
             return PropertyValue(value.value<QFont>());
         return std::nullopt;
+    case ValueKind::Points:
+    {
+        if (value.typeId() == QMetaType::QPolygonF)
+            return PropertyValue(value.value<QPolygonF>());
+        if (const auto points = parsePoints(value.toString()))
+            return PropertyValue(*points);
+        return std::nullopt;
+    }
     case ValueKind::Enum:
     {
         const auto options = descriptor.constraint.enumOptions;
@@ -229,6 +278,12 @@ PropertyModel::PropertyModel(ToolContext& context, QObject* parent)
                 Q_EMIT titleChanged();
             });
     connect(&notifier, &DocumentNotifier::projectReset, this, &PropertyModel::refresh);
+    connect(&notifier, &DocumentNotifier::styleChanged, this,
+            [this]
+            {
+                if (!m_rows.empty() && !m_rows.front().descriptor)
+                    Q_EMIT dataChanged(index(0), index(rowCount() - 1), {ValueRole, TextRole});
+            });
     refresh();
 }
 
@@ -257,8 +312,10 @@ void PropertyModel::refresh()
     {
         if (m_context.screen())
         {
-            for (const ScreenField field : {ScreenField::Name, ScreenField::Width,
-                                            ScreenField::Height, ScreenField::Background})
+            for (const ScreenField field :
+                 {ScreenField::Name, ScreenField::Width, ScreenField::Height,
+                  ScreenField::Background, ScreenField::StyleFace, ScreenField::StyleLine,
+                  ScreenField::StyleText, ScreenField::StyleAccent, ScreenField::StyleFont})
                 m_rows.push_back({.descriptor = nullptr, .field = field});
         }
     }
@@ -349,6 +406,16 @@ QVariant PropertyModel::screenValue(ScreenField field) const
         return screen->size().height();
     case ScreenField::Background:
         return screen->backgroundColor();
+    case ScreenField::StyleFace:
+        return m_context.project().style().face;
+    case ScreenField::StyleLine:
+        return m_context.project().style().line;
+    case ScreenField::StyleText:
+        return m_context.project().style().text;
+    case ScreenField::StyleAccent:
+        return m_context.project().style().accent;
+    case ScreenField::StyleFont:
+        return m_context.project().style().fontFamily;
     }
     return {};
 }
@@ -372,9 +439,18 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Width"),
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Height"),
             QT_TRANSLATE_NOOP("hmi::PropertyModel", "Background"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Field colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Outline colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Text colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Accent colour"),
+            QT_TRANSLATE_NOOP("hmi::PropertyModel", "Font family"),
         };
-        static constexpr const char* kKeys[] = {"name", "width", "height", "background"};
+        static constexpr const char* kKeys[] = {"name",       "width",       "height",
+                                                "background", "styleFace",   "styleLine",
+                                                "styleText",  "styleAccent", "styleFont"};
         const bool isSize = row.field == ScreenField::Width || row.field == ScreenField::Height;
+        const bool isStyle = int(row.field) >= int(ScreenField::StyleFace);
+        const bool isText = row.field == ScreenField::Name || row.field == ScreenField::StyleFont;
         switch (role)
         {
         case KeyRole:
@@ -382,11 +458,11 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
         case NameRole:
             return QCoreApplication::translate("hmi::PropertyModel", kNames[int(row.field)]);
         case CategoryRole:
-            return tr("Screen");
+            return isStyle ? tr("Project style") : tr("Screen");
         case EditorRole:
-            return row.field == ScreenField::Name         ? QStringLiteral("text")
-                   : row.field == ScreenField::Background ? QStringLiteral("color")
-                                                          : QStringLiteral("number");
+            return isText   ? QStringLiteral("text")
+                   : isSize ? QStringLiteral("number")
+                            : QStringLiteral("color");
         case ValueRole:
             return screenValue(row.field);
         case MixedRole:
@@ -417,7 +493,8 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     case CategoryRole:
         return QCoreApplication::translate("hmi::Property", d.category);
     case EditorRole:
-        return editorFor(valueKind(d.defaultValue));
+        // A graphic is a string id, but picked from files, not typed.
+        return d.id == Prop::Asset ? QStringLiteral("asset") : editorFor(valueKind(d.defaultValue));
     case ValueRole:
         return objectValue(row, nullptr);
     case MixedRole:
@@ -445,6 +522,12 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
         const QVariant value = objectValue(row, &mixed);
         if (mixed)
             return QString();
+        if (d.id == Prop::Asset)
+        {
+            const QString id = value.toString();
+            const auto asset = m_context.project().assets().find(id);
+            return id.isEmpty() ? tr("None") : asset ? asset->fileName : tr("Missing (%1)").arg(id);
+        }
         if (valueKind(d.defaultValue) == ValueKind::Enum)
         {
             const int option = value.toInt();
@@ -563,11 +646,42 @@ bool PropertyModel::applyScreenValue(ScreenField field, const QVariant& value)
         settings.background = color;
         break;
     }
+    case ScreenField::StyleFace:
+    case ScreenField::StyleLine:
+    case ScreenField::StyleText:
+    case ScreenField::StyleAccent:
+    case ScreenField::StyleFont:
+        return applyStyleValue(field, value);
     }
     if (settings == ChangeScreenCommand::settingsOf(*screen))
         return true;
     m_context.undoStack().push(
         new ChangeScreenCommand(m_context.project(), m_context.screenId(), settings));
+    return true;
+}
+
+bool PropertyModel::applyStyleValue(ScreenField field, const QVariant& value)
+{
+    HmiStyle style = m_context.project().style();
+    if (field == ScreenField::StyleFont)
+    {
+        style.fontFamily = value.toString().trimmed();
+    }
+    else
+    {
+        const QColor color = value.typeId() == QMetaType::QColor
+                                 ? value.value<QColor>()
+                                 : QColor::fromString(value.toString());
+        if (!color.isValid())
+            return reject(tr("“%1” is not a colour.").arg(value.toString()));
+        (field == ScreenField::StyleFace   ? style.face
+         : field == ScreenField::StyleLine ? style.line
+         : field == ScreenField::StyleText ? style.text
+                                           : style.accent) = color;
+    }
+    if (style == m_context.project().style())
+        return true;
+    m_context.undoStack().push(new ChangeStyleCommand(m_context.project(), style));
     return true;
 }
 
@@ -649,6 +763,43 @@ bool PropertyModel::setFontItalic(int row, bool italic)
     QFont font = currentValue(row).value<QFont>();
     font.setItalic(italic);
     return setValue(row, font);
+}
+
+bool PropertyModel::importAsset(int row, const QUrl& file, ImportMode mode)
+{
+    if (row < 0 || std::size_t(row) >= m_rows.size() || !m_rows[std::size_t(row)].descriptor)
+        return false;
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    QFile input(path);
+    if (!input.open(QIODevice::ReadOnly))
+        return reject(tr("Cannot read %1: %2").arg(path, input.errorString()));
+    QByteArray data = input.readAll();
+    QString name = QFileInfo(path).fileName();
+
+    if (GraphicFactory::looksLikeSvg(data))
+    {
+        const QStringList unsupported = SvgInspector::unsupportedElements(data);
+        if (!unsupported.isEmpty() && mode == AskAboutSvg)
+        {
+            Q_EMIT svgImportQuestion(row, file, unsupported.join(QStringLiteral(", ")));
+            return false;
+        }
+        if (mode == Rasterize)
+        {
+            data = SvgInspector::rasterize(data);
+            if (data.isEmpty())
+                return reject(tr("%1 could not be rasterized.").arg(name));
+            name = QFileInfo(name).completeBaseName() + QStringLiteral(".png");
+        }
+    }
+
+    // Check that it can be shown before it becomes part of the project.
+    const Asset probe{
+        .id = {}, .fileName = name, .suffix = QFileInfo(name).suffix().toLower(), .data = data};
+    if (!GraphicFactory::create(probe))
+        return reject(tr("%1 is not an image or SVG file that can be shown.").arg(name));
+    const QString id = m_context.project().assets().add(std::move(data), name);
+    return setValue(row, id);
 }
 
 void PropertyModel::beginEdit()

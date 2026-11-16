@@ -27,6 +27,8 @@ qt_add_qml_module(hmi_editor_lib
         app/Theme.h
         commands/AddObjectCommand.cpp
         commands/AddObjectCommand.h
+        commands/ChangeStyleCommand.cpp
+        commands/ChangeStyleCommand.h
         commands/GroupObjectsCommand.cpp
         commands/GroupObjectsCommand.h
         commands/MoveObjectsCommand.cpp
@@ -62,6 +64,8 @@ qt_add_qml_module(hmi_editor_lib
         tools/ObjectPlacement.h
         tools/PanTool.cpp
         tools/PanTool.h
+        tools/PathTool.cpp
+        tools/PathTool.h
         tools/SelectTool.cpp
         tools/SelectTool.h
         tools/ToolContext.cpp
@@ -77,6 +81,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/CanvasPanel.qml
         qml/panels/LayerRow.qml
         qml/panels/PropertiesPanel.qml
+        qml/panels/properties/AssetEditor.qml
         qml/panels/properties/BoolEditor.qml
         qml/panels/properties/ColorEditor.qml
         qml/panels/properties/EnumEditor.qml
@@ -106,6 +111,38 @@ qt_add_resources(hmi_editor_lib "hmi_icons"
         "${PROJECT_SOURCE_DIR}/resources/icons/undo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/redo.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/zoom-fit.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/diagnostics-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/recipe-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/media-player.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/browser.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/screen-window.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/fx-trend-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/trend-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/alarm-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/sensor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/conveyor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/exchanger.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/pipe.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/motor.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/valve.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/pump.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/tank.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/touch-area.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/clock.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/gauge.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/slider.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/bar.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/symbolic-io-field.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/list-box.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/radio-group.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/check-box.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/switch.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/button.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/io-field.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/graphic-view.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/circle.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/polygon.svg"
+        "${PROJECT_SOURCE_DIR}/resources/icons/polyline.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/drag.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/eye.svg"
         "${PROJECT_SOURCE_DIR}/resources/icons/eye-off.svg"
@@ -138,6 +175,7 @@ target_include_directories(hmi_editor_lib PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/models")
 target_link_libraries(hmi_editor_lib PUBLIC
     hmi_quick
+    hmi_render
     hmi_quickplugin
     Qt6::Quick
     Qt6::QuickControls2

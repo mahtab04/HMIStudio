@@ -2,6 +2,7 @@
 
 #include "core/io/ObjectJson.h"
 #include "core/model/HmiObject.h"
+#include "core/model/Project.h"
 #include "core/model/Screen.h"
 #include "core/property/Prop.h"
 #include "editor/commands/AddObjectCommand.h"
@@ -10,6 +11,7 @@
 #include "editor/commands/RemoveObjectsCommand.h"
 #include "editor/commands/ReorderCommand.h"
 #include "editor/commands/ResizeObjectCommand.h"
+#include "editor/commands/SetPropertyCommand.h"
 #include "editor/commands/UngroupCommand.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
@@ -414,6 +416,30 @@ bool EditActions::matchSize(SizeMatch match)
         {
             new ResizeObjectCommand(m_context.project(), m_context.screenId(), object->id(), before,
                                     after, macro);
+        }
+    }
+    return pushIfNotEmpty(m_context.undoStack(), macro);
+}
+
+bool EditActions::applyProjectStyle()
+{
+    const HmiStyle& style = m_context.project().style();
+    auto* macro =
+        new QUndoCommand(QCoreApplication::translate("hmi::EditActions", "Apply project style"));
+    for (const HmiObject* object : selectedObjects(false))
+    {
+        // Work out the styled values on a copy, then set each that differs.
+        const auto styled = object->clone();
+        if (!style.applyTo(*styled))
+            continue;
+        for (const PropertyDescriptor& d : object->descriptors())
+        {
+            const auto value = styled->property(d.id);
+            if (d.styleRole != StyleRole::None && value && *value != object->property(d.id))
+            {
+                new SetPropertyCommand(m_context.project(), m_context.screenId(), {object->id()},
+                                       d.id, *value, 0, macro);
+            }
         }
     }
     return pushIfNotEmpty(m_context.undoStack(), macro);

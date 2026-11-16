@@ -68,6 +68,11 @@ void CanvasItem::setScreen(const Screen* screen, DocumentNotifier* notifier)
         applyView();
 }
 
+void CanvasItem::setGraphics(const IGraphicProvider* graphics)
+{
+    m_screenItem->setGraphics(graphics);
+}
+
 void CanvasItem::setSelection(std::vector<ObjectId> ids)
 {
     m_selection = std::move(ids);
@@ -231,6 +236,11 @@ void CanvasItem::refreshOverlay()
         band = QRectF(mapSceneToView(m_rubberBand->topLeft()),
                       mapSceneToView(m_rubberBand->bottomRight()));
     m_overlay->setShapes(std::move(frames), std::move(handles), rotationHandle, band);
+    std::vector<QPointF> path;
+    path.reserve(m_pathPreview.size());
+    for (const QPointF& p : m_pathPreview)
+        path.push_back(mapSceneToView(p));
+    m_overlay->setPath(std::move(path));
 
     std::vector<QLineF> guides;
     guides.reserve(m_guides.size());
@@ -276,6 +286,12 @@ void CanvasItem::clearPreview()
 {
     m_preview.clear();
     m_screenItem->clearPreview();
+    refreshOverlay();
+}
+
+void CanvasItem::setPathPreview(const std::vector<QPointF>& scenePoints)
+{
+    m_pathPreview = scenePoints;
     refreshOverlay();
 }
 

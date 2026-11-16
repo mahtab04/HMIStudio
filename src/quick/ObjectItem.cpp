@@ -51,6 +51,14 @@ void ObjectItem::showPreview(const QRectF& sceneGeometry, double rotation)
     update();
 }
 
+void ObjectItem::setGraphics(const IGraphicProvider* graphics)
+{
+    if (graphics == m_graphics)
+        return;
+    m_graphics = graphics;
+    update();
+}
+
 void ObjectItem::setRenderScale(double scale)
 {
     if (qFuzzyCompare(scale, m_renderScale))
@@ -86,7 +94,8 @@ void ObjectItem::paint(QPainter* painter)
 
     painter->setRenderHint(QPainter::Antialiasing);
     painter->setRenderHint(QPainter::TextAntialiasing);
-    m_object->paint(*painter, PaintContext{.zoom = m_renderScale});
+    m_object->paint(*painter,
+                    PaintContext{.zoom = m_renderScale, .editing = true, .graphics = m_graphics});
 }
 
 } // namespace hmi

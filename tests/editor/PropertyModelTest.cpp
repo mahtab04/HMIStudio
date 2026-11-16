@@ -7,11 +7,15 @@
 #include "core/objects/Rectangle.h"
 #include "core/objects/TextBox.h"
 #include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/tools/ToolContext.h"
 
 #include <QAbstractItemModelTester>
+#include <QFile>
+#include <QImage>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QUndoStack>
 
@@ -85,7 +89,7 @@ private Q_SLOTS:
 
     void showsScreenSettingsWithoutSelection()
     {
-        QCOMPARE(m_model->rowCount(), 4);
+        QCOMPARE(m_model->rowCount(), 9); // 4 screen settings, 5 project style
         QCOMPARE(value(u"name"_s).toString(), u"S"_s);
         QCOMPARE(value(u"width"_s).toDouble(), Screen::kDefaultSize.width());
         QCOMPARE(m_model->title(), u"Screen S"_s);
@@ -239,6 +243,65 @@ private Q_SLOTS:
         m_selection.clear();
         QCOMPARE(rowOf(u"text"_s), -1);
         QVERIFY(rowOf(u"background"_s) >= 0);
+    }
+
+    void importsGraphics()
+    {
+        auto view = ObjectRegistry::instance().create(ObjectTypeId{"graphicView"});
+        const ObjectId id = view->id();
+        QVERIFY(m_screen->insertObject(std::move(view)));
+        m_selection.selectOnly(id);
+        const int row = rowOf(u"asset"_s);
+        QCOMPARE(value(u"asset"_s, PropertyModel::EditorRole).toString(), u"asset"_s);
+        QCOMPARE(value(u"asset"_s, PropertyModel::TextRole).toString(), u"None"_s);
+
+        QTemporaryDir dir;
+        QImage image(8, 8, QImage::Format_ARGB32);
+        image.fill(Qt::red);
+        const QString png = dir.filePath(u"logo.png"_s);
+        QVERIFY(image.save(png));
+        QVERIFY(m_model->importAsset(row, QUrl::fromLocalFile(png)));
+        QCOMPARE(value(u"asset"_s, PropertyModel::TextRole).toString(), u"logo.png"_s);
+        QCOMPARE(m_project->assets().size(), std::size_t(1));
+        QCOMPARE(m_stack.count(), 1);
+
+        // SVG with content the renderer skips: asked first, then as chosen.
+        const QString svg = QFINDTESTDATA("../data/svg/filtered.svg");
+        QSignalSpy asked(m_model.get(), &PropertyModel::svgImportQuestion);
+        QVERIFY(!m_model->importAsset(row, QUrl::fromLocalFile(svg)));
+        QCOMPARE(asked.count(), 1);
+        QVERIFY(asked.front().at(2).toString().contains(u"filter"));
+        QVERIFY(m_model->importAsset(row, QUrl::fromLocalFile(svg), PropertyModel::Rasterize));
+        QCOMPARE(value(u"asset"_s, PropertyModel::TextRole).toString(), u"filtered.png"_s);
+        QVERIFY(m_model->importAsset(row, QUrl::fromLocalFile(svg), PropertyModel::ImportAsIs));
+        QCOMPARE(value(u"asset"_s, PropertyModel::TextRole).toString(), u"filtered.svg"_s);
+
+        // Not a picture at all.
+        const QString text = dir.filePath(u"notes.png"_s);
+        QFile file(text);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("hello");
+        file.close();
+        QSignalSpy rejected(m_model.get(), &PropertyModel::editRejected);
+        QVERIFY(!m_model->importAsset(row, QUrl::fromLocalFile(text)));
+        QCOMPARE(rejected.count(), 1);
+    }
+
+    void editsTheProjectStyle()
+    {
+        QCOMPARE(value(u"styleAccent"_s, PropertyModel::CategoryRole).toString(),
+                 u"Project style"_s);
+        QCOMPARE(value(u"styleAccent"_s, PropertyModel::EditorRole).toString(), u"color"_s);
+        QVERIFY(m_model->setValue(rowOf(u"styleAccent"_s), u"#ff8800"_s));
+        QVERIFY(m_model->setValue(rowOf(u"styleFont"_s), u"Arial"_s));
+        QCOMPARE(m_project->style().accent, QColor(0xff, 0x88, 0x00));
+        QCOMPARE(m_project->style().fontFamily, u"Arial"_s);
+        QCOMPARE(value(u"styleAccent"_s).value<QColor>(), QColor(0xff, 0x88, 0x00));
+        QVERIFY(!m_model->setValue(rowOf(u"styleText"_s), u"nope"_s));
+        QCOMPARE(m_stack.count(), 2);
+        m_stack.undo();
+        m_stack.undo();
+        QCOMPARE(m_project->style(), HmiStyle{});
     }
 };
 

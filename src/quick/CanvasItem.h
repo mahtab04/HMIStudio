@@ -21,6 +21,7 @@ namespace hmi
 
 class DocumentNotifier;
 class GridItem;
+class IGraphicProvider;
 class GuideOverlay;
 class Screen;
 class ScreenItem;
@@ -81,6 +82,8 @@ public:
 
     void setInputSettings(const InputSettings& settings) { m_settings = settings; }
     void setSelection(std::vector<ObjectId> ids);
+    // Where objects get imported graphics from; must outlive the canvas.
+    void setGraphics(const IGraphicProvider* graphics);
 
     [[nodiscard]] QRectF selectionBounds() const noexcept { return m_selectionBounds; }
     [[nodiscard]] bool previewActive() const noexcept
@@ -111,6 +114,7 @@ public:
     void setPreviewRotation(ObjectId id, double rotation) override;
     void clearPreview() override;
     void setGuides(std::vector<QLineF> sceneLines) override;
+    void setPathPreview(const std::vector<QPointF>& scenePoints) override;
     void setRubberBand(const std::optional<QRectF>& sceneRect) override;
     void setToolCursor(Qt::CursorShape shape) override;
 
@@ -187,6 +191,7 @@ private:
     QHash<ObjectId, Preview> m_preview;
     std::optional<QRectF> m_rubberBand;
     std::vector<QLineF> m_guides;
+    std::vector<QPointF> m_pathPreview;
     QRectF m_selectionBounds;
     QSizeF m_selectionSize;
     double m_selectionRotation = 0.0;

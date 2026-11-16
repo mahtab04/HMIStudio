@@ -105,7 +105,7 @@ private Q_SLOTS:
     void unknownTypeIsKeptWhole()
     {
         const QJsonObject gauge{
-            {u"type"_s, u"gauge"_s},
+            {u"type"_s, u"teleporter"_s},
             {u"id"_s, u"6a1e9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c"_s},
             {u"props"_s, QJsonObject{{u"x"_s, 5}, {u"y"_s, 6}, {u"needle"_s, u"red"_s}}},
         };
@@ -114,11 +114,11 @@ private Q_SLOTS:
         QCOMPARE((*object)->typeId(), UnknownObject::kTypeId);
         QCOMPARE((*object)->geometry().topLeft(), QPointF(5, 6));
         const QJsonObject back = ObjectJson::write(**object);
-        QCOMPARE(back.value(u"type").toString(), u"gauge"_s);
+        QCOMPARE(back.value(u"type").toString(), u"teleporter"_s);
         QCOMPARE(back.value(u"props").toObject().value(u"needle").toString(), u"red"_s);
         // Copies (paste) keep it too, with a new id.
         const auto copy = (*object)->cloneWithNewId();
-        QCOMPARE(ObjectJson::write(*copy).value(u"type").toString(), u"gauge"_s);
+        QCOMPARE(ObjectJson::write(*copy).value(u"type").toString(), u"teleporter"_s);
     }
 
     void missingIdGetsFreshOne()

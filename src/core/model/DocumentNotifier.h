@@ -22,6 +22,9 @@ Q_SIGNALS:
     // must drop every screen and object they hold.
     void projectReset();
 
+    // The project style (HmiStyle) changed.
+    void styleChanged();
+
     void screenAdded(hmi::ScreenId screen, int index);
     void screenRemoved(hmi::ScreenId screen);
     void screenChanged(hmi::ScreenId screen);

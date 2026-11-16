@@ -4,17 +4,27 @@
 add_library(hmi_core_impl STATIC
     Result.h
 
+    graphics/AssetStore.cpp
+    graphics/AssetStore.h
+    graphics/GraphicStyle.cpp
+    graphics/GraphicStyle.h
+    graphics/IGraphicProvider.h
+
     io/ObjectJson.cpp
     io/ObjectJson.h
     io/ProjectSerializer.cpp
     io/ProjectSerializer.h
 
+    model/ControlObject.h
     model/DocumentNotifier.cpp
     model/DocumentNotifier.h
+    model/ElementObject.h
     model/GroupObject.cpp
     model/GroupObject.h
     model/HmiObject.cpp
     model/HmiObject.h
+    model/HmiStyle.cpp
+    model/HmiStyle.h
     model/Ids.h
     model/ObjectVisitor.h
     model/PaintContext.h
@@ -25,20 +35,89 @@ add_library(hmi_core_impl STATIC
     model/ScreenBuilder.cpp
     model/ScreenBuilder.h
     model/ShapeObject.h
+    model/SymbolObject.h
     model/UnknownObject.cpp
     model/UnknownObject.h
 
     objects/Ellipse.cpp
     objects/Ellipse.h
+    objects/Circle.cpp
+    objects/Circle.h
     objects/Line.cpp
     objects/Line.h
+    objects/PaintHelpers.cpp
+    objects/PaintHelpers.h
+    objects/Polygon.cpp
+    objects/Polygon.h
+    objects/Polyline.cpp
+    objects/Polyline.h
     objects/Rectangle.cpp
     objects/Rectangle.h
+    objects/GraphicView.cpp
+    objects/GraphicView.h
+    objects/IoField.cpp
+    objects/IoField.h
+    objects/Button.cpp
+    objects/Button.h
+    objects/Switch.cpp
+    objects/Switch.h
+    objects/CheckBox.cpp
+    objects/CheckBox.h
+    objects/RadioGroup.cpp
+    objects/RadioGroup.h
+    objects/ListBox.cpp
+    objects/ListBox.h
+    objects/SymbolicIoField.cpp
+    objects/SymbolicIoField.h
+    objects/Bar.cpp
+    objects/Bar.h
+    objects/Slider.cpp
+    objects/Slider.h
+    objects/Gauge.cpp
+    objects/Gauge.h
+    objects/Clock.cpp
+    objects/Clock.h
+    objects/TouchArea.cpp
+    objects/TouchArea.h
+    objects/Tank.cpp
+    objects/Tank.h
+    objects/Pump.cpp
+    objects/Pump.h
+    objects/Valve.cpp
+    objects/Valve.h
+    objects/Motor.cpp
+    objects/Motor.h
+    objects/Pipe.cpp
+    objects/Pipe.h
+    objects/Exchanger.cpp
+    objects/Exchanger.h
+    objects/Conveyor.cpp
+    objects/Conveyor.h
+    objects/Sensor.cpp
+    objects/Sensor.h
+    objects/AlarmView.cpp
+    objects/AlarmView.h
+    objects/RecipeView.cpp
+    objects/RecipeView.h
+    objects/DiagnosticsView.cpp
+    objects/DiagnosticsView.h
+    objects/TrendView.cpp
+    objects/TrendView.h
+    objects/FxTrendView.cpp
+    objects/FxTrendView.h
+    objects/ScreenWindow.cpp
+    objects/ScreenWindow.h
+    objects/Browser.cpp
+    objects/Browser.h
+    objects/MediaPlayer.cpp
+    objects/MediaPlayer.h
     objects/TextBox.cpp
     objects/TextBox.h
 
     property/CommonDescriptors.cpp
     property/CommonDescriptors.h
+    property/DescriptorBuilders.cpp
+    property/DescriptorBuilders.h
     property/Prop.h
     property/PropertyDescriptor.cpp
     property/PropertyDescriptor.h

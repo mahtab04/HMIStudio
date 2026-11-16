@@ -39,7 +39,8 @@ public:
         KeyRole = Qt::UserRole + 1,
         NameRole,
         CategoryRole,
-        EditorRole, // "number", "integer", "text", "color", "font", "enum", "bool", "point", "size"
+        EditorRole, // "number", "integer", "text", "color", "font", "enum", "bool", "point",
+                    // "size", "points", "asset"
         ValueRole,
         MixedRole,
         ReadOnlyRole,
@@ -71,6 +72,20 @@ public:
     Q_INVOKABLE bool setFontBold(int row, bool bold);
     Q_INVOKABLE bool setFontItalic(int row, bool italic);
 
+    // How importAsset treats SVG content the renderer cannot draw.
+    enum ImportMode
+    {
+        AskAboutSvg, // emit svgImportQuestion and import nothing yet
+        ImportAsIs,
+        Rasterize, // store the SVG as a PNG of its natural size
+    };
+    Q_ENUM(ImportMode)
+
+    // Imports an image or SVG file into the project's assets and makes it
+    // the row's graphic. Returns false if nothing was imported.
+    Q_INVOKABLE bool importAsset(int row, const QUrl& file,
+                                 hmi::PropertyModel::ImportMode mode = AskAboutSvg);
+
     Q_INVOKABLE void beginEdit();
     Q_INVOKABLE void endEdit();
 
@@ -80,14 +95,24 @@ public:
 Q_SIGNALS:
     void titleChanged();
     void editRejected(const QString& message);
+    // An SVG file has content that will not be drawn; QML asks whether to
+    // import it as is or rasterize it, then calls importAsset again.
+    void svgImportQuestion(int row, const QUrl& file, const QString& elements);
 
 private:
+    // Rows shown with nothing selected: the screen's settings, then the
+    // project style.
     enum class ScreenField
     {
         Name,
         Width,
         Height,
         Background,
+        StyleFace,
+        StyleLine,
+        StyleText,
+        StyleAccent,
+        StyleFont,
     };
 
     struct Row
@@ -102,6 +127,7 @@ private:
     [[nodiscard]] QVariant currentValue(int row) const;
     bool applyObjectValue(const Row& row, const QVariant& value);
     bool applyScreenValue(ScreenField field, const QVariant& value);
+    bool applyStyleValue(ScreenField field, const QVariant& value);
     void onPropertyChanged(ObjectId object, PropertyId property);
     bool reject(const QString& message);
     [[nodiscard]] static bool isBlank(const QVariant& value);

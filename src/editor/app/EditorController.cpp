@@ -93,6 +93,7 @@ void EditorController::attachCanvas(CanvasItem* canvas)
         return;
 
     canvas->setInputSettings(m_context.input());
+    canvas->setGraphics(m_context.graphics());
     canvas->setGridSpacing(kGridSpacing);
     canvas->setScreen(m_context.screen(), &m_context.project().notifier());
     canvas->setSelection(m_context.selection().ids());
@@ -354,6 +355,11 @@ void EditorController::reorder(Order order)
         m_actions.reorder(kMap[int(order)]);
 }
 
+void EditorController::applyProjectStyle()
+{
+    m_actions.applyProjectStyle();
+}
+
 bool EditorController::handleKey(int key, Qt::KeyboardModifiers modifiers)
 {
     const double step = modifiers.testFlag(Qt::ShiftModifier) ? kLargeNudge : 1.0;
@@ -442,7 +448,8 @@ bool EditorController::panToolActive() const
 
 bool EditorController::createToolActive() const
 {
-    return m_tools->tool() == ToolController::Tool::Create;
+    return m_tools->tool() == ToolController::Tool::Create ||
+           m_tools->tool() == ToolController::Tool::Path;
 }
 
 QString EditorController::createType() const

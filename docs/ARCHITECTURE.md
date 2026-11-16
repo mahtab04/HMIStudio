@@ -94,7 +94,7 @@ hmi_runtime (later) ────────────────────
 | Target | Contents | Qt modules |
 |---|---|---|
 | `hmi_core` | Project, Screen, HmiObject hierarchy, property system, tags, bindings, events, serialization, object registry, hit testing. Built as the static `hmi_core_impl`; consumers link the `hmi::core` interface target, which links it whole so self-registering types are kept | Core, Gui |
-| `hmi_render` | Painter helpers, symbol drawing, graphic loading and caching (section 14) | Gui, Svg |
+| `hmi_render` | Graphic sources (raster, SVG), the SVG backend strategy, the image cache, the SVG import check; implements core's `IGraphicProvider` (section 14). Object painting itself stays in `hmi_core` | Gui, Svg |
 | `hmi_comm` | `IDriver`, simulator, OPC UA, S7, Modbus drivers, `TagEngine` | Core, Network |
 | `hmi_quick` | `CanvasItem`, `ScreenItem`, `ObjectItem`, overlays, gesture recognizer; static QML module `HmiStudio.Quick` | Quick |
 | `hmi_editor_lib` | `AppContext`, `Theme`, controllers, panel models, undo commands, tools and the QML shell; static QML module `HmiStudio.Editor`, so tests link it without the app | Quick, QuickControls2, Svg; the `QtQuick.Dialogs` and `QtQml.Models` QML modules |
@@ -117,7 +117,9 @@ hmi-studio/
 ├─ cmake/
 ├─ src/
 │  ├─ core/
-│  │  ├─ model/              # Project, Screen, HmiObject, GroupObject
+│  │  ├─ model/              # Project, Screen, HmiObject, family bases, GroupObject,
+│  │  │                      # UnknownObject, HmiStyle
+│  │  ├─ graphics/           # AssetStore, GraphicStyle, IGraphicProvider
 │  │  ├─ objects/            # one file pair per object type
 │  │  ├─ property/           # PropertyValue, PropertyDescriptor
 │  │  ├─ tags/               # Tag, TagDatabase, Binding, Dynamization
@@ -125,7 +127,8 @@ hmi-studio/
 │  │  ├─ io/                 # ObjectJson, ProjectSerializer and its migrations
 │  │  ├─ spatial/            # HitTester, Snapper and snap strategies
 │  │  └─ registry/           # ObjectRegistry (factory)
-│  ├─ render/
+│  ├─ render/                # GraphicLibrary, GraphicCache, GraphicFactory,
+│  │                         # RasterGraphic, SvgGraphic, QtSvgBackend, SvgInspector
 │  ├─ comm/
 │  │  ├─ drivers/            # simulator/, opcua/, s7/, modbus/
 │  │  └─ TagEngine.*
@@ -141,7 +144,7 @@ hmi-studio/
 │     ├─ app/                # main.cpp, AppContext, EditorController,
 │     │                      # EditActions, DocumentController, AppSettings, Theme
 │     ├─ tools/              # ITool, ToolController, ToolContext, SelectTool,
-│     │                      # CreateTool, PanTool (PipeTool in phase 5)
+│     │                      # CreateTool, PathTool, PanTool
 │     ├─ commands/           # QUndoCommand subclasses
 │     ├─ models/             # SelectionModel, ToolboxModel, ToolboxDragController,
 │     │                      # PropertyModel, LayerModel, ScreenListModel; later TagModel
@@ -210,19 +213,59 @@ snapshot, clipboard, group child) changes silently. Z-order is the object's inde
 compile-time FNV-1a hashes of their file keys; `ObjectId` and `ScreenId` are
 UUIDs so they stay unique across paste and projects.
 
-Hierarchy (only `ShapeObject` exists so far; each other family base is added
-with its first member):
+Hierarchy (36 toolbox types since phase 5):
 
 ```
 HmiObject
-├─ ShapeObject      Line, Polyline, Polygon, Ellipse, Rectangle, TextBox, GraphicView
+├─ ShapeObject      Line, Polyline, Polygon, Ellipse, Circle, Rectangle, TextBox,
+│                   GraphicView
 ├─ ElementObject    IoField, Button, Switch, CheckBox, RadioGroup, ListBox,
 │                   SymbolicIoField, Bar, Slider, Gauge, Clock, TouchArea
 ├─ ControlObject    AlarmView, TrendView, FxTrendView, ScreenWindow, Browser,
 │                   MediaPlayer, RecipeView, DiagnosticsView
 ├─ SymbolObject     Tank, Pump, Valve, Motor, Pipe, Exchanger, Conveyor, Sensor
-└─ GroupObject      Composite: owns child HmiObjects
+├─ GroupObject      Composite: owns child HmiObjects
+└─ UnknownObject    placeholder for a type this version does not know
 ```
+
+Each type is a descriptor table, a `paint()`, a `hitShape()` when it is not
+rectangular, and a registration. `Describe::` builders
+(`core/property/DescriptorBuilders.h`) and `PaintHelpers`
+(`core/objects/PaintHelpers.h`) keep each type's file down to its own
+properties and drawing. Controls are static placeholders in the editor;
+their live behaviour comes in phase 7. Objects that are invisible at
+runtime (touch area, an empty graphic view) draw a marked outline while
+`PaintContext::editing` is set.
+
+How a type responds to resizing follows WinCC and other HMI editors:
+
+- Pictures: types with a "Stretch mode" property (pump, valve, motor, heat
+  exchanger, conveyor, sensor, gauge, clock) are drawn at their design
+  size (the type's default size) and scaled to the rectangle, keeping
+  proportions (centred, the default) or stretched
+  (`HmiObject::designTransform`). Lines and text scale with the picture.
+- Controls with a label beside them (switch, check box, radio group) scale
+  with the height (`PaintHelpers::scaleToHeight`): control and label grow
+  together, and extra width is room for the label. Slider knobs and
+  drop-down arrows grow with the thickness.
+- Fields, buttons, bars, lists, tables and shapes fill their rectangle and
+  keep their font size and line width, which are properties; lists and
+  tables show more rows when taller. Tank and pipe lay themselves out in
+  their rectangle (a taller tank is a taller vessel; a pipe follows its
+  points).
+
+No part may keep a fixed size while the rest grows; `AllObjectsTest`
+draws each type at twice its size and compares.
+
+The registry records how a type is placed (`Placement`): by dragging a
+rectangle, or point by point (polyline, polygon) or with right-angled
+segments (pipe), which `ToolController` gives to `PathTool`.
+
+`HmiStyle` is the project's shared look: field, outline, text and accent
+colours and a font family, saved in `project.json`. Descriptors whose
+meaning matches carry a `StyleRole` (a gauge's red needle does not); new
+objects take the style when placed, "Apply project style" restyles a
+selection, and no type has style code of its own.
 
 `GroupObject` keeps its children in its own coordinates, exactly as they
 were when grouped, and maps the rectangle around them onto its geometry.
@@ -310,7 +353,7 @@ registries, so new ones do not touch existing code.
 | Prototype | `HmiObject::clone()` for copy, paste, duplicate and the user library. |
 | Composite | `GroupObject`; group, ungroup and nested transforms. |
 | Command | Every model change is a `QUndoCommand`. Multi-step edits use `beginMacro`. |
-| State | Canvas tools (`SelectTool`, `CreateTool`, `PipeTool`, `PanTool`) behind `ITool`; `ToolController` holds the current one. `GestureRecognizer` is also a small state machine. |
+| State | Canvas tools (`SelectTool`, `CreateTool`, `PathTool`, `PanTool`) behind `ITool`; `ToolController` holds the current one. `GestureRecognizer` is also a small state machine. |
 | Observer | Qt signals from `DocumentNotifier`, `TagEngine`, `QUndoStack`; QML bindings observe controller properties. |
 | Builder | `ScreenBuilder` assembles screens for templates and test fixtures fluently (a `ProjectBuilder` when projects need it). |
 | Strategy | Snapping (grid, object edges, guides), binding transforms, SVG backend, export formats. |
@@ -669,45 +712,61 @@ Qt handles SVG through the separate **Qt SVG** module. Add it with
 ### 14.2 Classes
 
 ```
-AssetManager            owns the project's assets/ folder
- └─ Asset               id (content hash), original file name, kind
+hmi_core
+AssetStore              the project's assets in memory, thread-safe
+ └─ Asset               id (content hash), original file name, suffix, bytes
+GraphicStyle            overrides by SVG element id (fill, stroke, hidden)
+IGraphicProvider        draw(painter, asset id, target, fit, style); reached
+                        through PaintContext::graphics
 
+hmi_render
+GraphicLibrary          IGraphicProvider: decodes each asset once, renders it
+                        at the pixel size it is shown at, caches the result
 IGraphicSource          render(QPainter&, QRectF target, const GraphicStyle&)
  ├─ RasterGraphic       QImageReader, keeps the decoded QImage
  └─ SvgGraphic          holds the SVG bytes, renders through ISvgBackend
-
 ISvgBackend             Strategy: which library draws SVG
- ├─ QtSvgBackend        default, QSvgRenderer
- └─ LunaSvgBackend      optional, enabled by a CMake option
-
-GraphicCache            QImage cache keyed by
-                        (asset id, pixel size, device pixel ratio, style hash)
-GraphicFactory          picks RasterGraphic or SvgGraphic from the file type
+ └─ QtSvgBackend        QSvgRenderer
+GraphicCache            QImage cache keyed by (asset id, pixel size, style
+                        hash); the pixel size includes zoom and device pixel
+                        ratio; least recently used first out of a 64 MiB budget
+GraphicFactory          picks RasterGraphic or SvgGraphic from the content
+SvgInspector            import check and rasterizer
 ```
 
-- `GraphicViewObject` stores only an asset id and fit mode. It asks
-  `AssetManager` for the `IGraphicSource` when painting.
-- `AssetManager` copies an imported file into `assets/` under its content
-  hash, so an image used on ten screens is stored once.
+- `GraphicView` stores only an asset id, a fit mode (stretch, fit, fill,
+  natural size) and style overrides; `PaintContext::graphics` draws it.
+  Without a graphic it draws a placeholder.
+- `AssetStore` keys an imported file by its content hash, so an image used
+  on ten screens is stored once. The project serializer writes only assets
+  some object uses, as `assets/<hash>.<suffix>`, and reports an asset file
+  whose content no longer matches its hash.
 - The cache holds `QImage`, not `QPixmap`, because painting happens on the
-  render thread.
+  render thread. `AppContext` owns the `GraphicLibrary`; the canvas hands it
+  to every `ObjectItem`.
+- A second SVG backend (for example LunaSVG behind a CMake option) has not
+  been needed yet; `ISvgBackend` is the place for it.
 
 ### 14.3 Unsupported SVG content
 
-On import, `SvgInspector` scans the file for elements the active backend
-cannot draw (for example `<filter>`, `<foreignObject>`, `<script>`) and
-offers: import anyway, use the second backend if built in, or rasterize to
-PNG at a chosen resolution.
+On import, `SvgInspector` scans the file for elements the backend cannot
+draw (for example `<filter>`, `<foreignObject>`, `<script>`). The
+properties panel then asks: import anyway, or rasterize to a PNG at the
+graphic's natural size.
 
 ### 14.4 Dynamic SVG symbols
 
-- **Colour and visibility by element id.** `SvgGraphic` parses the file once
-  with `QDomDocument`. A `GraphicStyle` holds overrides such as
-  `{"body": fill #3B6FD4}` or `{"alarm-ring": hidden}`, applied before
-  rendering and cached under the style hash. Bindings write into
-  `GraphicStyle`, so a tag can drive any named part of an imported symbol.
+- **Colour and visibility by element id.** A `GraphicStyle` holds
+  overrides, written in the graphic view's "styleOverrides" property as
+  `body: fill #3B6FD4; alarm-ring: hidden`. `SvgGraphic` applies them by
+  rewriting the document with `QXmlStreamReader`/`Writer` (an attribute
+  replaces the same key in a `style` attribute), keeps up to 32 styled
+  variants parsed, and the cache keys images by the style hash. Bindings
+  will write into the property in phase 6, so a tag can drive any named
+  part of an imported symbol.
 - **Per-element rendering.** `QSvgRenderer::render(painter, elementId,
-  bounds)` draws one named element, so a part can have its own rotation.
+  bounds)` can draw one named element, so a part could have its own
+  rotation; not used yet.
 
 Built-in process symbols stay as C++ painter code because they need
 continuous animation (tank level, bar fill).

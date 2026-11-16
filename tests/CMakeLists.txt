@@ -30,6 +30,7 @@ hmi_add_test(ScreenTest SOURCES core/model/ScreenTest.cpp)
 hmi_add_test(ProjectTest SOURCES core/model/ProjectTest.cpp)
 hmi_add_test(GroupObjectTest SOURCES core/model/GroupObjectTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(ObjectJsonTest SOURCES core/io/ObjectJsonTest.cpp)
+hmi_add_test(HmiStyleTest SOURCES core/model/HmiStyleTest.cpp)
 hmi_add_test(ProjectSerializerTest SOURCES core/io/ProjectSerializerTest.cpp)
 hmi_add_test(PropertyDescriptorTest SOURCES core/property/PropertyDescriptorTest.cpp)
 hmi_add_test(ObjectRegistryTest SOURCES core/registry/ObjectRegistryTest.cpp)
@@ -39,6 +40,10 @@ hmi_add_test(RectangleTest SOURCES core/objects/RectangleTest.cpp core/objects/O
 hmi_add_test(EllipseTest SOURCES core/objects/EllipseTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(LineTest SOURCES core/objects/LineTest.cpp core/objects/ObjectContract.h)
 hmi_add_test(TextBoxTest SOURCES core/objects/TextBoxTest.cpp core/objects/ObjectContract.h)
+hmi_add_test(AllObjectsTest SOURCES core/objects/AllObjectsTest.cpp core/objects/ObjectContract.h)
+
+# Graphics
+hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
 
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
@@ -53,6 +58,8 @@ hmi_add_test(EditActionsTest SOURCES editor/EditActionsTest.cpp LIBS hmi_editor_
 hmi_add_test(SelectToolTest SOURCES editor/SelectToolTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(CreateToolTest SOURCES editor/CreateToolTest.cpp ${_hmiEditorTestSupport}
+             LIBS hmi_editor_lib)
+hmi_add_test(PathToolTest SOURCES editor/PathToolTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)
 hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEditorTestSupport}
              LIBS hmi_editor_lib)

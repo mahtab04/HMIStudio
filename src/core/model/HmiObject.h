@@ -118,6 +118,17 @@ public:
     [[nodiscard]] bool isVisible() const;
     [[nodiscard]] bool isLocked() const;
 
+    // Types with a "stretch mode" property (Describe::stretchMode) are
+    // pictures, as in the symbol libraries of WinCC and other HMI editors:
+    // they draw at their design size (the type's default size) and are
+    // scaled to the rectangle, keeping proportions (centred) or stretched.
+    // For other types the design size is the object's size and the
+    // transform is the identity.
+    [[nodiscard]] bool isScaledPicture() const;
+    [[nodiscard]] QSizeF designSize() const;
+    // Maps design coordinates to local coordinates.
+    [[nodiscard]] QTransform designTransform() const;
+
     // Maps local coordinates to screen (scene) coordinates: translation to
     // the geometry, rotation about the centre.
     [[nodiscard]] QTransform sceneTransform() const;

@@ -18,8 +18,9 @@ class Project;
 // Saves and loads a project folder (ARCHITECTURE.md section 10):
 //
 //     MyLine.hmiproj/
-//     ├─ project.json          formatVersion, name, screen file list in order
-//     └─ screens/01_overview.json …
+//     ├─ project.json          formatVersion, name, screen and asset lists
+//     ├─ screens/01_overview.json …
+//     └─ assets/<content hash>.png …   images and SVG used by objects
 //
 // Files are pretty-printed JSON with sorted keys, so saving an unchanged
 // project gives byte-identical files and diffs stay readable. Every file
@@ -33,6 +34,7 @@ namespace ProjectSerializer
 inline constexpr int kCurrentFormatVersion = 1;
 inline constexpr const char* kProjectFile = "project.json";
 inline constexpr const char* kScreensFolder = "screens";
+inline constexpr const char* kAssetsFolder = "assets";
 // Suggested suffix for project folders.
 inline constexpr const char* kFolderSuffix = ".hmiproj";
 
@@ -44,9 +46,16 @@ using File = std::pair<QString, QJsonObject>;
 
 // Returns a file's content by path relative to the project folder.
 using Reader = std::function<Result<QJsonObject>(const QString& path)>;
+using BinaryReader = std::function<Result<QByteArray>(const QString& path)>;
 
 // Builds a project from files, migrating each to the current format first.
-[[nodiscard]] Result<std::unique_ptr<Project>> fromFiles(const Reader& read);
+// Without `readAsset`, assets are not loaded.
+[[nodiscard]] Result<std::unique_ptr<Project>> fromFiles(const Reader& read,
+                                                         const BinaryReader& readAsset = {});
+
+// Ids of the assets the project's objects use (Prop::Asset), sorted. Only
+// these are saved, so assets no longer used drop out of the folder.
+[[nodiscard]] std::vector<QString> usedAssets(const Project& project);
 
 [[nodiscard]] QByteArray toBytes(const QJsonObject& json);
 

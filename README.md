@@ -24,6 +24,12 @@ properties, tag binding, simulation), written in C++20 with Qt 6 Qt Quick.
   value type (touch keypad for numbers), a layers panel, screen tabs, and
   projects saved as folders of JSON files (new, open, recent, save, save
   as, autosave and recovery). Settings remember the layout.
+- Phase 5, objects: the full toolbox of 36 types in four sections with
+  search (shapes, elements such as I/O fields, buttons, bars and gauges,
+  controls, and process symbols such as tanks, pumps, valves and pipes),
+  imported images and SVG with colour overrides by element id, a path tool
+  for polylines, polygons and right-angled pipes, and a shared project
+  style.
 
 Run `HmiStudio` from the build folder. Mouse: click and Shift+click to
 select, drag to move or rubber-band select, drag handles to resize, wheel to

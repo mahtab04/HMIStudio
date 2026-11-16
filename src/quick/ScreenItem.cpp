@@ -83,6 +83,7 @@ void ScreenItem::addItem(ObjectId id)
         return;
     auto* item = new ObjectItem(object, this);
     item->setRenderScale(renderScaleFor(*item));
+    item->setGraphics(m_graphics);
     m_items.insert(id, item);
     syncZOrder();
 }
@@ -135,6 +136,13 @@ void ScreenItem::setRenderScale(double scale, const QRectF& sharpArea)
     m_sharpArea = sharpArea;
     for (ObjectItem* item : std::as_const(m_items))
         item->setRenderScale(renderScaleFor(*item));
+}
+
+void ScreenItem::setGraphics(const IGraphicProvider* graphics)
+{
+    m_graphics = graphics;
+    for (ObjectItem* item : std::as_const(m_items))
+        item->setGraphics(graphics);
 }
 
 double ScreenItem::renderScaleFor(const ObjectItem& item) const

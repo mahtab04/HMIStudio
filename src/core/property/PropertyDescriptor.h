@@ -10,6 +10,20 @@
 namespace hmi
 {
 
+// What a styled property stands for, so one project style can set it on
+// every type that has it. Only properties whose meaning matches carry a
+// role: a gauge's red needle is not an "accent", and a tank's liquid is not
+// a "face".
+enum class StyleRole
+{
+    None,
+    Face,   // background of fields and dials (I/O field, list box, clock)
+    Line,   // outline of operating elements
+    Text,   // text colour
+    Accent, // marks, tracks and bar fills (check box, slider, bar)
+    Font,   // font family (sizes and weights stay per object)
+};
+
 // One allowed value of an enumerated property. `key` is the identifier saved
 // in files; `displayName` is translated in the "hmi::Property" context.
 struct EnumOption
@@ -19,7 +33,8 @@ struct EnumOption
     const char* displayName = nullptr;
 };
 
-// Limits a value must satisfy. `readOnly` is advice for editors (the property
+// Limits a value must satisfy. For a point list, minimum and maximum bound
+// the number of points. `readOnly` is advice for editors (the property
 // panel shows the value without an input); the model itself may still set it.
 struct Constraint
 {
@@ -44,6 +59,8 @@ struct PropertyDescriptor
     PropertyValue defaultValue;
     Constraint constraint{};
     bool bindable = false;
+    // Set by the project style (HmiStyle) when not None.
+    StyleRole styleRole = StyleRole::None;
 };
 
 // Checks `value` against the descriptor's type and constraint. Returns the

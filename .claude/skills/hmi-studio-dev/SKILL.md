@@ -96,8 +96,9 @@ and all tests pass.
 Example: a `Gauge`.
 
 1. Create `src/core/objects/Gauge.h` and `Gauge.cpp`, deriving from the
-   right family base (`ElementObject` here). Only `ShapeObject` exists so
-   far; the first member of a family adds its base in `src/core/model/`.
+   right family base in `src/core/model/`: `ShapeObject`, `ElementObject`,
+   `ControlObject` or `SymbolObject`. Copy the structure of a type in the
+   same family; they all have the same shape.
 2. Declare `static constexpr ObjectTypeId kTypeId{"gauge"};` and the
    property table in `staticDescriptors()`, built with
    `withCommonDescriptors()` so the common properties come first. Reuse ids
@@ -119,15 +120,30 @@ Example: a `Gauge`.
    }
    ```
 
-   `key` must hash to `id` (checked in debug builds and by the tests). Mark
-   as `bindable` every property a tag should be able to drive.
+   Prefer the `Describe::` builders (`fillColor`, `lineColor`, `text`,
+   `font`, `value`, `minimum`, `maximum`, `number`, `flag`, `choice`,
+   `items`, `points`, `orientation`) over spelled-out entries. `key` must
+   hash to `id` (checked in debug builds and by the tests). Mark as
+   `bindable` every property a tag should be able to drive. Wrap an entry in
+   `Describe::styled(…, StyleRole::…)` only when it means exactly what the
+   project style's role means (field face, element outline, text, accent).
 3. Pass the table to the base: `Gauge(ObjectId id = ObjectId::create()) :
    ElementObject(staticDescriptors(), id)`. Implement `typeId()`, `clone()`
    (via a private copy constructor), `accept()` (and add a `visit` overload
    to `ObjectVisitor`) and `paint(QPainter&, const PaintContext&)`. Paint in
-   local coordinates from `(0,0)` to `geometry().size()`. `paint()` runs on
+   local coordinates from `(0,0)` to `geometry().size()`, with
+   `PaintHelpers` for pens, text, faces and placeholders. Something invisible
+   at runtime draws a marked outline when `context.editing` is set; an
+   imported graphic is drawn through `context.graphics`. `paint()` runs on
    the render thread: read only the object's own data, use no shared
    mutable state. Skip fine detail when `context.lowDetail()`.
+   A process symbol that should keep its look at every size adds
+   `Describe::stretchMode()` and draws in `designSize()` coordinates after
+   `painter.setTransform(designTransform(), true)`; its `hitShape()` maps
+   its shape with `designTransform()`. Never derive the number or size of
+   parts from width and height separately: resized out of proportion, the
+   drawing then changes character (`scaledSymbolsKeepTheirLook` checks it;
+   `HMI_RESIZE_SHEET=<file.png>` shows it).
 4. Override `hitShape()` if the object is not rectangular (line, polygon,
    pipe), so tapping empty corners does not select it.
 5. Register the type at the bottom of the `.cpp`:
@@ -139,17 +155,19 @@ Example: a `Gauge`.
    ```
 
    Add the `.cpp`/`.h` to `src/core/CMakeLists.txt`. A `static_assert` in
-   the macro checks that the key matches `kTypeId`.
+   the macro checks that the key matches `kTypeId`. A type placed point by
+   point registers with `HMI_REGISTER_PATH_OBJECT(…, Points)` or
+   `OrthogonalPoints` and has a `Describe::points` property; `PathTool`
+   places it.
 6. Add the toolbox icon to `resources/icons/` as a single-colour 24 × 24 SVG
    drawn in black (the toolbox recolours it from `Theme`), and list it in the
    `hmi_icons` resource in `src/editor/CMakeLists.txt`.
-7. Tests in `tests/core/objects/GaugeTest.cpp`, registered with
-   `hmi_add_test` in `tests/CMakeLists.txt`. The checks in
-   `tests/core/objects/ObjectContract.h` (`checkDefaults`, `checkClone`,
-   `checkRejections`, `checkRegistered`) cover defaults, clone equality,
-   constraint rejection and registration; add hit shape, painting, and a
-   save and load round trip (`ObjectJsonTest` already round-trips every
-   registered type with default values).
+7. `AllObjectsTest` picks up every registered toolbox type by itself: the
+   contract (defaults, clone, rejections, registration), painting, the hit
+   shape and a JSON round trip. Add a `GaugeTest` only for behaviour of
+   your own (a hit shape that must exclude corners, a computed text). Run
+   `AllObjectsTest` with `HMI_OBJECT_SHEET=<file.png>` to look at every type
+   on one sheet. `ToolboxTest` counts the toolbox entries; update the count.
 8. Do not write a new `QQuickItem` or QML for the object, and do not touch
    the toolbox, property panel or serializer. `ObjectItem` hosts every type.
    If that is not enough, the descriptor system is missing something; extend

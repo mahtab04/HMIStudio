@@ -10,6 +10,7 @@
 #include "core/objects/Rectangle.h"
 #include "core/objects/TextBox.h"
 #include "core/property/Prop.h"
+#include "core/registry/ObjectRegistry.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -189,7 +190,7 @@ private Q_SLOTS:
         rect.insert(u"props"_s, props);
         objects[0] = rect;
         const QJsonObject tank{
-            {u"type"_s, u"tank"_s},
+            {u"type"_s, u"fluxCapacitor"_s},
             {u"id"_s, u"6a1e9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c"_s},
             {u"props"_s, QJsonObject{{u"x"_s, 50},
                                      {u"y"_s, 60},
@@ -227,7 +228,7 @@ private Q_SLOTS:
         QVERIFY(savedRect.contains(u"bindings"));
         QCOMPARE(savedRect.value(u"props").toObject().value(u"blink"), QJsonValue(true));
         const QJsonObject savedTank = savedObjects[1].toObject();
-        QCOMPARE(savedTank.value(u"type").toString(), u"tank"_s);
+        QCOMPARE(savedTank.value(u"type").toString(), u"fluxCapacitor"_s);
         QCOMPARE(savedTank.value(u"events").toArray(), QJsonArray{u"press"_s});
         QCOMPARE(savedTank.value(u"props").toObject().value(u"level").toDouble(), 0.5);
         QCOMPARE(savedTank.value(u"props").toObject().value(u"x").toDouble(), 55.0);
@@ -323,6 +324,82 @@ private Q_SLOTS:
         // The new screens report through this project's notifier.
         QVERIFY(project.screens()[1]->objects()[0]->setProperty(Prop::X, 5.0));
         QCOMPARE(changed.count(), 1);
+    }
+
+    void assetsAreSavedOnlyWhileUsed()
+    {
+        auto project = sampleProject();
+        const QString used = project->assets().add("picture bytes", u"logo.png"_s);
+        const QString unused = project->assets().add("other bytes", u"old.svg"_s);
+        Screen& screen = *project->screens()[1];
+        auto view = ObjectRegistry::instance().create(ObjectTypeId{"graphicView"});
+        QVERIFY(view->setProperty(Prop::Asset, used));
+        const ObjectId viewId = view->id();
+        QVERIFY(screen.insertObject(std::move(view)));
+        QCOMPARE(ProjectSerializer::usedAssets(*project), std::vector{used});
+
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        const QString usedFile = u"assets/"_s + used + u".png"_s;
+        QVERIFY(QFile::exists(dir.filePath(usedFile)));
+        QVERIFY(!QFile::exists(dir.filePath(u"assets/"_s + unused + u".svg"_s)));
+
+        auto loaded = ProjectSerializer::load(dir.path());
+        QVERIFY(loaded);
+        QCOMPARE((*loaded)->assets().size(), std::size_t(1));
+        QCOMPARE((*loaded)->assets().find(used)->fileName, u"logo.png"_s);
+        QCOMPARE((*loaded)->assets().find(used)->data, QByteArray("picture bytes"));
+
+        // Once nothing uses it, the next save removes the file.
+        (void)(*loaded)->screens()[1]->takeObject(viewId);
+        QVERIFY(ProjectSerializer::save(**loaded, dir.path()));
+        QVERIFY(!QFile::exists(dir.filePath(usedFile)));
+    }
+
+    void changedAssetFilesAreReported()
+    {
+        auto project = sampleProject();
+        const QString id = project->assets().add("picture bytes", u"logo.png"_s);
+        auto view = ObjectRegistry::instance().create(ObjectTypeId{"graphicView"});
+        QVERIFY(view->setProperty(Prop::Asset, id));
+        QVERIFY(project->screens()[0]->insertObject(std::move(view)));
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        QFile file(dir.filePath(u"assets/"_s + id + u".png"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("edited outside");
+        file.close();
+        const auto loaded = ProjectSerializer::load(dir.path());
+        QCOMPARE(loaded.error().code, ErrorCode::BadFormat);
+    }
+
+    void everyToolboxTypeSurvivesSaveAndReload()
+    {
+        // PLAN.md phase 5: every toolbox entry can be saved and reloaded.
+        Project project(u"All objects"_s);
+        auto screen = std::make_unique<Screen>(u"All"_s);
+        int count = 0;
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            if (!info.inToolbox)
+                continue;
+            auto object = info.create(ObjectId::create());
+            QVERIFY(object->setProperty(Prop::X, 10.0 * count));
+            QVERIFY(object->setProperty(Prop::Name, info.key));
+            QVERIFY(screen->insertObject(std::move(object)));
+            ++count;
+        }
+        QCOMPARE(count, 36);
+        (void)project.insertScreen(std::move(screen));
+
+        QTemporaryDir first;
+        QTemporaryDir second;
+        QVERIFY(ProjectSerializer::save(project, first.path()));
+        auto loaded = ProjectSerializer::load(first.path());
+        QVERIFY(loaded);
+        QVERIFY(sameProject(**loaded, project));
+        QVERIFY(ProjectSerializer::save(**loaded, second.path()));
+        QCOMPARE(filesIn(second.path()), filesIn(first.path()));
     }
 };
 

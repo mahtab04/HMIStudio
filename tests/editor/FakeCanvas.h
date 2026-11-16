@@ -20,6 +20,7 @@ public:
     QHash<ObjectId, QRectF> preview;
     QHash<ObjectId, double> previewRotation;
     std::vector<QLineF> guides;
+    std::vector<QPointF> path;
     std::optional<QRectF> rubberBand;
     Qt::CursorShape cursor = Qt::ArrowCursor;
     int zoomCalls = 0;
@@ -32,6 +33,7 @@ public:
         preview.clear();
         previewRotation.clear();
         guides.clear();
+        path.clear();
         rubberBand.reset();
         cursor = Qt::ArrowCursor;
         zoomCalls = 0;
@@ -54,6 +56,7 @@ public:
         previewRotation.insert(id, rotation);
     }
     void setGuides(std::vector<QLineF> sceneLines) override { guides = std::move(sceneLines); }
+    void setPathPreview(const std::vector<QPointF>& scenePoints) override { path = scenePoints; }
     void clearPreview() override
     {
         preview.clear();

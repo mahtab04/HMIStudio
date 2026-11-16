@@ -22,9 +22,13 @@ private Q_SLOTS:
         QStringList keys;
         for (const ObjectTypeInfo* info : basics)
             keys << info->key;
-        QCOMPARE(keys, (QStringList{QStringLiteral("ellipse"), QStringLiteral("group"),
-                                    QStringLiteral("line"), QStringLiteral("rectangle"),
-                                    QStringLiteral("textBox")}));
+        for (const char* key :
+             {"circle", "ellipse", "group", "line", "polygon", "polyline", "rectangle", "textBox"})
+            QVERIFY2(keys.contains(QLatin1StringView(key)), key);
+        // Sorted by key within the category.
+        QStringList sorted = keys;
+        sorted.sort();
+        QCOMPARE(keys, sorted);
     }
 
     void entriesHaveToolboxMetadata()
@@ -58,9 +62,9 @@ private Q_SLOTS:
 
     void unknownTypeGivesNothing()
     {
-        QVERIFY(ObjectRegistry::instance().create(ObjectTypeId{"gauge"}) == nullptr);
-        QVERIFY(ObjectRegistry::instance().find(ObjectTypeId{"gauge"}) == nullptr);
-        QVERIFY(ObjectRegistry::instance().findByKey(u"gauge") == nullptr);
+        QVERIFY(ObjectRegistry::instance().create(ObjectTypeId{"teleporter"}) == nullptr);
+        QVERIFY(ObjectRegistry::instance().find(ObjectTypeId{"teleporter"}) == nullptr);
+        QVERIFY(ObjectRegistry::instance().findByKey(u"teleporter") == nullptr);
     }
 
     void rejectsDuplicateAndMismatchedEntries()

@@ -76,6 +76,8 @@ public:
     // Gives every selected object the size of the first selected one.
     bool matchSize(SizeMatch match);
     bool reorder(Order order);
+    // Gives the selected objects the project style's colours and font.
+    bool applyProjectStyle();
 
     [[nodiscard]] bool hasSelection() const;
     [[nodiscard]] bool canGroup() const;
