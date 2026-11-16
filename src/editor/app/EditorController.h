@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QPointF>
 #include <QPointer>
+#include <QStringList>
 #include <qqmlintegration.h>
 
 class QUndoStack;
@@ -34,6 +35,12 @@ class EditorController : public QObject
     Q_PROPERTY(int currentScreenIndex READ currentScreenIndex NOTIFY screenChanged)
     Q_PROPERTY(bool canRemoveScreen READ canRemoveScreen NOTIFY screenChanged)
     Q_PROPERTY(QString zoomText READ zoomText NOTIFY zoomChanged)
+    // The zoom strip under the canvas, as in TIA Portal: a slider over
+    // log2(zoom) and a drop-down of presets ("Fit", 25 % ... 400 %).
+    Q_PROPERTY(double zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomChanged)
+    Q_PROPERTY(double minimumZoomLevel READ minimumZoomLevel CONSTANT)
+    Q_PROPERTY(double maximumZoomLevel READ maximumZoomLevel CONSTANT)
+    Q_PROPERTY(QStringList zoomChoices READ zoomChoices CONSTANT)
     Q_PROPERTY(QString gridText READ gridText CONSTANT)
     Q_PROPERTY(QString cursorText READ cursorText NOTIFY cursorChanged)
     Q_PROPERTY(QString selectionText READ selectionText NOTIFY selectionChanged)
@@ -120,6 +127,8 @@ public:
     Q_INVOKABLE void zoomOut();
     Q_INVOKABLE void zoomToFit();
     Q_INVOKABLE void zoomToActualSize();
+    // Index into zoomChoices: 0 fits the screen, the others are percentages.
+    Q_INVOKABLE void chooseZoom(int index);
 
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -147,6 +156,11 @@ public:
     [[nodiscard]] int currentScreenIndex() const;
     [[nodiscard]] bool canRemoveScreen() const;
     [[nodiscard]] QString zoomText() const;
+    [[nodiscard]] double zoomLevel() const;
+    void setZoomLevel(double level);
+    [[nodiscard]] double minimumZoomLevel() const;
+    [[nodiscard]] double maximumZoomLevel() const;
+    [[nodiscard]] QStringList zoomChoices() const;
     [[nodiscard]] QString gridText() const;
     [[nodiscard]] QString cursorText() const;
     [[nodiscard]] QString selectionText() const;

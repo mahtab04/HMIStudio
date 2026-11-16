@@ -163,36 +163,6 @@ ToolBar {
             onClicked: bar.simulation.restart()
         }
 
-        ToolSeparator {}
-
-        ToolButton {
-            text: qsTr("−")
-            Accessible.name: qsTr("Zoom out")
-            implicitWidth: bar.theme.controlHeight
-            implicitHeight: bar.theme.controlHeight
-            focusPolicy: Qt.NoFocus
-            onClicked: bar.editor.zoomOut()
-        }
-        Label {
-            text: bar.editor.zoomText
-            color: bar.theme.text
-            horizontalAlignment: Text.AlignHCenter
-            Layout.preferredWidth: bar.theme.controlHeight * 1.5
-        }
-        ToolButton {
-            text: qsTr("+")
-            Accessible.name: qsTr("Zoom in")
-            implicitWidth: bar.theme.controlHeight
-            implicitHeight: bar.theme.controlHeight
-            focusPolicy: Qt.NoFocus
-            onClicked: bar.editor.zoomIn()
-        }
-        IconButton {
-            theme: bar.theme
-            label: qsTr("Fit screen (Ctrl+0)")
-            icon.source: "qrc:/icons/zoom-fit.svg"
-            onClicked: bar.editor.zoomToFit()
-        }
 
         Item {
             Layout.fillWidth: true

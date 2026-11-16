@@ -95,6 +95,16 @@ private Q_SLOTS:
         QTRY_VERIFY(canvas->zoom() < 1.0); // fitted into the canvas area
         QVERIFY(context.editor().selectToolActive());
 
+        // The zoom strip under the canvas: presets and a slider over log2(zoom).
+        QVERIFY(window->findChild<QQuickItem*>(QStringLiteral("zoomBox")));
+        const double fitted = canvas->zoom();
+        context.editor().chooseZoom(4); // 100 %
+        QCOMPARE(canvas->zoom(), 1.0);
+        context.editor().setZoomLevel(1.0);
+        QCOMPARE(canvas->zoom(), 2.0);
+        context.editor().chooseZoom(0); // fit
+        QCOMPARE(canvas->zoom(), fitted);
+
         // Switching density resizes the controls.
         auto* header = window->property("header").value<QQuickItem*>();
         QVERIFY(header);

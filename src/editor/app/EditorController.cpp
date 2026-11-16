@@ -261,6 +261,48 @@ void EditorController::zoomToActualSize()
         m_canvas->setZoomCentered(1.0);
 }
 
+namespace
+{
+constexpr int kZoomPercents[] = {25, 50, 75, 100, 150, 200, 400};
+} // namespace
+
+QStringList EditorController::zoomChoices() const
+{
+    QStringList choices{tr("Fit")};
+    for (const int percent : kZoomPercents)
+        choices << tr("%1%").arg(percent);
+    return choices;
+}
+
+void EditorController::chooseZoom(int index)
+{
+    if (index == 0)
+        zoomToFit();
+    else if (index > 0 && index <= int(std::size(kZoomPercents)) && m_canvas)
+        m_canvas->setZoomCentered(kZoomPercents[index - 1] / 100.0);
+}
+
+double EditorController::zoomLevel() const
+{
+    return std::log2(m_canvas ? m_canvas->zoom() : 1.0);
+}
+
+void EditorController::setZoomLevel(double level)
+{
+    if (m_canvas && std::abs(level - zoomLevel()) > 1e-6)
+        m_canvas->setZoomCentered(std::pow(2.0, level));
+}
+
+double EditorController::minimumZoomLevel() const
+{
+    return std::log2(CanvasItem::kMinZoom);
+}
+
+double EditorController::maximumZoomLevel() const
+{
+    return std::log2(CanvasItem::kMaxZoom);
+}
+
 void EditorController::undo()
 {
     m_context.undoStack().undo();

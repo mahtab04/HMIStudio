@@ -99,16 +99,6 @@ ColumnLayout {
                     }
                 }
             }
-            Label {
-                visible: !panel.showingTags
-                text: panel.editor.gridText
-                color: panel.theme.textMuted
-            }
-            Label {
-                visible: !panel.showingTags
-                text: panel.editor.zoomText
-                color: panel.theme.textMuted
-            }
         }
     }
 
@@ -121,44 +111,13 @@ ColumnLayout {
         simulation: panel.simulation
     }
 
-    RowLayout {
-        Layout.fillWidth: true
-        visible: !panel.showingTags
-        spacing: 0
-
-        Rectangle {
-            Layout.preferredWidth: panel.theme.rulerSize
-            Layout.preferredHeight: panel.theme.rulerSize
-            color: panel.theme.rulerBackground
-        }
-        RulerItem {
-            Layout.fillWidth: true
-            Layout.preferredHeight: panel.theme.rulerSize
-            canvas: screenCanvas
-            orientation: Qt.Horizontal
-            background: panel.theme.rulerBackground
-            tickColor: panel.theme.rulerTick
-            textColor: panel.theme.textMuted
-            font: panel.theme.fontSmall
-        }
-    }
-
-    RowLayout {
+    // The work area: the screen on a plain surround, no rulers, as in
+    // TIA Portal's screen editor.
+    ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         visible: !panel.showingTags
         spacing: 0
-
-        RulerItem {
-            Layout.preferredWidth: panel.theme.rulerSize
-            Layout.fillHeight: true
-            canvas: screenCanvas
-            orientation: Qt.Vertical
-            background: panel.theme.rulerBackground
-            tickColor: panel.theme.rulerTick
-            textColor: panel.theme.textMuted
-            font: panel.theme.fontSmall
-        }
 
         Rectangle {
             Layout.fillWidth: true
@@ -276,6 +235,72 @@ ColumnLayout {
 
                 function onContextMenuRequested(viewPos: point) {
                     contextMenu.popup(screenCanvas, viewPos)
+                }
+            }
+        }
+
+        // Zoom, bottom right, as in TIA Portal.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: panel.theme.controlHeight + panel.theme.spacing
+            color: panel.theme.panel
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: panel.theme.padding
+                anchors.rightMargin: panel.theme.padding
+                spacing: panel.theme.spacing
+
+                Label {
+                    text: panel.editor.gridText
+                    color: panel.theme.textMuted
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+                IconButton {
+                    theme: panel.theme
+                    label: qsTr("Fit screen (Ctrl+0)")
+                    icon.source: "qrc:/icons/zoom-fit.svg"
+                    onClicked: panel.editor.zoomToFit()
+                }
+                ToolButton {
+                    text: qsTr("−")
+                    Accessible.name: qsTr("Zoom out")
+                    implicitWidth: panel.theme.controlHeight
+                    implicitHeight: panel.theme.controlHeight
+                    focusPolicy: Qt.NoFocus
+                    onClicked: panel.editor.zoomOut()
+                }
+                Slider {
+                    objectName: "zoomSlider"
+                    Layout.preferredWidth: panel.theme.sidePanelWidth * 0.6
+                    from: panel.editor.minimumZoomLevel
+                    to: panel.editor.maximumZoomLevel
+                    value: panel.editor.zoomLevel
+                    focusPolicy: Qt.NoFocus
+                    Accessible.name: qsTr("Zoom")
+                    onMoved: panel.editor.zoomLevel = value
+                }
+                ToolButton {
+                    text: qsTr("+")
+                    Accessible.name: qsTr("Zoom in")
+                    implicitWidth: panel.theme.controlHeight
+                    implicitHeight: panel.theme.controlHeight
+                    focusPolicy: Qt.NoFocus
+                    onClicked: panel.editor.zoomIn()
+                }
+                ComboBox {
+                    id: zoomBox
+
+                    objectName: "zoomBox"
+                    Layout.preferredWidth: panel.theme.controlHeight * 3
+                    implicitHeight: panel.theme.controlHeight
+                    model: panel.editor.zoomChoices
+                    displayText: panel.editor.zoomText
+                    focusPolicy: Qt.NoFocus
+                    Accessible.name: qsTr("Zoom level")
+                    onActivated: index => panel.editor.chooseZoom(index)
                 }
             }
         }

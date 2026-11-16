@@ -40,10 +40,5 @@ ToolBar {
             color: bar.theme.textMuted
             font: bar.theme.fontSmall
         }
-        Label {
-            text: bar.editor.zoomText
-            color: bar.theme.textMuted
-            font: bar.theme.fontSmall
-        }
     }
 }
