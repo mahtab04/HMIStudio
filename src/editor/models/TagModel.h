@@ -74,7 +74,7 @@ public:
 
     // Edits a cell; for QML, which has no setData for table cells.
     Q_INVOKABLE bool setCell(int row, int column, const QVariant& value);
-    // Adds a tag with a unique name; returns its row.
+    // Adds the next free Tag_N with the last tag's type; returns its row.
     Q_INVOKABLE int addTag();
     // Adds `count` tags of a type named name_1, name_2, … (skipping names
     // in use), in one undo step; returns the first one's row.

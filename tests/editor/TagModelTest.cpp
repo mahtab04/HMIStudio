@@ -130,10 +130,12 @@ private Q_SLOTS:
         const int row = tags().addTag();
         QCOMPARE(tags().rowCount(), 6);
         QCOMPARE(tags().data(tags().index(row, TagModel::NameColumn), Qt::DisplayRole),
-                 QVariant(u"Tag"_s));
+                 QVariant(u"Tag_1"_s));
+        // The type of the last tag (Temperature, Real), then the next number.
+        QCOMPARE(project().tags().find(u"Tag_1"_s)->type, Tag::Type::Real);
         QVERIFY(tags().setCell(row, TagModel::UnitColumn, u"rpm"_s));
         QVERIFY(tags().setCell(row, TagModel::TypeColumn, 1)); // integer
-        QCOMPARE(project().tags().find(u"Tag"_s)->type, Tag::Type::Int);
+        QCOMPARE(project().tags().find(u"Tag_1"_s)->type, Tag::Type::Int);
 
         QSignalSpy problems(&tags(), &TagModel::problem);
         QVERIFY(!tags().setCell(row, TagModel::MaximumColumn, u"lots"_s));
@@ -143,7 +145,7 @@ private Q_SLOTS:
 
         stack.undo();
         stack.undo();
-        QCOMPARE(project().tags().find(u"Tag"_s)->unit, QString());
+        QCOMPARE(project().tags().find(u"Tag_1"_s)->unit, QString());
         stack.undo();
         QCOMPARE(tags().rowCount(), 5);
     }

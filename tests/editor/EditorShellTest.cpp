@@ -141,6 +141,40 @@ private Q_SLOTS:
         QVERIFY(tagsTab);
         QMetaObject::invokeMethod(tagsTab, "click");
         QTRY_VERIFY(!canvas->isVisible());
+
+        // A click on a cell makes its row current: Delete deletes that tag.
+        auto* table = window->findChild<QQuickItem*>(QStringLiteral("tagTable"));
+        auto* deleteButton = window->findChild<QQuickItem*>(QStringLiteral("deleteTagButton"));
+        QVERIFY(table && deleteButton);
+        QTRY_VERIFY(table->isVisible() && table->height() > 0);
+        QVERIFY(!deleteButton->isEnabled());
+        const auto cellItem = [&](int row, int column)
+        {
+            QQuickItem* item = nullptr;
+            QMetaObject::invokeMethod(table, "itemAtIndex", Q_RETURN_ARG(QQuickItem*, item),
+                                      Q_ARG(QModelIndex, context.tags().index(row, column)));
+            return item;
+        };
+        QQuickItem* nameCell = nullptr;
+        QTRY_VERIFY((nameCell = cellItem(4, TagModel::NameColumn)) != nullptr);
+        QTest::mouseClick(window, Qt::LeftButton, {},
+                          nameCell->mapToScene(QPointF(10, nameCell->height() / 2)).toPoint());
+        QTRY_VERIFY(deleteButton->isEnabled());
+        // Every row's type is a drop-down.
+        QQuickItem* typeCell = cellItem(4, TagModel::TypeColumn);
+        QVERIFY(typeCell);
+        QVERIFY(std::ranges::any_of(typeCell->childItems(), [](QQuickItem* child)
+                                    { return child->inherits("QQuickComboBox") && child->isVisible(); }));
+        // Temperature is bound on the screen: Delete asks first.
+        QMetaObject::invokeMethod(deleteButton, "click");
+        auto* deleteDialog = window->findChild<QObject*>(QStringLiteral("deleteTagDialog"));
+        QVERIFY(deleteDialog);
+        QTRY_VERIFY(deleteDialog->property("opened").toBool());
+        QMetaObject::invokeMethod(deleteDialog, "accept");
+        QTRY_COMPARE(context.tags().rowCount(), 4);
+        QVERIFY(!context.project().tags().find(QStringLiteral("Temperature")));
+        context.undoStack().undo();
+        QCOMPARE(context.tags().rowCount(), 5);
         if (const QString path = qEnvironmentVariable("HMI_TAGS_SCREENSHOT"); !path.isEmpty())
         {
             context.theme().setDensity(Theme::Density::Compact);

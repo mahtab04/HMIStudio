@@ -19,7 +19,8 @@ Item {
     required property SimulationController simulation
 
     property string message
-    readonly property int currentRow: selection.hasSelection ? selection.currentIndex.row : -1
+    // The row of the current cell: a click on any cell makes it current.
+    readonly property int currentRow: selection.currentIndex.valid ? selection.currentIndex.row : -1
 
     function selectRow(row: int) {
         if (row < 0)
@@ -85,6 +86,7 @@ Item {
                     onClicked: severalDialog.open()
                 }
                 ToolButton {
+                    objectName: "deleteTagButton"
                     text: qsTr("Delete")
                     implicitHeight: panel.theme.controlHeight
                     enabled: panel.currentRow >= 0
@@ -155,6 +157,7 @@ Item {
         TableView {
             id: table
 
+            objectName: "tagTable"
             // Name, type, unit, minimum, maximum, simulation, period, comment, value.
             readonly property var weights: [1.8, 0.9, 0.7, 0.8, 0.8, 1.0, 0.8, 2.2, 1.0]
             readonly property real weightSum: 10.0
@@ -202,6 +205,7 @@ Item {
                 required property bool current
 
                 readonly property bool live: cell.editor === "value" && panel.simulation.running
+                readonly property bool isChoice: cell.editor === "type" || cell.editor === "simulation"
 
                 implicitHeight: panel.theme.controlHeight
                 color: cell.selected ? Qt.alpha(panel.theme.accent, 0.28) : cell.row % 2 ? panel.theme.panel : panel.theme.window
@@ -210,6 +214,7 @@ Item {
 
                 Label {
                     anchors.fill: parent
+                    visible: !cell.isChoice
                     leftPadding: panel.theme.spacing
                     rightPadding: panel.theme.spacing
                     verticalAlignment: Text.AlignVCenter
@@ -219,7 +224,27 @@ Item {
                     font.bold: cell.live
                 }
 
-                TableView.editDelegate: cell.editor === "type" || cell.editor === "simulation" ? choiceEditor : textEditor
+                // Data type and simulation: a drop-down in every row.
+                ComboBox {
+                    id: combo
+
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    visible: cell.isChoice
+                    flat: true
+                    model: cell.editor === "type" ? panel.tags.typeNames : cell.editor === "simulation" ? panel.tags.simulationNames : []
+                    currentIndex: cell.choice
+                    focusPolicy: Qt.NoFocus
+                    Accessible.name: panel.tags.columnTitles[cell.column]
+                    onPressedChanged: if (combo.pressed)
+                        selection.setCurrentIndex(panel.tags.index(cell.row, cell.column), ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows)
+                    onActivated: index => {
+                        panel.message = ""
+                        panel.tags.setCell(cell.row, cell.column, index)
+                    }
+                }
+
+                TableView.editDelegate: cell.isChoice ? null : textEditor
 
                 Component {
                     id: textEditor
@@ -236,23 +261,6 @@ Item {
                             panel.message = ""
                             if (field.text !== String(cell.display ?? ""))
                                 panel.tags.setCell(cell.row, cell.column, field.text)
-                        }
-                    }
-                }
-
-                Component {
-                    id: choiceEditor
-
-                    ComboBox {
-                        id: combo
-
-                        anchors.fill: parent
-                        model: cell.editor === "type" ? panel.tags.typeNames : panel.tags.simulationNames
-                        currentIndex: cell.choice
-                        Component.onCompleted: combo.popup.open()
-                        onActivated: index => {
-                            panel.tags.setCell(cell.row, cell.column, index)
-                            table.closeEditor()
                         }
                     }
                 }
@@ -350,6 +358,7 @@ Item {
     Dialog {
         id: deleteDialog
 
+        objectName: "deleteTagDialog"
         property var uses: []
 
         title: qsTr("Delete a tag in use?")

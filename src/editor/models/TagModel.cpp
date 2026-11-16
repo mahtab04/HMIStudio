@@ -346,8 +346,22 @@ bool TagModel::renameTag(const QString& name, const QString& newName)
 
 int TagModel::addTag()
 {
+    // Like TIA Portal's "<Add new>": the next free Tag_N, with the type of
+    // the last tag in the table.
+    const TagDatabase& db = m_context.project().tags();
     Tag tag;
-    tag.name = m_context.project().tags().uniqueName(tr("Tag"));
+    int n = 1;
+    while (db.indexOf(QStringLiteral("%1_%2").arg(tr("Tag")).arg(n)))
+        ++n;
+    tag.name = QStringLiteral("%1_%2").arg(tr("Tag")).arg(n);
+    if (!db.tags().empty())
+    {
+        const Tag& last = db.tags().back();
+        tag.type = last.type;
+        tag.minimum = last.minimum;
+        tag.maximum = last.maximum;
+    }
+    tag.initial = tag.startValue();
     const QString name = tag.name;
     m_context.undoStack().push(new AddTagCommand(m_context.project(), std::move(tag)));
     if (!m_filter.isEmpty())
