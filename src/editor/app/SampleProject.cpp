@@ -73,6 +73,14 @@ Action openScreen(const QString& screen)
 {
     return {.kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = screen};
 }
+Action showPopup(const QString& screen)
+{
+    return {.kind = Action::Kind::ShowPopup, .tag = {}, .value = {}, .screen = screen};
+}
+Action closePopup()
+{
+    return {.kind = Action::Kind::ClosePopup, .tag = {}, .value = {}, .screen = {}};
+}
 
 struct Link
 {
@@ -218,6 +226,9 @@ std::unique_ptr<Project> makeSampleProject()
     label(b, at(48, 180, 700, 32), tr("PROCESS OVERVIEW"), 18, kInk, true);
     label(b, at(48, 220, 700, 28), tr("Supply > P-101 > V-101 > T-101 > downstream demand"), 16,
           kMuted);
+    const QString details = tr("P-101 details");
+    button(b, events, at(48, 420, 150, 40), tr("P-101 DETAILS"), tr("Show pump details"),
+           QColor(0x3A, 0x55, 0x6E), {showPopup(details)});
     panel(b, at(48, 310, 116, 90));
     label(b, at(60, 336, 96, 40), tr("SUPPLY"), 16, kMuted, true);
     b.add(Pipe::kTypeId, at(164, 346, 400, 24))
@@ -315,6 +326,43 @@ std::unique_ptr<Project> makeSampleProject()
     auto second = project->insertScreen(o.build());
     Q_ASSERT(second);
     wire(**second, links, events);
+
+    // A popup: a smaller screen shown over the current one.
+    links.clear();
+    events.clear();
+    ScreenBuilder d(details);
+    d.size({720, 420}).background(QColor(Qt::white));
+    d.add(TextBox::kTypeId, {24, 16, 520, 40})
+        .with(Prop::Text, tr("P-101 TRANSFER PUMP"))
+        .with(Prop::Font, fontOf(20, true))
+        .with(Prop::TextColor, kInk);
+    d.add(Pump::kTypeId, {40, 90, 140, 140}).with(Prop::Name, tr("P-101 popup"));
+    links.push_back({d.lastId(), Prop::Running, QStringLiteral("PumpRunning")});
+    const auto value =
+        [&](double y, const QString& title, const QString& tag, const QString& unit, int decimals)
+    {
+        d.add(TextBox::kTypeId, {220, y, 220, 32})
+            .with(Prop::Text, title)
+            .with(Prop::Font, fontOf(15))
+            .with(Prop::TextColor, kMuted);
+        d.add(IoField::kTypeId, {450, y - 4, 230, 44})
+            .with(Prop::Name, title)
+            .with(Prop::Unit, unit)
+            .with(Prop::Decimals, decimals)
+            .with(Prop::IoMode, EnumValue{IoField::Output});
+        links.push_back({d.lastId(), Prop::Value, tag});
+    };
+    value(96, tr("Actual flow"), QStringLiteral("Flow"), QStringLiteral("L/min"), 1);
+    value(156, tr("Line pressure"), QStringLiteral("Pressure"), QStringLiteral("bar"), 2);
+    value(216, tr("Flow setpoint"), QStringLiteral("FlowSetpoint"), QStringLiteral("L/min"), 1);
+    button(d, events, {40, 300, 180, 70}, tr("START"), tr("Start from popup"), kGreen,
+           {setTag(QStringLiteral("RunCommand"), QStringLiteral("true"))});
+    button(d, events, {240, 300, 180, 70}, tr("STOP"), tr("Stop from popup"), kRed,
+           {setTag(QStringLiteral("RunCommand"), QStringLiteral("false"))});
+    button(d, events, {500, 300, 180, 70}, tr("CLOSE"), tr("Close popup"), kBlue, {closePopup()});
+    auto popup = project->insertScreen(d.build());
+    Q_ASSERT(popup);
+    wire(**popup, links, events);
     const Tag tags[] = {
         tag(QStringLiteral("RunCommand"), Tag::Type::Bool, 0, 1, false, tr("Commands"),
             tr("Start/Stop request")),

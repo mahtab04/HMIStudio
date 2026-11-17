@@ -68,8 +68,10 @@ Select an object and open the **Events** tab of the properties panel. Each objec
 | Toggle tag | Tag | Inverts a Bool tag |
 | Increment tag | Tag, Step | Adds the step; a negative step decreases |
 | Open screen | Screen | Shows another screen of the project in the simulator; tags keep their values |
+| Show popup | Screen | Shows a screen as a popup over the current one, in a frame with its name and a close button; the screen behind is dimmed and takes no input until the popup closes |
+| Close popup | - | Closes the popup (for a Close button inside the popup) |
 
-For a Start button add **Set tag** on Click with the command tag and `true`; for Stop the same tag with `false`. For a hold-to-run button add **Set tag** `true` on **Press** and `false` on **Release**. Release actions also run when the press ends outside the object or is cancelled (Escape, a second finger, focus loss, simulation stop or restart), so a held command never sticks. A failing action is reported and the next ones still run. Open screen takes effect after the rest of the list has run.
+For a Start button add **Set tag** on Click with the command tag and `true`; for Stop the same tag with `false`. For a hold-to-run button add **Set tag** `true` on **Press** and `false` on **Release**. Release actions also run when the press ends outside the object or is cancelled (Escape, a second finger, focus loss, simulation stop or restart), so a held command never sticks. A failing action is reported and the next ones still run. Open screen, Show popup and Close popup take effect after the rest of the list has run. A popup is an ordinary screen, usually smaller (the sample's "P-101 details" is 720 × 420); its objects, bindings and events work as on any screen, and an Open screen action from inside it closes it. Opening another screen, restarting or stopping also closes the popup.
 
 Mouse and touch use the same gesture path. Tab selects an operating element, Enter/Space activates it, arrows operate sliders and row selectors, and Escape cancels input. Numeric entry has an on-screen keypad. Touch area outlines and hidden objects are omitted in the runtime. Hidden objects cannot be operated.
 

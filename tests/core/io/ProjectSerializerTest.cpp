@@ -416,7 +416,9 @@ private Q_SLOTS:
         const ObjectId hold = screen->objects()[1]->id();
         const ActionList click{
             {.kind = Action::Kind::SetTag, .tag = u"Run"_s, .value = u"true"_s, .screen = {}},
-            {.kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = u"Details"_s}};
+            {.kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = u"Details"_s},
+            {.kind = Action::Kind::ShowPopup, .tag = {}, .value = {}, .screen = u"Help"_s},
+            {.kind = Action::Kind::ClosePopup, .tag = {}, .value = {}, .screen = {}}};
         screen->object(button)->setActions(EventKind::Click, click);
         QVERIFY(project.insertScreen(std::move(screen)));
         QTemporaryDir dir;

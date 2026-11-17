@@ -112,8 +112,8 @@ private Q_SLOTS:
 
     void eventActionsFollowTagRenames()
     {
-        // Start and Stop set RunCommand on Click: two uses, renamed with the
-        // tag in one undo step.
+        // Start and Stop set RunCommand on Click, on the Filling screen and
+        // in the P-101 popup: four uses, renamed with the tag in one step.
         auto* screen = project().screens()[0].get();
         const auto clickTag = [](const HmiObject& object)
         {
@@ -123,14 +123,14 @@ private Q_SLOTS:
         const auto button = std::ranges::find_if(screen->objects(), [&](const auto& object)
                                                  { return clickTag(*object) == u"RunCommand"; });
         QVERIFY(button != screen->objects().end());
-        QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        QCOMPARE(uses(u"RunCommand"_s), std::size_t(4));
         QVERIFY(tags().whereUsed(tagRow(u"RunCommand"_s)).front().endsWith(u"Click event"_s));
         QVERIFY(tags().setCell(tagRow(u"RunCommand"_s), TagModel::NameColumn, u"RequestRun"_s));
         QCOMPARE(clickTag(**button), u"RequestRun"_s);
-        QCOMPARE(uses(u"RequestRun"_s), std::size_t(2));
+        QCOMPARE(uses(u"RequestRun"_s), std::size_t(4));
         m_app->undoStack().undo();
         QCOMPARE(clickTag(**button), u"RunCommand"_s);
-        QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        QCOMPARE(uses(u"RunCommand"_s), std::size_t(4));
         m_app->undoStack().redo();
         QCOMPARE(clickTag(**button), u"RequestRun"_s);
     }
@@ -463,6 +463,41 @@ private Q_SLOTS:
         m_app->selection().set({button.id(), tank()->id()});
         QVERIFY(!events.available());
         QCOMPARE(events.rowCount(), 0);
+    }
+
+    void popupsOpenOverTheScreen()
+    {
+        SimulationController& simulation = m_app->simulation();
+        simulation.start();
+        QVERIFY(!simulation.popupOpen());
+        QSignalSpy popups(&simulation, &SimulationController::popupChanged);
+
+        // A Show popup action, queued like Open screen.
+        Q_EMIT simulation.input()->popupRequested(u"P-101 details"_s);
+        QTRY_VERIFY(simulation.popupOpen());
+        QCOMPARE(simulation.popupTitle(), u"P-101 details"_s);
+        QCOMPARE(simulation.popupSize(), QSizeF(720, 420));
+        QCOMPARE(simulation.screenTitle(), u"02 Filling"_s); // the screen stays
+        QCOMPARE(popups.count(), 1);
+        // The popup is driven by the tags like a screen.
+        const Screen* popup = simulation.popupEvaluator().playScreen();
+        QVERIFY(popup && popup != project().screens()[2].get());
+
+        // Its Close popup action closes it.
+        Q_EMIT simulation.popupInput()->popupCloseRequested();
+        QTRY_VERIFY(!simulation.popupOpen());
+        QVERIFY(!simulation.popupEvaluator().playScreen());
+
+        // Unknown screens are reported; another screen or stopping closes it.
+        QVERIFY(!simulation.openPopup(u"Nowhere"_s));
+        QVERIFY(simulation.problems().join(u' ').contains(u"Show popup"));
+        QVERIFY(simulation.openPopup(u"P-101 details"_s));
+        QVERIFY(simulation.openScreen(u"01 Overview"_s));
+        QVERIFY(!simulation.popupOpen());
+        QVERIFY(simulation.openPopup(u"P-101 details"_s));
+        simulation.stop();
+        QVERIFY(!simulation.popupOpen());
+        QVERIFY(!simulation.openPopup(u"P-101 details"_s)); // not running
     }
 
     void openScreenNavigates()

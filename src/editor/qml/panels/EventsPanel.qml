@@ -124,7 +124,7 @@ ColumnLayout {
                 // The tag of a tag step.
                 RowLayout {
                     Layout.fillWidth: true
-                    visible: step.fields !== "screen"
+                    visible: step.fields === "tag" || step.fields === "tagValue"
                     Label {
                         Layout.preferredWidth: panel.theme.propertyLabelWidth * 0.6
                         text: qsTr("Tag")

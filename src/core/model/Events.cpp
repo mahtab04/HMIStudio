@@ -10,7 +10,8 @@ namespace hmi
 namespace
 {
 
-constexpr const char* kActionKeys[] = {"setTag", "toggleTag", "incrementTag", "openScreen"};
+constexpr const char* kActionKeys[] = {"setTag",     "toggleTag", "incrementTag",
+                                       "openScreen", "showPopup", "closePopup"};
 
 QString tr(const char* text)
 {
@@ -26,7 +27,7 @@ QJsonObject Action::toJson() const
         json.insert(QStringLiteral("tag"), tag);
     if (kind == Kind::SetTag || kind == Kind::IncrementTag)
         json.insert(QStringLiteral("value"), value);
-    if (kind == Kind::OpenScreen)
+    if (usesScreen())
         json.insert(QStringLiteral("screen"), screen);
     return json;
 }
@@ -128,7 +129,8 @@ QString displayName(EventKind event)
 
 QStringList actionNames()
 {
-    return {tr("Set tag"), tr("Toggle tag"), tr("Increment tag"), tr("Open screen")};
+    return {tr("Set tag"),     tr("Toggle tag"), tr("Increment tag"),
+            tr("Open screen"), tr("Show popup"), tr("Close popup")};
 }
 
 } // namespace Events

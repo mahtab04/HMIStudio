@@ -39,7 +39,8 @@ public:
         TagRole,
         ValueRole,
         ScreenRole,
-        // "tag", "tagValue" (set/increment), "screen": which fields to show.
+        // "tag", "tagValue" (set/increment), "screen", "none": which fields
+        // to show.
         FieldsRole,
     };
 

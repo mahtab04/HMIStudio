@@ -859,7 +859,10 @@ The editor edits them through `EventModel` (the Events tab) and
 `SetActionsCommand`. At runtime `RuntimeInputHandler` runs the lists in
 order through `TagEngine::writeChecked`; Release also runs when a press is
 cancelled. Open screen is a signal, queued to `SimulationController`, which
-replaces the play screen after the list has finished. `TagUsage` and
+replaces the play screen after the list has finished. Show popup gives the
+popup screen a second `BindingEvaluator` play copy and `RuntimeInputHandler`
+in the controller; the simulator window shows it in its own `RuntimeView`
+above the dimmed screen, which takes no input while the popup is open. `TagUsage` and
 `ChangeTagCommand` include tags named by actions.
 
 The explicitly saved `Project::simulationProfile()` chooses ordinary tag

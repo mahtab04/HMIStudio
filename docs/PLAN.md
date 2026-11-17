@@ -359,8 +359,11 @@ tag, Open screen), edited in an Events tab of the properties panel with
 undo, saved in format 4 (format 3 operations are converted on load). Open
 screen switches the simulator to another screen while tags keep running.
 The sample has a second screen, 01 Overview, reached from header buttons.
-Still open in phase 7: popups (Show popup, Close popup), live screen
-windows, alarms, trends and the validation pass.
+Popups implemented on `feat/popups`: Show popup and Close popup actions; the
+simulator shows the popup screen in a frame over the dimmed screen, with its
+own play copy and input; the sample's "P-101 DETAILS" button opens one.
+Still open in phase 7: live screen windows, alarms, trends and the
+validation pass.
 
 ## Phase 8 — Real connections
 

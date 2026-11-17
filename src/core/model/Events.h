@@ -34,17 +34,27 @@ struct Action
         ToggleTag,    // a Bool tag := !tag
         IncrementTag, // tag := tag + value (negative to decrease)
         OpenScreen,   // show another screen
+        ShowPopup,    // show a screen as a popup over the current one
+        ClosePopup,   // close the popup
     };
 
     Kind kind = Kind::SetTag;
     QString tag;    // tag actions
     QString value;  // SetTag: the value; IncrementTag: the step
-    QString screen; // OpenScreen: the screen's name
+    QString screen; // OpenScreen, ShowPopup: the screen's name
 
     [[nodiscard]] QJsonObject toJson() const;
     [[nodiscard]] static Result<Action> fromJson(const QJsonObject& json);
     // Whether the action names a tag (for "where used" and renaming).
-    [[nodiscard]] bool usesTag() const noexcept { return kind != Kind::OpenScreen; }
+    [[nodiscard]] bool usesTag() const noexcept
+    {
+        return kind == Kind::SetTag || kind == Kind::ToggleTag || kind == Kind::IncrementTag;
+    }
+    // Whether the action names a screen (Open screen, Show popup).
+    [[nodiscard]] bool usesScreen() const noexcept
+    {
+        return kind == Kind::OpenScreen || kind == Kind::ShowPopup;
+    }
 
     friend bool operator==(const Action&, const Action&) = default;
 };

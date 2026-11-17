@@ -19,7 +19,22 @@ SimulationController::SimulationController(ToolContext& context, TagEngine& engi
     , m_engine(engine)
     , m_evaluator(std::make_unique<BindingEvaluator>(engine))
     , m_input(std::make_unique<RuntimeInputHandler>(engine))
+    , m_popupEvaluator(std::make_unique<BindingEvaluator>(engine))
+    , m_popupInput(std::make_unique<RuntimeInputHandler>(engine))
 {
+    connect(m_popupEvaluator.get(), &BindingEvaluator::problemsChanged, this,
+            &SimulationController::problemsChanged);
+    // Screen and popup actions, from the screen and from the popup, are
+    // queued: the action list that asked runs to its end first.
+    for (RuntimeInputHandler* input : {m_input.get(), m_popupInput.get()})
+    {
+        connect(input, &RuntimeInputHandler::popupRequested, this, &SimulationController::openPopup,
+                Qt::QueuedConnection);
+        connect(input, &RuntimeInputHandler::popupCloseRequested, this,
+                &SimulationController::closePopup, Qt::QueuedConnection);
+    }
+    connect(m_popupInput.get(), &RuntimeInputHandler::screenRequested, this,
+            &SimulationController::openScreen, Qt::QueuedConnection);
     connect(m_evaluator.get(), &BindingEvaluator::problemsChanged, this,
             &SimulationController::problemsChanged);
     // Queued: the action list that asked runs to its end on the old screen.
@@ -57,6 +72,8 @@ bool SimulationController::begin()
 
 void SimulationController::show(const Screen& screen)
 {
+    // Another screen closes the popup.
+    closePopup();
     // Input and view let go of the old play copy before it is replaced.
     m_input->setScreen(nullptr);
     if (m_view)
@@ -83,8 +100,89 @@ bool SimulationController::openScreen(const QString& name)
     return false;
 }
 
+bool SimulationController::openPopup(const QString& name)
+{
+    if (!m_running)
+        return false;
+    for (const auto& screen : m_context.project().screens())
+    {
+        if (screen->name().compare(name, Qt::CaseInsensitive) != 0)
+            continue;
+        // Input and view let go of a popup being replaced first.
+        m_popupInput->setScreen(nullptr);
+        if (m_popupView)
+            m_popupView->setScreen(nullptr, nullptr);
+        m_popupEvaluator->show(*screen);
+        m_popupInput->setScreen(m_popupEvaluator->playScreen());
+        // While the popup is open the screen behind does not take input.
+        m_input->cancel();
+        showOnPopupView();
+        Q_EMIT popupChanged();
+        return true;
+    }
+    m_evaluator->report(tr("Show popup: the project has no screen called %1.").arg(name));
+    return false;
+}
+
+void SimulationController::closePopup()
+{
+    if (!m_popupEvaluator->playScreen())
+        return;
+    m_popupInput->setScreen(nullptr);
+    if (m_popupView)
+        m_popupView->setScreen(nullptr, nullptr);
+    m_popupEvaluator->clear();
+    Q_EMIT popupChanged();
+}
+
+bool SimulationController::popupOpen() const
+{
+    return m_popupEvaluator->playScreen() != nullptr;
+}
+
+QString SimulationController::popupTitle() const
+{
+    const Screen* screen = m_popupEvaluator->playScreen();
+    return screen ? screen->name() : QString();
+}
+
+QSizeF SimulationController::popupSize() const
+{
+    const Screen* screen = m_popupEvaluator->playScreen();
+    return screen ? screen->size() : QSizeF();
+}
+
+void SimulationController::attachPopupView(RuntimeView* view)
+{
+    if (m_popupView && m_popupView != view)
+        m_popupView->setScreen(nullptr, nullptr);
+    if (m_popupView)
+        disconnect(m_popupView, nullptr, m_popupInput.get(), nullptr);
+    m_popupView = view;
+    if (m_popupView)
+    {
+        connect(m_popupView, &RuntimeView::gesture, m_popupInput.get(),
+                &RuntimeInputHandler::handleGesture);
+        connect(m_popupView, &RuntimeView::keyInput, m_popupInput.get(),
+                &RuntimeInputHandler::keyInput);
+        connect(m_popupView, &RuntimeView::inputCancelled, m_popupInput.get(),
+                &RuntimeInputHandler::cancel);
+    }
+    showOnPopupView();
+}
+
+void SimulationController::showOnPopupView()
+{
+    if (!m_popupView)
+        return;
+    m_popupView->setGraphics(m_context.graphics());
+    const Screen* screen = m_popupEvaluator->playScreen();
+    m_popupView->setScreen(screen, screen ? &m_popupEvaluator->playProject().notifier() : nullptr);
+}
+
 void SimulationController::end()
 {
+    closePopup();
     m_input->setScreen(nullptr);
     // The view lets go of the play copy before the evaluator drops it: it
     // disconnects from that copy's notifier.
@@ -187,7 +285,7 @@ QSizeF SimulationController::screenSize() const
 
 QStringList SimulationController::problems() const
 {
-    return m_running ? m_evaluator->problems() : QStringList();
+    return m_running ? m_evaluator->problems() + m_popupEvaluator->problems() : QStringList();
 }
 
 } // namespace hmi

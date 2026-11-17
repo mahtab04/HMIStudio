@@ -1,0 +1,288 @@
+{
+    "background": "#ffffffff",
+    "formatVersion": 4,
+    "id": "5fc4b6a1-2935-4c76-bcb2-3fded67d3217",
+    "name": "P-101 details",
+    "objects": [
+        {
+            "id": "a35269eb-4be2-47b9-a15b-f113226f2202",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,27,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 40,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "P-101 TRANSFER PUMP",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 520,
+                "wordWrap": true,
+                "x": 24,
+                "y": 16
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "running",
+                    "tag": "PumpRunning"
+                }
+            ],
+            "id": "716ad419-2ab4-473f-bc2a-6468121f0b37",
+            "props": {
+                "height": 140,
+                "lineColor": "#ff3a4048",
+                "lineWidth": 2,
+                "locked": false,
+                "name": "P-101 popup",
+                "offColor": "#ff9aa1ab",
+                "onColor": "#ff22a055",
+                "rotation": 0,
+                "running": false,
+                "stretchMode": "keepProportions",
+                "visible": true,
+                "width": 140,
+                "x": 40,
+                "y": 90
+            },
+            "type": "pump"
+        },
+        {
+            "id": "0601cb9c-9f93-4ce8-b9f6-19bfb45dd0a7",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,20,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 32,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Actual flow",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 220,
+                "wordWrap": true,
+                "x": 220,
+                "y": 96
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Flow"
+                }
+            ],
+            "id": "19709d23-0b30-4c03-9101-a2e2ddc4bf0b",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 44,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Actual flow",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "L/min",
+                "value": 0,
+                "visible": true,
+                "width": 230,
+                "x": 450,
+                "y": 92
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "6bcb4d29-36ec-4d46-892f-824586fc6bba",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,20,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 32,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Line pressure",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 220,
+                "wordWrap": true,
+                "x": 220,
+                "y": 156
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Pressure"
+                }
+            ],
+            "id": "4195c627-6797-4d12-b5c4-d7766e8a2f6f",
+            "props": {
+                "decimals": 2,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 44,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Line pressure",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "bar",
+                "value": 0,
+                "visible": true,
+                "width": 230,
+                "x": 450,
+                "y": 152
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "ca0a5316-9ef0-4030-bfc3-3a7145ea67d0",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,20,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 32,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Flow setpoint",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 220,
+                "wordWrap": true,
+                "x": 220,
+                "y": 216
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "FlowSetpoint"
+                }
+            ],
+            "id": "42b1126e-ac52-4c01-ba6e-1ac5f2855c7e",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 44,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Flow setpoint",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "L/min",
+                "value": 0,
+                "visible": true,
+                "width": 230,
+                "x": 450,
+                "y": 212
+            },
+            "type": "ioField"
+        },
+        {
+            "events": {
+                "click": [
+                    {
+                        "action": "setTag",
+                        "tag": "RunCommand",
+                        "value": "true"
+                    }
+                ]
+            },
+            "id": "5b9b8424-de6b-47ec-a2e3-e78d71b6cf5a",
+            "props": {
+                "fillColor": "#ff176b4d",
+                "font": "Sans Serif,-1,16,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 70,
+                "lineColor": "#ff145d43",
+                "locked": false,
+                "name": "Start from popup",
+                "rotation": 0,
+                "text": "START",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 180,
+                "x": 40,
+                "y": 300
+            },
+            "type": "button"
+        },
+        {
+            "events": {
+                "click": [
+                    {
+                        "action": "setTag",
+                        "tag": "RunCommand",
+                        "value": "false"
+                    }
+                ]
+            },
+            "id": "488316aa-558a-4102-8afe-5f0d3bedad95",
+            "props": {
+                "fillColor": "#ffb53238",
+                "font": "Sans Serif,-1,16,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 70,
+                "lineColor": "#ff9d2b31",
+                "locked": false,
+                "name": "Stop from popup",
+                "rotation": 0,
+                "text": "STOP",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 180,
+                "x": 240,
+                "y": 300
+            },
+            "type": "button"
+        },
+        {
+            "events": {
+                "click": [
+                    {
+                        "action": "closePopup"
+                    }
+                ]
+            },
+            "id": "3066ba63-0ac1-4c2a-8b8d-0ee784c43be8",
+            "props": {
+                "fillColor": "#ff2763a5",
+                "font": "Sans Serif,-1,16,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 70,
+                "lineColor": "#ff22568f",
+                "locked": false,
+                "name": "Close popup",
+                "rotation": 0,
+                "text": "CLOSE",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 180,
+                "x": 500,
+                "y": 300
+            },
+            "type": "button"
+        }
+    ],
+    "size": [
+        720,
+        420
+    ]
+}

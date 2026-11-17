@@ -131,7 +131,10 @@ QVariant EventModel::data(const QModelIndex& index, int role) const
         case Action::Kind::ToggleTag:
             return QStringLiteral("tag");
         case Action::Kind::OpenScreen:
+        case Action::Kind::ShowPopup:
             return QStringLiteral("screen");
+        case Action::Kind::ClosePopup:
+            return QStringLiteral("none");
         }
         return {};
     default:

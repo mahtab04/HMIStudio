@@ -1,11 +1,11 @@
 {
     "background": "#ffebeff3",
     "formatVersion": 4,
-    "id": "639333f7-84c7-403e-b616-14efc3aa8ea1",
+    "id": "2dfd05b8-12d6-4684-a4d9-1772258c7556",
     "name": "02 Filling",
     "objects": [
         {
-            "id": "68cf1ebc-fb9e-432e-a4bc-022a254820fe",
+            "id": "c46770db-b976-4eae-8657-f66f8bbdf763",
             "props": {
                 "cornerRadius": 0,
                 "fillColor": "#ff1c3043",
@@ -23,7 +23,7 @@
             "type": "rectangle"
         },
         {
-            "id": "b0d211e3-6f56-467e-aabe-80be0ef59304",
+            "id": "78867940-b2e4-488f-8032-5ee944ad6f25",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,32,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -44,7 +44,7 @@
             "type": "textBox"
         },
         {
-            "id": "09865f38-e94b-4524-9017-55543353675d",
+            "id": "11eddcdd-7cd6-4939-b9e6-fb3b3b8d0cd3",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -73,7 +73,7 @@
                     }
                 ]
             },
-            "id": "391a8503-ce2b-4415-8bc4-23ee154e44f4",
+            "id": "08551000-f9d2-41ba-930c-3972b0eebb02",
             "props": {
                 "fillColor": "#ff3a556e",
                 "font": "Sans Serif,-1,16,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -92,7 +92,7 @@
             "type": "button"
         },
         {
-            "id": "b3585ad6-4c09-4ae0-b2bd-44a9c3339313",
+            "id": "b8a26208-bdd9-4418-a9ac-20850af82b6f",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -113,7 +113,7 @@
             "type": "textBox"
         },
         {
-            "id": "671f0714-3443-4bcf-b31f-99e0b09c14f3",
+            "id": "8e33318c-7182-4de4-b84a-2c43d462b428",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -148,7 +148,7 @@
                     }
                 }
             ],
-            "id": "a98f81cb-c5e0-4758-b763-e992fff8afdd",
+            "id": "2af3b26e-33ef-4b7b-bec5-32546086d732",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -186,7 +186,7 @@
                     }
                 }
             ],
-            "id": "639136b8-5366-4f0a-84bc-8ba0cbedde0e",
+            "id": "5cc35f8f-d904-48e1-8f99-03e1d5d4d139",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -207,7 +207,7 @@
             "type": "textBox"
         },
         {
-            "id": "28e40585-d583-4604-bfe8-5f21ccf0d4e2",
+            "id": "38812fa8-37f9-44cb-9ea1-88ce1fefc02d",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -225,7 +225,7 @@
             "type": "rectangle"
         },
         {
-            "id": "bfe21cbc-6855-4683-adf9-7e79779bf4c3",
+            "id": "6f1e41ec-1916-496a-a5ed-a564f3f04e64",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -246,7 +246,7 @@
             "type": "textBox"
         },
         {
-            "id": "fe5cca21-8bba-4694-97c9-37414a72e545",
+            "id": "5fe446c4-e31a-49a3-ad35-8f922eff0fbe",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -267,7 +267,34 @@
             "type": "textBox"
         },
         {
-            "id": "fb3253d7-f39b-4850-a8fc-852de1ab838a",
+            "events": {
+                "click": [
+                    {
+                        "action": "showPopup",
+                        "screen": "P-101 details"
+                    }
+                ]
+            },
+            "id": "5bb42134-4242-4581-aee3-4481903a4331",
+            "props": {
+                "fillColor": "#ff3a556e",
+                "font": "Sans Serif,-1,18,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 54,
+                "lineColor": "#ff324a60",
+                "locked": false,
+                "name": "Show pump details",
+                "rotation": 0,
+                "text": "P-101 DETAILS",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 202.5,
+                "x": 160.8,
+                "y": 567
+            },
+            "type": "button"
+        },
+        {
+            "id": "24a4e587-1132-42e6-9ae6-b43e89a75fe7",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -285,7 +312,7 @@
             "type": "rectangle"
         },
         {
-            "id": "b37bd429-e74e-423a-b2d6-179a8a24ee86",
+            "id": "6fa35556-0b6f-4b45-a712-bc6399f91375",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -312,7 +339,7 @@
                     "tag": "PumpRunning"
                 }
             ],
-            "id": "9200a95c-1e0c-4a94-b2cb-dc778b4bf100",
+            "id": "157e361d-ee7c-43c9-bede-cd66c618089c",
             "props": {
                 "flowColor": "#ff3b82f6",
                 "flowing": false,
@@ -346,7 +373,7 @@
                     "tag": "PumpRunning"
                 }
             ],
-            "id": "9acb4d0a-0baf-4958-b165-592340d5d3e7",
+            "id": "43520979-de51-4842-a56f-0fd2eadccb06",
             "props": {
                 "height": 108,
                 "lineColor": "#ff3a4048",
@@ -366,7 +393,7 @@
             "type": "pump"
         },
         {
-            "id": "238f6cd3-4db5-4678-83e3-6d5a06ef82c7",
+            "id": "041f0c68-0dd2-428e-86e0-a8e9568167e8",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -393,7 +420,7 @@
                     "tag": "PumpRunning"
                 }
             ],
-            "id": "9aad5170-0b7e-40c1-b59d-fc5a701a8039",
+            "id": "a6e3db68-ec19-4152-b0b9-80f647afef05",
             "props": {
                 "height": 86.4,
                 "lineColor": "#ff3a4048",
@@ -413,7 +440,7 @@
             "type": "valve"
         },
         {
-            "id": "02e6ba26-6a4b-413b-ac4d-602e80d63a93",
+            "id": "763d4024-1458-4650-9709-0b122cfff99f",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -455,7 +482,7 @@
                     }
                 }
             ],
-            "id": "a30bbb13-f2f3-421b-9c55-19403bbd155d",
+            "id": "79a6a331-41bb-445e-b7e0-26744b390875",
             "props": {
                 "backgroundColor": "#ffeef0f2",
                 "fillColor": "#ff3b82f6",
@@ -477,7 +504,7 @@
             "type": "tank"
         },
         {
-            "id": "2e0246b1-8c46-442e-ad76-b7d105783888",
+            "id": "d3222b93-0671-477b-975e-242c60e65a35",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -504,7 +531,7 @@
                     "tag": "Level"
                 }
             ],
-            "id": "f3e29ed5-4e0c-4048-867e-19752961c559",
+            "id": "07bd47e1-05bb-47e6-ab26-c3dec869a443",
             "props": {
                 "backgroundColor": "#ff4a4f57",
                 "fillColor": "#ff7dbb2b",
@@ -534,7 +561,7 @@
                     "tag": "Level"
                 }
             ],
-            "id": "bc50eca6-99cc-4caa-b3e7-dae1315937e3",
+            "id": "9b685739-79ec-40f8-8db6-a45af92044ab",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -556,7 +583,7 @@
             "type": "ioField"
         },
         {
-            "id": "ffd312ac-0c88-4d19-81be-f2ce5fba7f85",
+            "id": "713969b4-80f7-4a2e-9d4c-242d3f52c649",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -583,7 +610,7 @@
                     "tag": "Flow"
                 }
             ],
-            "id": "3a28189c-718c-4b82-b4ea-a216798afde2",
+            "id": "a68aa6e9-44a0-40b1-adba-7568ece4158a",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -605,7 +632,7 @@
             "type": "ioField"
         },
         {
-            "id": "62b96cf9-24b9-4aff-b76d-4cab42b89489",
+            "id": "5b34165e-8228-48e1-963c-814f41539695",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -632,7 +659,7 @@
                     "tag": "Pressure"
                 }
             ],
-            "id": "6bae93f7-ceda-4fa4-b367-6de054e9d6e6",
+            "id": "639f8cd7-7ec2-4108-aa1d-2bf660a3cbe2",
             "props": {
                 "decimals": 2,
                 "fillColor": "#ffffffff",
@@ -654,7 +681,7 @@
             "type": "ioField"
         },
         {
-            "id": "f490cdbe-3422-4683-a260-435c341d804e",
+            "id": "d8ff3804-4066-4a45-88bf-bdc32dfeea42",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -681,7 +708,7 @@
                     "tag": "Temperature"
                 }
             ],
-            "id": "bf005eff-ae67-412d-8b04-e7a2ceb7b1c1",
+            "id": "4ca9119e-fb07-436a-88f1-21af3c107465",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -703,7 +730,7 @@
             "type": "ioField"
         },
         {
-            "id": "af3c28d1-71ea-41d2-a39f-061e1bd40a19",
+            "id": "3bc805e5-b5c5-4c64-8003-56ed441092d0",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -721,7 +748,7 @@
             "type": "rectangle"
         },
         {
-            "id": "dbb55cea-829d-4939-bae3-d1dc865a8e06",
+            "id": "2ef811cc-2391-438e-b113-7351b10440d7",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -751,7 +778,7 @@
                     }
                 ]
             },
-            "id": "b7cc1d3e-eb6e-48e4-9e5c-9f12725af43e",
+            "id": "1d3d8417-8fbe-4af4-a824-d1f3e1ba260e",
             "props": {
                 "fillColor": "#ff176b4d",
                 "font": "Sans Serif,-1,11,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -779,7 +806,7 @@
                     }
                 ]
             },
-            "id": "d47d7651-3207-4d4a-a941-470185825d6b",
+            "id": "fd1599a6-f123-4572-880f-c3bc8545a0a1",
             "props": {
                 "fillColor": "#ffb53238",
                 "font": "Sans Serif,-1,11,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -804,7 +831,7 @@
                     "tag": "AutoMode"
                 }
             ],
-            "id": "ac202590-c009-477d-a118-4431c337cd5d",
+            "id": "5eab8220-723c-47ce-ad54-ef15a58dde81",
             "props": {
                 "checked": false,
                 "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -825,7 +852,7 @@
             "type": "switch"
         },
         {
-            "id": "6554ba79-4fc5-495b-b215-1564b4df9638",
+            "id": "99ee677e-afb0-4f70-b5ca-54d99eb567ac",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -862,7 +889,7 @@
                     }
                 ]
             },
-            "id": "e8fd0289-d468-40a5-bfc6-98d1bef7e446",
+            "id": "79ad101a-ee36-400a-b771-679b54d6ddd0",
             "props": {
                 "fillColor": "#ff2763a5",
                 "font": "Sans Serif,-1,12,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -881,7 +908,7 @@
             "type": "button"
         },
         {
-            "id": "b697b66a-51e0-4a74-b6fc-524e580d8c70",
+            "id": "f992fb27-a789-4bd5-b09a-7818591381ca",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -902,7 +929,7 @@
             "type": "textBox"
         },
         {
-            "id": "8b0189f1-f566-49be-b514-1629f2f76006",
+            "id": "105d9ca1-b8df-48b1-93ed-28ceecd13caa",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -923,7 +950,7 @@
             "type": "textBox"
         },
         {
-            "id": "0e4062f9-f685-4c97-b98a-1b553e04d070",
+            "id": "a4f7fcfb-8dca-4075-8d7b-0019eec5816e",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -944,7 +971,7 @@
             "type": "textBox"
         },
         {
-            "id": "b2220cc1-7235-4ff4-b870-5fdc5c7ed596",
+            "id": "bf2a19d7-cffe-469c-8dec-a6a51815bb1d",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -962,7 +989,7 @@
             "type": "rectangle"
         },
         {
-            "id": "48a5d6ba-7e8d-4515-a6ff-d532da2c36f2",
+            "id": "7f869637-8ec1-4b74-9493-a7cb9ded8816",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -989,7 +1016,7 @@
                     "tag": "FlowSetpoint"
                 }
             ],
-            "id": "06f1ddff-eedb-4ede-a965-367725c88fee",
+            "id": "bf66ace0-55e4-48f7-b46c-630eacc604bb",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -1017,7 +1044,7 @@
                     "tag": "FlowSetpoint"
                 }
             ],
-            "id": "69626215-1782-4d2a-a382-dab012e6778c",
+            "id": "1f393f2e-17a6-42d8-9df2-cd6c223a5b61",
             "props": {
                 "accentColor": "#ff7dbb2b",
                 "backgroundColor": "#ff4a4f57",
@@ -1050,7 +1077,7 @@
                     }
                 ]
             },
-            "id": "c2121499-e734-41ba-ac90-ee0f73c52d49",
+            "id": "7cd50030-0775-44d8-a7d3-6402f7091198",
             "props": {
                 "fillColor": "#ff2763a5",
                 "font": "Sans Serif,-1,33,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -1078,7 +1105,7 @@
                     }
                 ]
             },
-            "id": "fdde55e8-a180-4cbc-9fec-247c3e5aff56",
+            "id": "b457b9b2-0d99-48f7-9015-da0445293cce",
             "props": {
                 "fillColor": "#ff2763a5",
                 "font": "Sans Serif,-1,33,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -1106,7 +1133,7 @@
                     }
                 ]
             },
-            "id": "9758f3b3-b8bf-4397-89f6-c35f712ab279",
+            "id": "e7b4e5c2-0afb-49bb-aab1-6f0bdd42adf5",
             "props": {
                 "fillColor": "#ff2763a5",
                 "font": "Sans Serif,-1,18,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -1131,7 +1158,7 @@
                     "tag": "FlowSetpoint"
                 }
             ],
-            "id": "79616bae-34cd-4e6b-baae-40b9d9b0b97c",
+            "id": "070dd46d-bf8e-4f78-9dab-bb756b20ba35",
             "props": {
                 "accentColor": "#ff7dbb2b",
                 "backgroundColor": "#ff2b2f36",
@@ -1157,7 +1184,7 @@
             "type": "gauge"
         },
         {
-            "id": "56589948-22df-4218-97e7-e82d8034898c",
+            "id": "a648c0b5-6fc1-48e6-aee4-6a2e164d4746",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,19,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
