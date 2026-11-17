@@ -2,6 +2,7 @@
 
 #include "core/model/Ids.h"
 #include "core/tags/Binding.h"
+#include "core/tags/Connection.h"
 #include "core/tags/Tag.h"
 
 #include <QUndoCommand>
@@ -13,6 +14,20 @@ namespace hmi
 {
 
 class Project;
+
+// Replaces the small connection collection as one atomic undo step.
+class ChangeConnectionsCommand : public QUndoCommand
+{
+public:
+    ChangeConnectionsCommand(Project& project, std::vector<Connection> after);
+    void redo() override;
+    void undo() override;
+
+private:
+    Project& m_project;
+    std::vector<Connection> m_before;
+    std::vector<Connection> m_after;
+};
 
 // Adds a tag to the project's TagDatabase.
 class AddTagCommand : public QUndoCommand
@@ -58,6 +73,17 @@ private:
     Project& m_project;
     Tag m_before;
     Tag m_after;
+    struct Reference
+    {
+        ScreenId screen;
+        ObjectId root;
+        ObjectId object;
+        PropertyId property;
+        std::optional<Binding> binding;
+        QString spelling;
+    };
+    std::vector<Reference> m_references;
+    void applyReferences(bool forward);
 };
 
 // Sets (or, with no binding, removes) the binding of one property on objects

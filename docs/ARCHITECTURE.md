@@ -830,3 +830,26 @@ composites. Consequences and how they are handled:
   outline, green, red or yellow only where they carry meaning) drawn in
   their own colours, larger than toolbar icons, in the spirit of the TIA
   Portal toolbox but drawn for this project.
+
+### Runtime operator input
+
+`HmiObject::runtimeBehavior()` advertises semantic capabilities; object-local
+`runtimeValueAt()` maps local positions to slider values or selector rows.
+`RuntimeInputHandler` in `quick/` interprets `PointerGesture` and keyboard
+input without switching on concrete types. It writes only through the
+`TagEngine` validated input API. `Transform::inverse()` permits direct and
+invertible linear bindings; arbitrary ranges and expressions remain read only.
+`BindingEvaluator` fans out tag updates through nested groups and announces
+changes on their containing top-level item. The runtime sets `editing=false`
+on `ScreenItem`/`ObjectItem`, while the editor retains its normal presentation.
+
+`hmi_quick` depends on `hmi_comm` for reusable runtime input; `hmi_comm` still
+knows only core model types. `SimulationController` owns the handler and drops
+its screen reference, pending dialog and held command before replacing the
+play copy or stopping the engine. Button operations are ordinary descriptor
+properties and use existing property commands and JSON serialization.
+
+The explicitly saved `Project::simulationProfile()` chooses ordinary tag
+simulation or the buffer-filling training model. `FillingStationDriver` runs
+on the existing worker boundary, never opens a device connection and resets
+its process state on restart. Native PLC monitoring remains read only.

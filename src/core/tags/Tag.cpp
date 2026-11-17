@@ -140,8 +140,14 @@ TagValue Tag::converted(const TagValue& value) const
     case Type::Bool:
         return TagValues::toBool(value);
     case Type::Int:
+        if (const auto* integer = std::get_if<qint64>(&value))
+            return *integer;
         if (const auto number = TagValues::toNumber(value))
-            return qint64(std::llround(*number));
+        {
+            if (std::isfinite(*number) && *number < 9223372036854775808.0 &&
+                *number >= -9223372036854775808.0)
+                return qint64(std::llround(*number));
+        }
         return {};
     case Type::Real:
         if (const auto number = TagValues::toNumber(value))
@@ -230,6 +236,8 @@ QJsonObject Tag::toJson() const
     json.insert(kInitial, toJsonValue(initial));
     json.insert(kConnection, connection);
     json.insert(kAddress, address);
+    json.insert(QStringLiteral("table"), table);
+    json.insert(QStringLiteral("acquisitionMs"), acquisitionMs);
     return json;
 }
 
@@ -255,13 +263,24 @@ Result<Tag> Tag::fromJson(const QJsonObject& json)
     tag.initial = tag.converted(fromJsonValue(json.value(kInitial)));
     tag.connection = json.value(kConnection).toString();
     tag.address = json.value(kAddress).toString();
+    const QJsonValue cycle = json.value(QStringLiteral("acquisitionMs"));
+    if ((!cycle.isUndefined() && (!cycle.isDouble() || cycle.toDouble() != cycle.toInt(-1))) ||
+        (json.contains(QStringLiteral("table")) && !json.value(QStringLiteral("table")).isString()))
+        return makeError(ErrorCode::BadFormat,
+                         QStringLiteral("Invalid tag table or acquisition cycle"));
+    tag.table = json.value(QStringLiteral("table")).toString(QStringLiteral("Default"));
+    tag.acquisitionMs = json.value(QStringLiteral("acquisitionMs")).toInt(500);
+    if (tag.table.trimmed().isEmpty() || tag.acquisitionMs < 100 || tag.acquisitionMs > 60000)
+        return makeError(ErrorCode::BadFormat,
+                         QStringLiteral("Invalid tag table or acquisition cycle"));
     if (!(tag.period > 0.0) || !std::isfinite(tag.minimum) || !std::isfinite(tag.maximum))
         return makeError(ErrorCode::BadFormat,
                          QStringLiteral("Tag '%1' has an invalid period or limits").arg(tag.name));
 
     QJsonObject rest = json;
-    for (const QString& key : {kName, kType, kUnit, kComment, kMinimum, kMaximum, kSimulation,
-                               kPeriod, kInitial, kConnection, kAddress})
+    for (const QString& key :
+         {kName, kType, kUnit, kComment, kMinimum, kMaximum, kSimulation, kPeriod, kInitial,
+          kConnection, kAddress, QStringLiteral("table"), QStringLiteral("acquisitionMs")})
         rest.remove(key);
     tag.preserved = rest;
     return tag;

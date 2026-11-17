@@ -1,5 +1,7 @@
 #pragma once
 
+#include "editor/models/TagConnections.h"
+
 #include <QAbstractTableModel>
 #include <QUrl>
 #include <qqmlintegration.h>
@@ -28,6 +30,13 @@ class TagModel : public QAbstractTableModel
     Q_PROPERTY(QStringList columnTitles READ columnTitles CONSTANT)
     Q_PROPERTY(QStringList typeNames READ typeNames CONSTANT)
     Q_PROPERTY(QStringList simulationNames READ simulationNames CONSTANT)
+    Q_PROPERTY(QString message READ message NOTIFY messageChanged)
+    Q_PROPERTY(QString monitorProblem READ monitorProblem NOTIFY monitorProblemChanged)
+    Q_PROPERTY(hmi::TagConnections* connections READ connections CONSTANT)
+    Q_PROPERTY(QString tableFilter READ tableFilter WRITE setTableFilter NOTIFY tableFilterChanged)
+    Q_PROPERTY(QStringList tableNames READ tableNames NOTIFY tagCountChanged)
+    Q_PROPERTY(bool simulationSettings READ simulationSettings WRITE setSimulationSettings NOTIFY
+                   viewChanged)
     Q_PROPERTY(int tagCount READ tagCount NOTIFY tagCountChanged)
 
 public:
@@ -35,13 +44,19 @@ public:
     {
         NameColumn,
         TypeColumn,
+        ConnectionColumn,
+        AddressColumn,
+        TableColumn,
+        AcquisitionColumn,
+        ValueColumn,
+        QualityColumn,
+        CommentColumn,
         UnitColumn,
         MinimumColumn,
         MaximumColumn,
         SimulationColumn,
         PeriodColumn,
-        CommentColumn,
-        ValueColumn,
+        InitialColumn,
         ColumnCount,
     };
     Q_ENUM(Column)
@@ -72,6 +87,23 @@ public:
     [[nodiscard]] QStringList simulationNames() const;
     [[nodiscard]] int tagCount() const;
 
+    [[nodiscard]] QString message() const { return m_message; }
+    [[nodiscard]] QString monitorProblem() const;
+    [[nodiscard]] TagConnections* connections() const { return m_connections; }
+    [[nodiscard]] QString tableFilter() const { return m_tableFilter; }
+    void setTableFilter(const QString& table);
+    [[nodiscard]] QStringList tableNames() const;
+    [[nodiscard]] bool simulationSettings() const { return m_simulationSettings; }
+    void setSimulationSettings(bool simulation);
+    Q_INVOKABLE void clearMessage()
+    {
+        m_message.clear();
+        Q_EMIT messageChanged();
+    }
+    Q_INVOKABLE double columnWidth(int column, double width, double minimum) const;
+    Q_INVOKABLE int createTag(const QString& name, int type, const QString& table, int source,
+                              const QString& address);
+
     // Edits a cell; for QML, which has no setData for table cells.
     Q_INVOKABLE bool setCell(int row, int column, const QVariant& value);
     // Adds the next free Tag_N with the last tag's type; returns its row.
@@ -93,6 +125,11 @@ public:
 
 Q_SIGNALS:
     void filterTextChanged();
+    void tableFilterChanged();
+    void viewChanged();
+    void tagCreated(int row);
+    void messageChanged();
+    void monitorProblemChanged();
     void tagCountChanged();
     // Why an edit or an import was refused.
     void problem(const QString& message);
@@ -104,6 +141,10 @@ private:
 
     ToolContext& m_context;
     TagEngine& m_engine;
+    TagConnections* m_connections = nullptr;
+    QString m_message;
+    QString m_tableFilter;
+    bool m_simulationSettings = false;
     QString m_filter;
     std::vector<QString> m_rows; // tag names shown, in database order
 };

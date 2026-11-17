@@ -37,7 +37,8 @@ void ObjectItem::syncFromModel()
     setPosition(g.topLeft());
     setSize(g.size());
     setRotation(m_object->rotation());
-    setOpacity(m_object->isVisible() ? 1.0 : kHiddenOpacity);
+    setVisible(m_editing || m_object->isVisible());
+    setOpacity(m_object->isVisible() || !m_editing ? 1.0 : kHiddenOpacity);
     updateTextureSize();
     update();
 }
@@ -77,6 +78,12 @@ void ObjectItem::updateTextureSize()
     setTextureSize(QSize(side(width()), side(height())));
 }
 
+void ObjectItem::setEditing(bool editing)
+{
+    m_editing = editing;
+    syncFromModel();
+}
+
 void ObjectItem::paint(QPainter* painter)
 {
     if (!m_object)
@@ -94,8 +101,9 @@ void ObjectItem::paint(QPainter* painter)
 
     painter->setRenderHint(QPainter::Antialiasing);
     painter->setRenderHint(QPainter::TextAntialiasing);
-    m_object->paint(*painter,
-                    PaintContext{.zoom = m_renderScale, .editing = true, .graphics = m_graphics});
+    m_object->paint(
+        *painter,
+        PaintContext{.zoom = m_renderScale, .editing = m_editing, .graphics = m_graphics});
 }
 
 } // namespace hmi

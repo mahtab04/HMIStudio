@@ -5,6 +5,7 @@
 #include "core/model/Project.h"
 #include "core/model/ScreenBuilder.h"
 #include "core/model/UnknownObject.h"
+#include "core/objects/Button.h"
 #include "core/objects/Ellipse.h"
 #include "core/objects/Line.h"
 #include "core/objects/Rectangle.h"
@@ -401,6 +402,100 @@ private Q_SLOTS:
         QVERIFY(sameProject(**loaded, project));
         QVERIFY(ProjectSerializer::save(**loaded, second.path()));
         QCOMPARE(filesIn(second.path()), filesIn(first.path()));
+    }
+
+    void runtimeOperationsAndVersionTwoMigration()
+    {
+        Project project(u"Training"_s);
+        QVERIFY(project.setSimulationProfile(u"filling-station"_s));
+        auto screen = ScreenBuilder(u"Controls"_s)
+                          .add(Button::kTypeId, {10, 10, 100, 60})
+                          .with(Prop::Action, EnumValue{int(TagAction::Set)})
+                          .with(Prop::ActionTag, TagRef{u"Run"_s})
+                          .with(Prop::ActionValue, u"true"_s)
+                          .build();
+        const ObjectId button = screen->objects()[0]->id();
+        QVERIFY(project.insertScreen(std::move(screen)));
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(project, dir.path()));
+        auto loaded = ProjectSerializer::load(dir.path());
+        QVERIFY(loaded);
+        QCOMPARE((*loaded)->simulationProfile(), u"filling-station"_s);
+        const auto* control = (*loaded)->screens()[0]->object(button);
+        QCOMPARE(control->value<TagRef>(Prop::ActionTag).tagName, u"Run"_s);
+        QCOMPARE(control->value<EnumValue>(Prop::Action).value, int(TagAction::Set));
+        Project replacement;
+        replacement.replaceContents(std::move(**loaded));
+        QCOMPARE(replacement.simulationProfile(), u"filling-station"_s);
+        QJsonObject manifest = readJson(dir.filePath(u"project.json"_s));
+        const QString path = manifest.value(u"screens").toArray()[0].toString();
+        QVERIFY(!path.isEmpty());
+        manifest.insert(u"formatVersion"_s, 2);
+        manifest.remove(u"simulationProfile"_s);
+        writeJson(dir.filePath(u"project.json"_s), manifest);
+        QJsonObject legacy = readJson(dir.filePath(path));
+        legacy.insert(u"formatVersion"_s, 2);
+        QJsonObject object = legacy.value(u"objects").toArray()[0].toObject();
+        QJsonObject props = object.value(u"props").toObject();
+        props.remove(u"action"_s);
+        props.remove(u"actionTag"_s);
+        props.remove(u"actionValue"_s);
+        object.insert(u"props"_s, props);
+        legacy.insert(u"objects"_s, QJsonArray{object});
+        writeJson(dir.filePath(path), legacy);
+        auto old = ProjectSerializer::load(dir.path());
+        QVERIFY(old);
+        QVERIFY((*old)->simulationProfile().isEmpty());
+        QCOMPARE((*old)->screens()[0]->object(button)->value<EnumValue>(Prop::Action).value,
+                 int(TagAction::None));
+    }
+
+    void connectionAndTagMetadataRoundTrip()
+    {
+        auto project = sampleProject();
+        Connection connection;
+        connection.id = u"stable-plc"_s;
+        connection.name = u"Line PLC"_s;
+        connection.host = u"fixture.invalid"_s;
+        QVERIFY(project->setConnections({connection}));
+        Tag tag;
+        tag.name = u"TankLevel"_s;
+        tag.table = u"Process"_s;
+        tag.connection = connection.id;
+        tag.address = u"DB1.DBD4"_s;
+        tag.acquisitionMs = 1000;
+        QVERIFY(project->tags().insert(tag));
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        auto loaded = ProjectSerializer::load(dir.path());
+        QVERIFY(loaded);
+        QCOMPARE((*loaded)->connections().size(), std::size_t(1));
+        QCOMPARE((*loaded)->connections()[0], connection);
+        QCOMPARE(*(*loaded)->tags().find(tag.name), tag);
+        Project replacement;
+        replacement.replaceContents(std::move(**loaded));
+        QCOMPARE(replacement.connection(connection.id)->name, connection.name);
+
+        // Version-one projects predate connections, tables and acquisition.
+        QJsonObject manifest = readJson(dir.filePath(u"project.json"_s));
+        manifest.insert(u"formatVersion"_s, 1);
+        manifest.remove(u"connections"_s);
+        writeJson(dir.filePath(u"project.json"_s), manifest);
+        QJsonObject tags = readJson(dir.filePath(u"tags.json"_s));
+        tags.insert(u"formatVersion"_s, 1);
+        QJsonObject legacy = tag.toJson();
+        legacy.remove(u"table"_s);
+        legacy.remove(u"acquisitionMs"_s);
+        legacy.remove(u"connection"_s);
+        legacy.remove(u"address"_s);
+        tags.insert(u"tags"_s, QJsonArray{legacy});
+        writeJson(dir.filePath(u"tags.json"_s), tags);
+        auto old = ProjectSerializer::load(dir.path());
+        QVERIFY(old);
+        QVERIFY((*old)->connections().empty());
+        QCOMPARE((*old)->tags().find(tag.name)->table, u"Default"_s);
+        QCOMPARE((*old)->tags().find(tag.name)->acquisitionMs, 500);
+        QVERIFY((*old)->tags().find(tag.name)->connection.isEmpty());
     }
 };
 

@@ -40,6 +40,9 @@ struct PointerGesture
         PinchUpdate,
         PinchEnd,
         Wheel,
+        Press, // optional immediate primary-pointer events for runtime controls
+        Release,
+        Cancel,
     };
 
     Kind kind = Kind::Tap;

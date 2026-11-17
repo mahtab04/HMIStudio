@@ -116,6 +116,14 @@ private Q_SLOTS:
         engine.stop();
         QVERIFY(!engine.isRunning());
         QVERIFY(std::holds_alternative<std::monostate>(engine.value(u"Level"_s)));
+
+        // Passing a simulator explicitly preserves the writable driver API.
+        engine.start(tags, std::make_unique<SimulatorDriver>());
+        QVERIFY(engine.isSimulating());
+        QVERIFY(!engine.isReadOnly());
+        engine.write(u"Setpoint"_s, TagValue(17.0));
+        QCOMPARE(engine.value(u"Setpoint"_s), TagValue(17.0));
+        engine.stop();
     }
 
     void evaluatorDrivesAPlayCopy()

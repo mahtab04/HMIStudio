@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Window
+import QtQuick.Controls
 import HmiStudio.Quick
 
 // The runtime simulator: the simulated screen in a window of its own, sized
@@ -20,16 +21,50 @@ Window {
     minimumWidth: 160
     minimumHeight: 120
     visible: true
-    title: qsTr("%1 — Runtime simulation").arg(window.simulation.screenTitle)
+    title: window.simulation.monitoring ? qsTr("%1 - PLC monitor").arg(window.simulation.screenTitle) : qsTr("%1 - Runtime simulation").arg(window.simulation.screenTitle)
     color: window.theme.window
 
     // Stopping destroys this window; not from inside its own close handler.
     onClosing: Qt.callLater(window.simulation.stop)
 
     RuntimeView {
+        id: runtime
         objectName: "runtimeView"
         anchors.fill: parent
         Component.onCompleted: window.simulation.attachView(this)
+        focus: true
+
+        Rectangle {
+            readonly property rect target: window.simulation.input.focusBounds
+            x: (runtime.width - window.screenSize.width * runtime.zoom) / 2 + target.x * runtime.zoom - 3
+            y: (runtime.height - window.screenSize.height * runtime.zoom) / 2 + target.y * runtime.zoom - 3
+            width: target.width * runtime.zoom + 6
+            height: target.height * runtime.zoom + 6
+            visible: runtime.activeFocus && target.width > 0
+            color: "transparent"
+            border.color: window.theme.accent
+            border.width: 2
+            radius: 3
+        }
+    }
+
+    RuntimeValueDialog {
+        input: window.simulation.input
+        theme: window.theme
+    }
+
+    Label {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        padding: window.theme.padding
+        visible: !window.simulation.input.open && text.length > 0
+        text: window.simulation.input.error
+        color: window.theme.warning
+        wrapMode: Text.WordWrap
+        background: Rectangle {
+            color: window.theme.window
+        }
     }
 
     Shortcut {

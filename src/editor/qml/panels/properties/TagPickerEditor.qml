@@ -15,6 +15,7 @@ RowLayout {
     required property var value
     required property var options
     required property bool mixed
+    property bool transformAllowed: true
 
     // "None" first, then the tags.
     readonly property var choices: [qsTr("None")].concat(row.options)
@@ -45,6 +46,7 @@ RowLayout {
         theme: row.theme
         label: qsTr("Scaling and transform…")
         icon.source: "qrc:/icons/link.svg"
+        visible: row.transformAllowed
         enabled: !row.mixed && row.value.length > 0
         onClicked: row.properties.requestBinding(row.index)
     }

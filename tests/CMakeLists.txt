@@ -49,11 +49,20 @@ hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
 
 # Tags at runtime
 hmi_add_test(SimulationTest SOURCES comm/SimulationTest.cpp LIBS hmi_comm)
+# Native ABI fixture exercises the optional adapters without PLC hardware.
+add_library(FakePlcLibrary SHARED comm/FakePlcLibrary.cpp)
+hmi_set_project_options(FakePlcLibrary)
+hmi_add_test(PlcDriverTest SOURCES comm/PlcDriverTest.cpp LIBS hmi_comm)
+add_dependencies(PlcDriverTest FakePlcLibrary)
+target_compile_definitions(PlcDriverTest PRIVATE
+    HMI_FAKE_PLC_LIBRARY="$<TARGET_FILE:FakePlcLibrary>")
+
 
 # Qt Quick items and input
 hmi_add_test(SelectionGeometryTest SOURCES quick/SelectionGeometryTest.cpp LIBS hmi_quick)
 hmi_add_test(GestureRecognizerTest SOURCES quick/GestureRecognizerTest.cpp LIBS hmi_quick)
 hmi_add_test(CanvasItemTest SOURCES quick/CanvasItemTest.cpp LIBS hmi_quick)
+hmi_add_test(RuntimeInputTest SOURCES quick/RuntimeInputTest.cpp LIBS hmi_quick)
 hmi_add_test(LargeScreenTest SOURCES quick/LargeScreenTest.cpp LIBS hmi_quick)
 
 # Editor
@@ -71,6 +80,7 @@ hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEdit
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(TagModelTest SOURCES editor/TagModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(SampleProjectTest SOURCES editor/SampleProjectTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(LayerModelTest SOURCES editor/LayerModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(DocumentControllerTest SOURCES editor/DocumentControllerTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(EditorShellTest SOURCES editor/EditorShellTest.cpp

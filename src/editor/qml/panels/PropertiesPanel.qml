@@ -68,6 +68,15 @@ Pane {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "tagReference"
+                    TagPickerEditor {
+                        width: list.width
+                        properties: panel.properties
+                        theme: panel.theme
+                        transformAllowed: false
+                    }
+                }
+                DelegateChoice {
                     roleValue: "tag"
                     TagPickerEditor {
                         width: list.width

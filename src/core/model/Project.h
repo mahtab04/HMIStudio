@@ -6,6 +6,7 @@
 #include "core/model/HmiStyle.h"
 #include "core/model/Ids.h"
 #include "core/model/Screen.h"
+#include "core/tags/Connection.h"
 #include "core/tags/TagDatabase.h"
 
 #include <QJsonObject>
@@ -19,8 +20,8 @@
 namespace hmi
 {
 
-// Root of the document tree: owns the screens (tags and connections arrive
-// in phase 6) and the document's DocumentNotifier. Screens added here, and
+// Root of the document tree: owns screens, tags, connection definitions,
+// assets and the document's DocumentNotifier. Screens added here, and
 // their objects, report every change through notifier().
 class Project
 {
@@ -34,6 +35,10 @@ public:
 
     [[nodiscard]] const QString& name() const noexcept { return m_name; }
     void setName(QString name) { m_name = std::move(name); }
+    // Optional, explicitly saved demo process model. Empty uses independent
+    // per-tag generators. Never used by PLC monitoring.
+    [[nodiscard]] const QString& simulationProfile() const noexcept { return m_simulationProfile; }
+    Result<void> setSimulationProfile(QString profile);
 
     // project.json data this version does not understand; written back as is.
     [[nodiscard]] const QJsonObject& preservedJson() const noexcept { return m_preserved; }
@@ -55,6 +60,10 @@ public:
     // The project's tags; inside the project every change is announced.
     [[nodiscard]] TagDatabase& tags() const noexcept { return *m_tags; }
 
+    [[nodiscard]] std::span<const Connection> connections() const noexcept { return m_connections; }
+    [[nodiscard]] const Connection* connection(const QString& id) const;
+    Result<void> setConnections(std::vector<Connection> connections);
+
     // Imported images and SVG files used by graphic objects.
     [[nodiscard]] AssetStore& assets() const noexcept { return *m_assets; }
 
@@ -75,7 +84,9 @@ public:
     Result<std::unique_ptr<Screen>> takeScreen(ScreenId id);
 
 private:
+    std::vector<Connection> m_connections;
     QString m_name;
+    QString m_simulationProfile;
     QJsonObject m_preserved;
     HmiStyle m_style;
     std::unique_ptr<DocumentNotifier> m_notifier;

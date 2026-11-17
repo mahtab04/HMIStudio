@@ -13,6 +13,7 @@
 namespace hmi
 {
 
+class HmiObject;
 class Project;
 class Screen;
 class TagEngine;
@@ -21,8 +22,7 @@ class TagEngine;
 // phase 9). It works on a play copy of the screen in a project of its own,
 // so the document is never changed and the undo stack never sees a value:
 // the canvas shows the copy, whose notifier reports each driven property.
-// Bindings of top-level objects are applied; those inside groups are not
-// yet.
+// Bindings include nested group children; their top-level item is refreshed.
 class BindingEvaluator : public QObject
 {
     Q_OBJECT
@@ -53,7 +53,8 @@ Q_SIGNALS:
 private:
     struct Target
     {
-        ObjectId object;
+        HmiObject* object = nullptr;
+        ObjectId root;
         Binding binding;
     };
 

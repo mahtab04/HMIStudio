@@ -36,6 +36,18 @@ public:
     }
     [[nodiscard]] QJsonObject parameters() const override { return {}; }
     [[nodiscard]] QString summary() const override { return {}; }
+    [[nodiscard]] Result<TagValue> inverse(const PropertyValue& value) const override
+    {
+        if (const auto* flag = std::get_if<bool>(&value))
+            return TagValue(*flag);
+        if (const auto* integer = std::get_if<int>(&value))
+            return TagValue(qint64(*integer));
+        if (const auto* number = std::get_if<double>(&value))
+            return TagValue(*number);
+        if (const auto* text = std::get_if<QString>(&value))
+            return TagValue(*text);
+        return Transform::inverse(value);
+    }
 };
 
 // Maps [inMin, inMax] linearly onto [outMin, outMax]; values outside are
@@ -80,6 +92,20 @@ private:
     double m_inMax;
     double m_outMin;
     double m_outMax;
+
+public:
+    [[nodiscard]] Result<TagValue> inverse(const PropertyValue& value) const override
+    {
+        const auto direct = Binding::direct()->inverse(value);
+        const auto number = direct ? TagValues::toNumber(*direct) : std::nullopt;
+        if (!number || m_outMax == m_outMin || m_inMax == m_inMin)
+            return Transform::inverse(value);
+        const double result =
+            m_inMin + (*number - m_outMin) * (m_inMax - m_inMin) / (m_outMax - m_outMin);
+        if (!std::isfinite(result))
+            return Transform::inverse(value);
+        return TagValue(result);
+    }
 };
 
 // Value ranges to fixed property values (colours, visibility, texts):
@@ -221,6 +247,14 @@ private:
 }();
 
 } // namespace
+
+Result<TagValue> Transform::inverse(const PropertyValue&) const
+{
+    return makeError(ErrorCode::InvalidArgument,
+                     QCoreApplication::translate("hmi::Binding",
+                                                 "This transform is display only. Use a direct "
+                                                 "binding or a non-zero linear scale for input."));
+}
 
 Result<PropertyValue> Transform::toProperty(const TagValue& value, const PropertyDescriptor& target)
 {

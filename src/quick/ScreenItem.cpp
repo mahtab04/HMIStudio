@@ -82,6 +82,7 @@ void ScreenItem::addItem(ObjectId id)
     if (!object || m_items.contains(id))
         return;
     auto* item = new ObjectItem(object, this);
+    item->setEditing(m_editing);
     item->setRenderScale(renderScaleFor(*item));
     item->setGraphics(m_graphics);
     m_items.insert(id, item);
@@ -136,6 +137,13 @@ void ScreenItem::setRenderScale(double scale, const QRectF& sharpArea)
     m_sharpArea = sharpArea;
     for (ObjectItem* item : std::as_const(m_items))
         item->setRenderScale(renderScaleFor(*item));
+}
+
+void ScreenItem::setEditing(bool editing)
+{
+    m_editing = editing;
+    for (ObjectItem* item : std::as_const(m_items))
+        item->setEditing(editing);
 }
 
 void ScreenItem::setGraphics(const IGraphicProvider* graphics)

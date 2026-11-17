@@ -10,6 +10,7 @@
 #include <QPainter>
 
 #include <algorithm>
+#include <cmath>
 
 namespace hmi
 {
@@ -31,9 +32,9 @@ std::span<const PropertyDescriptor> ListBox::staticDescriptors()
         {140.0, 110.0},
         {
             Describe::items(QStringLiteral("Item 1;Item 2;Item 3;Item 4")),
-            Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                              QT_TRANSLATE_NOOP("hmi::Property", "Selected"), Behaviour, 0, -1,
-                              std::nullopt, true),
+            Describe::process(Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                                                QT_TRANSLATE_NOOP("hmi::Property", "Selected"),
+                                                Behaviour, 0, -1, std::nullopt, true)),
             Describe::styled(Describe::fillColor(QColor(Qt::white),
                                                  QT_TRANSLATE_NOOP("hmi::Property", "Background")),
                              StyleRole::Face),
@@ -73,6 +74,22 @@ void ListBox::paint(QPainter& painter, const PaintContext& context) const
                                Qt::AlignLeft | Qt::AlignVCenter, items[i], k);
     }
     painter.restore();
+}
+
+RuntimeBehavior ListBox::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::RowChoice, Prop::SelectedIndex};
+}
+
+std::optional<PropertyValue> ListBox::runtimeValueAt(QPointF point) const
+{
+    const double rowHeight = std::max(18.0, value<QFont>(Prop::Font).pixelSize() * 1.6) *
+                             PaintHelpers::contentScale(*this);
+    const int index = int(std::floor((point.y() - 1.0) / rowHeight));
+    const auto items = Describe::splitItems(value<QString>(Prop::Items));
+    if (index < 0 || index >= items.size())
+        return std::nullopt;
+    return index;
 }
 
 void ListBox::accept(ObjectVisitor& visitor)

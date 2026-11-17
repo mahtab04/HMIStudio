@@ -39,6 +39,10 @@ public:
     // Short description for the properties panel, such as "0–100 → 0–1".
     [[nodiscard]] virtual QString summary() const = 0;
 
+    // Inverse for operator input. Ranges and expressions have no unique
+    // inverse and remain display-only.
+    [[nodiscard]] virtual Result<TagValue> inverse(const PropertyValue& value) const;
+
     // Converts a number, flag or text to the target's kind of value (the
     // direct transform, and the last step of the others).
     [[nodiscard]] static Result<PropertyValue> toProperty(const TagValue& value,

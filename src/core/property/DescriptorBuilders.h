@@ -69,4 +69,9 @@ inline constexpr int kVertical = 1;
 [[nodiscard]] PropertyDescriptor items(const QString& value);
 [[nodiscard]] QStringList splitItems(const QString& items);
 
+// A single configured tag operation for a button or a touch area.
+[[nodiscard]] PropertyDescriptor tagAction();
+[[nodiscard]] PropertyDescriptor actionTag();
+[[nodiscard]] PropertyDescriptor actionValue();
+
 } // namespace hmi::Describe

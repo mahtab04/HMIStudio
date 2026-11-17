@@ -1,5 +1,7 @@
 #pragma once
 
+#include "quick/input/GestureRecognizer.h"
+
 #include <QQuickItem>
 #include <qqmlintegration.h>
 
@@ -37,13 +39,30 @@ public:
 
 Q_SIGNALS:
     void viewChanged();
+    void gesture(const hmi::PointerGesture& gesture);
+    void keyInput(int key, Qt::KeyboardModifiers modifiers, bool released);
+    void inputCancelled();
 
 protected:
     void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
     QSGNode* updatePaintNode(QSGNode* old, UpdatePaintNodeData* data) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseUngrabEvent() override;
+    void touchEvent(QTouchEvent* event) override;
+    void touchUngrabEvent() override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
 
 private:
     void layout();
+
+    InputSettings m_settings;
+    GestureRecognizer m_recognizer;
+    QMetaObject::Connection m_activationConnection;
 
     ScreenItem* m_screenItem = nullptr;
     const Screen* m_screen = nullptr;

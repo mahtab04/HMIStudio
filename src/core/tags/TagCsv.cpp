@@ -9,9 +9,11 @@ namespace
 {
 
 const QStringList kColumns{
-    QStringLiteral("name"),    QStringLiteral("type"),    QStringLiteral("unit"),
-    QStringLiteral("minimum"), QStringLiteral("maximum"), QStringLiteral("simulation"),
-    QStringLiteral("period"),  QStringLiteral("initial"), QStringLiteral("comment"),
+    QStringLiteral("name"),          QStringLiteral("type"),       QStringLiteral("unit"),
+    QStringLiteral("minimum"),       QStringLiteral("maximum"),    QStringLiteral("simulation"),
+    QStringLiteral("period"),        QStringLiteral("initial"),    QStringLiteral("comment"),
+    QStringLiteral("table"),         QStringLiteral("connection"), QStringLiteral("address"),
+    QStringLiteral("acquisitionMs"),
 };
 
 QString quoted(const QString& field, QChar separator)
@@ -100,6 +102,10 @@ QByteArray write(std::span<const Tag> tags)
             QString::number(tag.period, 'g', 15),
             TagValues::toText(tag.initial),
             tag.comment,
+            tag.table,
+            tag.connection,
+            tag.address,
+            QString::number(tag.acquisitionMs),
         };
         QStringList out;
         for (const QString& f : fields)
@@ -154,6 +160,17 @@ Result<std::vector<Tag>> read(const QByteArray& csv)
         }
         tag.unit = field(row, "unit");
         tag.comment = field(row, "comment");
+        tag.connection = field(row, "connection");
+        tag.address = field(row, "address");
+        if (const QString table = field(row, "table"); !table.isEmpty())
+            tag.table = table;
+        if (const QString cycle = field(row, "acquisitionms"); !cycle.isEmpty())
+        {
+            bool valid = false;
+            tag.acquisitionMs = cycle.toInt(&valid);
+            if (!valid || tag.acquisitionMs < 100 || tag.acquisitionMs > 60000)
+                return fail(QStringLiteral("acquisitionMs must be between 100 and 60000"));
+        }
         bool ok = true;
         const auto number = [&](const char* column, double fallback)
         {

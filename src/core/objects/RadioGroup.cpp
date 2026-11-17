@@ -29,9 +29,9 @@ std::span<const PropertyDescriptor> RadioGroup::staticDescriptors()
         {140.0, 110.0},
         {
             Describe::items(QStringLiteral("Option 1;Option 2;Option 3")),
-            Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                              QT_TRANSLATE_NOOP("hmi::Property", "Selected"), Behaviour, 0, -1,
-                              std::nullopt, true),
+            Describe::process(Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                                                QT_TRANSLATE_NOOP("hmi::Property", "Selected"),
+                                                Behaviour, 0, -1, std::nullopt, true)),
             Describe::styled(Describe::fillColor(QColor(0xF4, 0xF7, 0xFF),
                                                  QT_TRANSLATE_NOOP("hmi::Property", "Background")),
                              StyleRole::Face),
@@ -90,6 +90,24 @@ void RadioGroup::paint(QPainter& painter, const PaintContext& context) const
         PaintHelpers::drawText(painter, *this, row.adjusted(side + 10.0, 0, 0, 0),
                                Qt::AlignLeft | Qt::AlignVCenter, items[i]);
     }
+}
+
+RuntimeBehavior RadioGroup::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::RowChoice, Prop::SelectedIndex};
+}
+
+std::optional<PropertyValue> RadioGroup::runtimeValueAt(QPointF point) const
+{
+    const auto items = Describe::splitItems(value<QString>(Prop::Items));
+    const double scale =
+        geometry().height() /
+        std::get<double>(findDescriptor(descriptors(), Prop::Height)->defaultValue);
+    const double top = 4.0 * scale;
+    const double height = geometry().height() - 8.0 * scale;
+    if (items.isEmpty() || height <= 0 || point.y() < top || point.y() >= top + height)
+        return std::nullopt;
+    return int((point.y() - top) * items.size() / height);
 }
 
 void RadioGroup::accept(ObjectVisitor& visitor)

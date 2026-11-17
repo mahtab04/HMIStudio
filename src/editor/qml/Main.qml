@@ -84,7 +84,7 @@ ApplicationWindow {
         Component.onDestruction: root.settings.mainSplitState = mainSplit.saveState()
 
         ToolboxPanel {
-            visible: root.settings.toolboxPanelVisible
+            visible: root.settings.toolboxPanelVisible && !workArea.showingTags
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
             editor: root.editor
@@ -104,6 +104,7 @@ ApplicationWindow {
             Component.onDestruction: root.settings.centreSplitState = centreSplit.saveState()
 
             CanvasPanel {
+                id: workArea
                 objectName: "workArea"
                 SplitView.fillHeight: true
                 editor: root.editor
@@ -123,7 +124,7 @@ ApplicationWindow {
         }
 
         PropertiesPanel {
-            visible: root.settings.propertiesPanelVisible
+            visible: root.settings.propertiesPanelVisible && !workArea.showingTags
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
             editor: root.editor

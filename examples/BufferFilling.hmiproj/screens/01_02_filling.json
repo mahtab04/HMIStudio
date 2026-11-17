@@ -1,0 +1,1115 @@
+{
+    "background": "#ffebeff3",
+    "formatVersion": 3,
+    "id": "3950fe6f-afcd-43da-b8c6-beac6eac1f59",
+    "name": "02 Filling",
+    "objects": [
+        {
+            "id": "021833bd-57d8-43ff-9a18-34c9dd72432f",
+            "props": {
+                "cornerRadius": 0,
+                "fillColor": "#ff1c3043",
+                "height": 108,
+                "lineColor": "#ff4f5f78",
+                "lineWidth": 0,
+                "locked": false,
+                "name": "Header",
+                "rotation": 0,
+                "visible": true,
+                "width": 1920,
+                "x": 0,
+                "y": 0
+            },
+            "type": "rectangle"
+        },
+        {
+            "id": "3ef73ca4-a94d-453e-8ba0-a796f798e8d4",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,32,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 48.6,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "LINE 03  /  BUFFER FILLING",
+                "textColor": "#ffffffff",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 1080,
+                "wordWrap": true,
+                "x": 128.4,
+                "y": 16.200000000000003
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "b1a17e62-eec9-44b8-bcdc-40f59844abe9",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 35.1,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "P-101 transfer pump   /   T-101 buffer tank",
+                "textColor": "#ffc8d6e3",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 1350,
+                "wordWrap": true,
+                "x": 128.4,
+                "y": 64.80000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "0c87a855-1320-418b-b481-39f9a3d02e14",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 54,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "TRAINING SIMULATION",
+                "textColor": "#ffeeca7a",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 337.5,
+                "wordWrap": true,
+                "x": 1446,
+                "y": 29.700000000000003
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "41d2b48f-4d09-4521-960b-034ad7bdb8fe",
+            "props": {
+                "cornerRadius": 8,
+                "fillColor": "#ffffffff",
+                "height": 64.80000000000001,
+                "lineColor": "#ffcfd8e0",
+                "lineWidth": 1,
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "visible": true,
+                "width": 1663.2,
+                "x": 128.4,
+                "y": 129.60000000000002
+            },
+            "type": "rectangle"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "text",
+                    "tag": "PumpRunning",
+                    "transform": {
+                        "default": "RUNNING - transferring product to T-101",
+                        "kind": "ranges",
+                        "ranges": [
+                            {
+                                "from": -1000000000,
+                                "to": 0.5,
+                                "value": "STOPPED - pump is off"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "id": "d4698e22-3a7d-46bd-a905-a24445409086",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 43.2,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "STOPPED - press Start to transfer product",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 837,
+                "wordWrap": true,
+                "x": 150,
+                "y": 140.4
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "text",
+                    "tag": "Level",
+                    "transform": {
+                        "default": "HIGH LEVEL - pump interlock active",
+                        "kind": "ranges",
+                        "ranges": [
+                            {
+                                "from": -1000000000,
+                                "to": 90,
+                                "value": "T-101 level normal"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "id": "b2d93e01-5a1d-49ba-8513-c27b33ec5376",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 43.2,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "T-101 level normal",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 742.5,
+                "wordWrap": true,
+                "x": 1014.0000000000001,
+                "y": 140.4
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "35ff89a9-f2f7-48ef-8d10-9df3e6418182",
+            "props": {
+                "cornerRadius": 8,
+                "fillColor": "#ffffffff",
+                "height": 607.5,
+                "lineColor": "#ffcfd8e0",
+                "lineWidth": 1,
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "visible": true,
+                "width": 1031.4,
+                "x": 128.4,
+                "y": 221.4
+            },
+            "type": "rectangle"
+        },
+        {
+            "id": "e2619193-9e0e-45a9-b553-798435a33bfe",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 43.2,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "PROCESS OVERVIEW",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 945.0000000000001,
+                "wordWrap": true,
+                "x": 160.8,
+                "y": 243.00000000000003
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "ab675dc2-e9dc-4314-99ce-9710e3e81b55",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Supply > P-101 > V-101 > T-101 > downstream demand",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 945.0000000000001,
+                "wordWrap": true,
+                "x": 160.8,
+                "y": 297
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "73782cae-4f49-431b-af8a-efe0cc80d9ae",
+            "props": {
+                "cornerRadius": 8,
+                "fillColor": "#ffffffff",
+                "height": 121.50000000000001,
+                "lineColor": "#ffcfd8e0",
+                "lineWidth": 1,
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "visible": true,
+                "width": 156.60000000000002,
+                "x": 160.8,
+                "y": 418.5
+            },
+            "type": "rectangle"
+        },
+        {
+            "id": "9e5c1803-0fcf-4014-87ca-96c4498de764",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 54,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "SUPPLY",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 129.60000000000002,
+                "wordWrap": true,
+                "x": 177,
+                "y": 453.6
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "flowing",
+                    "tag": "PumpRunning"
+                }
+            ],
+            "id": "4be32d17-b38d-4c67-8bca-00112cff8c7a",
+            "props": {
+                "flowColor": "#ff3b82f6",
+                "flowing": false,
+                "height": 32.400000000000006,
+                "lineColor": "#ff7a828c",
+                "lineWidth": 10,
+                "locked": false,
+                "name": "Transfer line",
+                "points": [
+                    [
+                        0,
+                        0.5
+                    ],
+                    [
+                        1,
+                        0.5
+                    ]
+                ],
+                "rotation": 0,
+                "visible": true,
+                "width": 540,
+                "x": 317.4,
+                "y": 467.1
+            },
+            "type": "pipe"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "running",
+                    "tag": "PumpRunning"
+                }
+            ],
+            "id": "637053ee-b540-4ff8-afc9-11f3dafa2dbe",
+            "props": {
+                "height": 108,
+                "lineColor": "#ff3a4048",
+                "lineWidth": 2,
+                "locked": false,
+                "name": "P-101",
+                "offColor": "#ff9aa1ab",
+                "onColor": "#ff22a055",
+                "rotation": 0,
+                "running": false,
+                "stretchMode": "keepProportions",
+                "visible": true,
+                "width": 108,
+                "x": 406.5,
+                "y": 429.3
+            },
+            "type": "pump"
+        },
+        {
+            "id": "b99b22c2-efd5-4283-a4f5-d6a0319c9a72",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 40.5,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "P-101",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 135,
+                "wordWrap": true,
+                "x": 406.5,
+                "y": 553.5
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "open",
+                    "tag": "PumpRunning"
+                }
+            ],
+            "id": "35673ed5-c429-4f8d-89d0-a989193b9217",
+            "props": {
+                "height": 86.4,
+                "lineColor": "#ff3a4048",
+                "lineWidth": 2,
+                "locked": false,
+                "name": "V-101",
+                "offColor": "#ffdc2626",
+                "onColor": "#ff22a055",
+                "open": true,
+                "rotation": 0,
+                "stretchMode": "keepProportions",
+                "visible": true,
+                "width": 86.4,
+                "x": 609,
+                "y": 440.1
+            },
+            "type": "valve"
+        },
+        {
+            "id": "f5c27837-62df-4581-a6fa-8539141a015d",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 40.5,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "V-101",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 148.5,
+                "wordWrap": true,
+                "x": 598.2,
+                "y": 553.5
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Level"
+                },
+                {
+                    "property": "fillColor",
+                    "tag": "Level",
+                    "transform": {
+                        "default": "#B53238",
+                        "kind": "ranges",
+                        "ranges": [
+                            {
+                                "from": -1000000000,
+                                "to": 90,
+                                "value": "#2763A5"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "id": "e7f80cc5-453b-4cb2-8513-73035289239d",
+            "props": {
+                "backgroundColor": "#ffeef0f2",
+                "fillColor": "#ff3b82f6",
+                "height": 283.5,
+                "lineColor": "#ff3a4048",
+                "lineWidth": 2,
+                "locked": false,
+                "maximum": 100,
+                "minimum": 0,
+                "name": "T-101",
+                "rotation": 0,
+                "showScale": true,
+                "value": 60,
+                "visible": true,
+                "width": 175.5,
+                "x": 838.5,
+                "y": 348.3
+            },
+            "type": "tank"
+        },
+        {
+            "id": "08cd33f1-a1d3-4451-a75d-5b612548cf1e",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "T-101 LEVEL",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 175.5,
+                "wordWrap": true,
+                "x": 852,
+                "y": 639.9000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Level"
+                }
+            ],
+            "id": "9bd6ba69-5f5c-4b87-adb8-6bbfa6d895d1",
+            "props": {
+                "backgroundColor": "#ff4a4f57",
+                "fillColor": "#ff7dbb2b",
+                "font": "Sans Serif,-1,10,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 261.90000000000003,
+                "lineColor": "#ffd9dce1",
+                "locked": false,
+                "maximum": 100,
+                "minimum": 0,
+                "name": "",
+                "orientation": "vertical",
+                "rotation": 0,
+                "showScale": true,
+                "textColor": "#ffd9dce1",
+                "value": 40,
+                "visible": true,
+                "width": 113.4,
+                "x": 1024.8,
+                "y": 359.1
+            },
+            "type": "bar"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Level"
+                }
+            ],
+            "id": "086d422f-8004-4885-92db-0b737e35ffb0",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 48.6,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "%",
+                "value": 0,
+                "visible": true,
+                "width": 116.10000000000001,
+                "x": 1014.0000000000001,
+                "y": 634.5
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "3b013690-6dc8-45f8-8cf9-740028cd4b2a",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Actual flow",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 283.5,
+                "wordWrap": true,
+                "x": 160.8,
+                "y": 699.3000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Flow"
+                }
+            ],
+            "id": "8f45594a-d5e2-43aa-8e0f-bd594be23509",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 64.80000000000001,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Actual flow",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "L/min",
+                "value": 0,
+                "visible": true,
+                "width": 283.5,
+                "x": 160.8,
+                "y": 742.5
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "eed582ed-fec5-49ac-bb24-daa1de9e9ff3",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Line pressure",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 283.5,
+                "wordWrap": true,
+                "x": 490.20000000000005,
+                "y": 699.3000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Pressure"
+                }
+            ],
+            "id": "69a22de9-37e7-441b-afc8-e2f91660b537",
+            "props": {
+                "decimals": 2,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 64.80000000000001,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Line pressure",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "bar",
+                "value": 0,
+                "visible": true,
+                "width": 283.5,
+                "x": 490.20000000000005,
+                "y": 742.5
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "a3fb73c9-5501-40e6-add1-33bf8da459f6",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Product temperature",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 283.5,
+                "wordWrap": true,
+                "x": 819.6,
+                "y": 699.3000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "Temperature"
+                }
+            ],
+            "id": "3e8bfc02-489b-4885-bfd6-264fba3dd946",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 64.80000000000001,
+                "ioMode": "output",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Product temperature",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "°C",
+                "value": 0,
+                "visible": true,
+                "width": 283.5,
+                "x": 819.6,
+                "y": 742.5
+            },
+            "type": "ioField"
+        },
+        {
+            "id": "80e0eec7-80c9-46fd-a4db-34657f1748b5",
+            "props": {
+                "cornerRadius": 8,
+                "fillColor": "#ffffffff",
+                "height": 607.5,
+                "lineColor": "#ffcfd8e0",
+                "lineWidth": 1,
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "visible": true,
+                "width": 604.8000000000001,
+                "x": 1186.8000000000002,
+                "y": 221.4
+            },
+            "type": "rectangle"
+        },
+        {
+            "id": "1717c277-c67f-416b-a4fb-db326d11ed37",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 43.2,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "OPERATOR CONTROLS",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 540,
+                "wordWrap": true,
+                "x": 1219.2,
+                "y": 243.00000000000003
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "ed8c9abe-eb11-481b-bda7-bcc7d5f4aff2",
+            "props": {
+                "action": "set",
+                "actionTag": "RunCommand",
+                "actionValue": "true",
+                "fillColor": "#ff176b4d",
+                "font": "Sans Serif,-1,11,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 86.4,
+                "lineColor": "#ff145d43",
+                "locked": false,
+                "name": "Start transfer",
+                "rotation": 0,
+                "text": "START",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 253.8,
+                "x": 1219.2,
+                "y": 313.20000000000005
+            },
+            "type": "button"
+        },
+        {
+            "id": "67a508f0-bfd5-416b-995e-fb0697b76de2",
+            "props": {
+                "action": "set",
+                "actionTag": "RunCommand",
+                "actionValue": "false",
+                "fillColor": "#ffb53238",
+                "font": "Sans Serif,-1,11,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 86.4,
+                "lineColor": "#ff9d2b31",
+                "locked": false,
+                "name": "Stop transfer",
+                "rotation": 0,
+                "text": "STOP",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 253.8,
+                "x": 1505.4,
+                "y": 313.20000000000005
+            },
+            "type": "button"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "checked",
+                    "tag": "AutoMode"
+                }
+            ],
+            "id": "37970da3-8b8c-4130-acb3-282bff8ee779",
+            "props": {
+                "checked": false,
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 70.2,
+                "locked": false,
+                "name": "Automatic filling",
+                "offColor": "#ffb8bec6",
+                "offText": "Off",
+                "onColor": "#ff22a055",
+                "onText": "On",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "visible": true,
+                "width": 253.8,
+                "x": 1219.2,
+                "y": 440.1
+            },
+            "type": "switch"
+        },
+        {
+            "id": "a7fb633f-f17b-45f2-92a9-e23e56ce8f76",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 89.10000000000001,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "AUTO fills 30-80%\nOFF: manual transfer",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 253.8,
+                "wordWrap": true,
+                "x": 1505.4,
+                "y": 434.70000000000005
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "a54e5379-3b23-4d70-aab6-ecef721a9aac",
+            "props": {
+                "action": "momentary",
+                "actionTag": "Jog",
+                "actionValue": "true",
+                "fillColor": "#ff2763a5",
+                "font": "Sans Serif,-1,12,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 81,
+                "lineColor": "#ff22568f",
+                "locked": false,
+                "name": "Jog pump",
+                "rotation": 0,
+                "text": "HOLD TO JOG",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 253.8,
+                "x": 1219.2,
+                "y": 558.9000000000001
+            },
+            "type": "button"
+        },
+        {
+            "id": "35aad6e6-7b7b-4250-8beb-45c82bb4899c",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 102.60000000000001,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Hold: pump runs\nRelease: jog stops",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 253.8,
+                "wordWrap": true,
+                "x": 1505.4,
+                "y": 550.8000000000001
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "edd9f9df-3b60-4376-af2b-9c41a98c6a39",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 51.300000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Stop clears the run command. Auto pauses at 80%.",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 540,
+                "wordWrap": true,
+                "x": 1219.2,
+                "y": 677.7
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "ff95259e-8367-4187-bffb-178700732f74",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 59.400000000000006,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "Simulated process only - no PLC connection",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 540,
+                "wordWrap": true,
+                "x": 1219.2,
+                "y": 745.2
+            },
+            "type": "textBox"
+        },
+        {
+            "id": "27d8cb82-955d-4f7f-a3c7-014793ac369c",
+            "props": {
+                "cornerRadius": 8,
+                "fillColor": "#ffffffff",
+                "height": 191.70000000000002,
+                "lineColor": "#ffcfd8e0",
+                "lineWidth": 1,
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "visible": true,
+                "width": 1663.2,
+                "x": 128.4,
+                "y": 855.9000000000001
+            },
+            "type": "rectangle"
+        },
+        {
+            "id": "7539a543-7834-414e-bdfe-ba31391102c4",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 37.800000000000004,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "FLOW SETPOINT  /  shared tag: FlowSetpoint",
+                "textColor": "#ff213243",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 675,
+                "wordWrap": true,
+                "x": 160.8,
+                "y": 872.1
+            },
+            "type": "textBox"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "FlowSetpoint"
+                }
+            ],
+            "id": "ebb069ec-bc16-4991-b5b2-973bee5abedb",
+            "props": {
+                "decimals": 1,
+                "fillColor": "#ffffffff",
+                "font": "Sans Serif,-1,14,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 81,
+                "ioMode": "inputOutput",
+                "lineColor": "#ff9aa1ab",
+                "locked": false,
+                "name": "Flow setpoint",
+                "rotation": 0,
+                "textColor": "#ff1f2328",
+                "unit": "L/min",
+                "value": 0,
+                "visible": true,
+                "width": 259.20000000000005,
+                "x": 160.8,
+                "y": 931.5000000000001
+            },
+            "type": "ioField"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "FlowSetpoint"
+                }
+            ],
+            "id": "691de49d-4c45-4b30-936e-5e682c517965",
+            "props": {
+                "accentColor": "#ff7dbb2b",
+                "backgroundColor": "#ff4a4f57",
+                "font": "Sans Serif,-1,10,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 86.4,
+                "lineColor": "#ff6b7280",
+                "locked": false,
+                "maximum": 100,
+                "minimum": 0,
+                "name": "Adjust flow setpoint",
+                "orientation": "horizontal",
+                "rotation": 0,
+                "showScale": true,
+                "textColor": "#ff4b525c",
+                "value": 50,
+                "visible": true,
+                "width": 607.5,
+                "x": 463.20000000000005,
+                "y": 931.5000000000001
+            },
+            "type": "slider"
+        },
+        {
+            "id": "0dab143a-3c08-4051-8c3f-ebba8834ccee",
+            "props": {
+                "action": "increment",
+                "actionTag": "FlowSetpoint",
+                "actionValue": "-5",
+                "fillColor": "#ff2763a5",
+                "font": "Sans Serif,-1,33,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 81,
+                "lineColor": "#ff22568f",
+                "locked": false,
+                "name": "Decrease flow",
+                "rotation": 0,
+                "text": "-5",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 86.4,
+                "x": 1111.2,
+                "y": 931.5000000000001
+            },
+            "type": "button"
+        },
+        {
+            "id": "af91ae76-f244-40e2-b867-b69b94bd1230",
+            "props": {
+                "action": "increment",
+                "actionTag": "FlowSetpoint",
+                "actionValue": "5",
+                "fillColor": "#ff2763a5",
+                "font": "Sans Serif,-1,33,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 81,
+                "lineColor": "#ff22568f",
+                "locked": false,
+                "name": "Increase flow",
+                "rotation": 0,
+                "text": "+5",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 86.4,
+                "x": 1219.2,
+                "y": 931.5000000000001
+            },
+            "type": "button"
+        },
+        {
+            "id": "7e3b75b7-5015-403a-9550-6652bee02520",
+            "props": {
+                "action": "set",
+                "actionTag": "FlowSetpoint",
+                "actionValue": "50",
+                "fillColor": "#ff2763a5",
+                "font": "Sans Serif,-1,18,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 81,
+                "lineColor": "#ff22568f",
+                "locked": false,
+                "name": "Preset flow",
+                "rotation": 0,
+                "text": "50 L/min",
+                "textColor": "#ffffffff",
+                "visible": true,
+                "width": 162,
+                "x": 1327.2,
+                "y": 931.5000000000001
+            },
+            "type": "button"
+        },
+        {
+            "bindings": [
+                {
+                    "property": "value",
+                    "tag": "FlowSetpoint"
+                }
+            ],
+            "id": "ec1114b0-92ff-4b1b-8c84-435962420f76",
+            "props": {
+                "accentColor": "#ff7dbb2b",
+                "backgroundColor": "#ff2b2f36",
+                "fillColor": "#ffe9ebee",
+                "font": "Sans Serif,-1,12,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 162,
+                "lineColor": "#ff5f646c",
+                "locked": false,
+                "maximum": 100,
+                "minimum": 0,
+                "name": "Flow setpoint gauge",
+                "onColor": "#ffe5533d",
+                "rotation": 0,
+                "stretchMode": "keepProportions",
+                "textColor": "#ff4b525c",
+                "unit": "",
+                "value": 60,
+                "visible": true,
+                "width": 183.60000000000002,
+                "x": 1554,
+                "y": 872.1
+            },
+            "type": "gauge"
+        },
+        {
+            "id": "28f5bfbd-aef1-4d43-9d75-01a3898ef41b",
+            "props": {
+                "fillColor": "#00000000",
+                "font": "Sans Serif,-1,19,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
+                "height": 29.700000000000003,
+                "horizontalAlignment": "left",
+                "locked": false,
+                "name": "",
+                "rotation": 0,
+                "text": "F5: restart simulation   |   Shift+F5: stop   |   Tap a value or drag the slider   |   Tab + Enter / arrow keys",
+                "textColor": "#ff536576",
+                "verticalAlignment": "middle",
+                "visible": true,
+                "width": 1663.2,
+                "wordWrap": true,
+                "x": 128.4,
+                "y": 1050.3000000000002
+            },
+            "type": "textBox"
+        }
+    ],
+    "size": [
+        1920,
+        1080
+    ]
+}

@@ -319,8 +319,7 @@ copy and the panels' models. Choices made here:
 - Range maps are edited as text, one `from..to = value` per line and
   `else = value` for the default.
 - Tags are saved in `tags.json`, always written, `{formatVersion, tags}`.
-- Only bindings of top-level objects are driven; those inside groups come
-  with phase 7.
+- Bindings now include group children in the runtime interaction work.
 - Typing a value in the Value column while simulating writes it to the
   tag; otherwise it is the tag's start value.
 
@@ -344,6 +343,15 @@ of the tags table on a real touch screen.
 
 Done when: a three-screen demo project can be operated end to end in
 Simulate mode by touch, including an alarm being raised and acknowledged.
+
+Runtime tag interaction implemented on `feat/plc-tag-workflow`: numeric I/O entry,
+sliders, switches, checkboxes, radio/list selectors and symbolic I/O selection;
+Set/Toggle/Increment/Momentary operations on buttons and touch areas; shared
+updates through group bindings; mouse, touch, keyboard and numeric keypad.
+The revised buffer-filling sample uses a saved training simulation profile
+with Start/Stop, Auto and Jog. See `docs/TAGS.md` for the supported-object
+matrix and limits. General event lists, navigation, alarms and history remain
+open; this does not complete all of phase 7.
 
 ## Phase 8 — Real connections
 
