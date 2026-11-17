@@ -338,6 +338,21 @@ private Q_SLOTS:
 
     // Controls grow as a whole: their text, rows and scales follow the
     // smaller of the width and height ratios to the default size.
+    // The properties panel shows each category as a heading over its rows;
+    // a row named like its heading ("TEXT" over "Text") reads as a mistake.
+    void noPropertyIsNamedLikeItsCategory()
+    {
+        for (const ObjectTypeInfo& info : ObjectRegistry::instance().types())
+        {
+            auto object = info.create(ObjectId::create());
+            for (const PropertyDescriptor& d : object->descriptors())
+                QVERIFY2(QString::fromLatin1(d.displayName)
+                                 .compare(QString::fromLatin1(d.category), Qt::CaseInsensitive) !=
+                             0,
+                         qPrintable(info.key + u": "_s + QString::fromLatin1(d.displayName)));
+        }
+    }
+
     void contentGrowsWithTheObject()
     {
         const ObjectTypeInfo* info = ObjectRegistry::instance().find(ObjectTypeId{"alarmView"});
