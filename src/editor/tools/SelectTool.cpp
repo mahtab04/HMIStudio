@@ -104,12 +104,12 @@ HmiObject* SelectTool::objectAt(const PointerGesture& gesture) const
     const Screen* screen = m_context.screen();
     if (!screen)
         return nullptr;
-    // Hidden and locked objects can be selected in the editor; locked ones
-    // just cannot be moved or resized.
-    return HitTester::topmostAt(*screen, gesture.scenePos,
-                                {.tolerance = m_context.sceneHitTolerance(gesture),
-                                 .includeLocked = true,
-                                 .includeHidden = true});
+    // Locked objects can be selected; they just cannot be moved or resized.
+    // Hidden objects are not on the canvas, so a click goes to what is
+    // under them; they are selected from the Layers panel.
+    return HitTester::topmostAt(
+        *screen, gesture.scenePos,
+        {.tolerance = m_context.sceneHitTolerance(gesture), .includeLocked = true});
 }
 
 bool SelectTool::additive(const PointerGesture& gesture) const
@@ -307,8 +307,8 @@ void SelectTool::dragEnd(const PointerGesture& gesture)
             const auto rectMode = gesture.scenePos.x() >= gesture.startScenePos.x()
                                       ? HitTester::RectMode::Contains
                                       : HitTester::RectMode::Intersects;
-            const auto found = HitTester::inRect(*screen, rubberBand(gesture), rectMode,
-                                                 {.includeLocked = true, .includeHidden = true});
+            const auto found =
+                HitTester::inRect(*screen, rubberBand(gesture), rectMode, {.includeLocked = true});
             std::vector<ObjectId> ids;
             if (additive(gesture))
                 ids = m_context.selection().ids();

@@ -15,7 +15,6 @@ namespace
 {
 
 // Hidden objects stay visible in the editor, dimmed, so they can be selected.
-constexpr double kHiddenOpacity = 0.35;
 
 } // namespace
 
@@ -37,8 +36,9 @@ void ObjectItem::syncFromModel()
     setPosition(g.topLeft());
     setSize(g.size());
     setRotation(m_object->rotation());
-    setVisible(m_editing || m_object->isVisible());
-    setOpacity(m_object->isVisible() || !m_editing ? 1.0 : kHiddenOpacity);
+    // Hidden objects are not drawn, in the editor (hidden from the Layers
+    // panel, as in TIA Portal) as at runtime.
+    setVisible(m_object->isVisible());
     updateTextureSize();
     update();
 }

@@ -97,6 +97,12 @@ private Q_SLOTS:
         QVERIFY(rect->setProperty(Prop::Rotation, 45.0));
         QCOMPARE(screenItem->objectItem(m_rect)->x(), 300.0);
         QCOMPARE(screenItem->objectItem(m_rect)->rotation(), 45.0);
+        // Hidden (from the Layers panel): not drawn at all, not faded.
+        QVERIFY(rect->setProperty(Prop::Visible, false));
+        QVERIFY(!screenItem->objectItem(m_rect)->isVisible());
+        QVERIFY(rect->setProperty(Prop::Visible, true));
+        QVERIFY(screenItem->objectItem(m_rect)->isVisible());
+        QCOMPARE(screenItem->objectItem(m_rect)->opacity(), 1.0);
 
         QVERIFY(m_screen->moveObject(m_rect, 1));
         QVERIFY(screenItem->objectItem(m_rect)->z() > screenItem->objectItem(m_ellipse)->z());
