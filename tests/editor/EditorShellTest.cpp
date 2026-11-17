@@ -11,6 +11,7 @@
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/EventModel.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
@@ -78,6 +79,7 @@ private Q_SLOTS:
             {QStringLiteral("document"), QVariant::fromValue(&context.document())},
             {QStringLiteral("settings"), QVariant::fromValue(&context.settings())},
             {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
+            {QStringLiteral("events"), QVariant::fromValue(&context.events())},
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
             {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
@@ -153,6 +155,29 @@ private Q_SLOTS:
         QTRY_VERIFY(menu->property("opened").toBool());
         QMetaObject::invokeMethod(menu, "close");
         QTRY_VERIFY(!menu->property("visible").toBool());
+
+        // The Events tab lists the selected button's actions.
+        {
+            auto* tabs = window->findChild<QQuickItem*>(QStringLiteral("propertiesTabs"));
+            QVERIFY(tabs);
+            for (const auto& item : screen.objects())
+            {
+                if (item->name() == u"Start transfer")
+                    context.selection().selectOnly(item->id());
+            }
+            QVERIFY(context.events().available());
+            tabs->setProperty("currentIndex", 1);
+            QCOMPARE(context.events().rowCount(), 1);
+            if (const QString path = qEnvironmentVariable("HMI_EVENTS_SCREENSHOT"); !path.isEmpty())
+            {
+                QMetaObject::invokeMethod(menu, "close");
+                context.theme().setDensity(Theme::Density::Compact);
+                QTest::qWait(300);
+                QVERIFY(window->grabWindow().save(path));
+            }
+            tabs->setProperty("currentIndex", 0);
+            context.selection().selectOnly(object.id());
+        }
 
         // The binding dialog lists the tags as they are when it opens.
         {

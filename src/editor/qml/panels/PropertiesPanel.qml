@@ -14,6 +14,7 @@ Pane {
     required property EditorController editor
     required property Theme theme
     required property PropertyModel properties
+    required property EventModel events
     required property TagModel tags
 
     padding: panel.theme.padding
@@ -34,11 +35,36 @@ Pane {
             color: panel.theme.text
         }
 
+        // Properties, or the object's events, as in TIA Portal's inspector.
+        TabBar {
+            id: tabs
+
+            objectName: "propertiesTabs"
+            Layout.fillWidth: true
+            TabButton {
+                text: qsTr("Properties")
+                implicitHeight: panel.theme.controlHeight
+            }
+            TabButton {
+                text: qsTr("Events")
+                implicitHeight: panel.theme.controlHeight
+            }
+        }
+
+        EventsPanel {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: tabs.currentIndex === 1
+            theme: panel.theme
+            events: panel.events
+        }
+
         ListView {
             id: list
 
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: tabs.currentIndex === 0
             clip: true
             spacing: panel.theme.spacing / 2
             model: panel.properties

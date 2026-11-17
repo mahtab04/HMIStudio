@@ -13,6 +13,7 @@ ApplicationWindow {
     required property DocumentController document
     required property AppSettings settings
     required property PropertyModel properties
+    required property EventModel events
     required property LayerModel layers
     required property ScreenListModel screens
     required property TagModel tags
@@ -130,6 +131,7 @@ ApplicationWindow {
             editor: root.editor
             theme: root.theme
             properties: root.properties
+            events: root.events
             tags: root.tags
         }
     }

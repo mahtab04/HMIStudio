@@ -849,6 +849,19 @@ its screen reference, pending dialog and held command before replacing the
 play copy or stopping the engine. Button operations are ordinary descriptor
 properties and use existing property commands and JSON serialization.
 
+### Events and actions
+
+Every `HmiObject` has an `EventTable`: an `ActionList` for each of Click,
+Press and Release (`core/model/Events.h`). Actions are plain data (Set tag,
+Toggle tag, Increment tag, Open screen), saved by `ObjectJson` under
+`"events"`; unknown actions and event shapes are kept for newer versions.
+The editor edits them through `EventModel` (the Events tab) and
+`SetActionsCommand`. At runtime `RuntimeInputHandler` runs the lists in
+order through `TagEngine::writeChecked`; Release also runs when a press is
+cancelled. Open screen is a signal, queued to `SimulationController`, which
+replaces the play screen after the list has finished. `TagUsage` and
+`ChangeTagCommand` include tags named by actions.
+
 The explicitly saved `Project::simulationProfile()` chooses ordinary tag
 simulation or the buffer-filling training model. `FillingStationDriver` runs
 on the existing worker boundary, never opens a device connection and resets

@@ -50,14 +50,26 @@ The implemented distinction follows Siemens' [overview of operable elements](htt
 | Switch, Check box | Toggle a Boolean tag | Process > Tag |
 | Radio group, List box | Select an entry; Up/Down changes the selection | Process > Tag; Entries; tag stores the zero-based selected index |
 | Symbolic I/O field | Open the selector and choose an entry | Process > Tag; Entries; tag stores the zero-based selected index |
-| Button, Touch area | Set a value, toggle a Boolean, increment/decrement a number, or hold a Boolean true | Operation > Tag operation, Target tag, Value / step |
+| Button, Touch area | Run the actions of their Click, Press and Release events | Events tab: actions per event |
+| Any object | Objects with event actions can be clicked, pressed and released too | Events tab |
 | Gauge, Bar, Tank | Display a numerical tag | Process > Tag; display limits where available |
 | Pump, Motor, Conveyor, Valve, Pipe | Display running/open/flowing Boolean state | Process > Tag |
 | Sensor, Exchanger, Clock | Display their available bindable properties; no operator tag writes | Property link buttons where offered |
 | Rectangle, Ellipse, Circle, Line, Polyline, Polygon, Text box, Graphic view | Display tag-driven appearance/text through bindable properties; no operator tag writes | Property link buttons |
 | Alarm view, Trend view, f(x) trend, Recipe view, Diagnostics view, Screen window, Browser, Media player | Existing display placeholders; no new tag input behavior | Their full runtime services remain future work |
 
-For a Start button choose **Set value**, select a Boolean command tag, and enter `true`. For Stop use the same tag with `false`. For numeric steps choose **Increment**, with `5` or `-5`. **Momentary Boolean** writes true on press and false on release, including release outside the control, Escape, input cancellation, a second finger, focus loss and simulation stop/restart. It is a single hold operation, rather than a general event/action scripting system.
+### Events and actions
+
+Select an object and open the **Events** tab of the properties panel. Each object has three events, as in WinCC: **Click** (pressed and released on the object), **Press** and **Release**. Each event runs a list of actions, in order:
+
+| Action | Fields | What it does |
+|---|---|---|
+| Set tag | Tag, Value | Writes the value (`true`, `0`, `42.5` ...) |
+| Toggle tag | Tag | Inverts a Bool tag |
+| Increment tag | Tag, Step | Adds the step; a negative step decreases |
+| Open screen | Screen | Shows another screen of the project in the simulator; tags keep their values |
+
+For a Start button add **Set tag** on Click with the command tag and `true`; for Stop the same tag with `false`. For a hold-to-run button add **Set tag** `true` on **Press** and `false` on **Release**. Release actions also run when the press ends outside the object or is cancelled (Escape, a second finger, focus loss, simulation stop or restart), so a held command never sticks. A failing action is reported and the next ones still run. Open screen takes effect after the rest of the list has run.
 
 Mouse and touch use the same gesture path. Tab selects an operating element, Enter/Space activates it, arrows operate sliders and row selectors, and Escape cancels input. Numeric entry has an on-screen keypad. Touch area outlines and hidden objects are omitted in the runtime. Hidden objects cannot be operated.
 
@@ -65,7 +77,7 @@ A tag's **Minimum** and **Maximum** are its simulation and display range. They l
 
 Input accepts direct bindings and invertible linear scaling. Range maps, expression transforms and zero-span scales are display only and report an error on input. Invalid numbers, non-finite numbers, missing tags and out-of-range values are rejected with a visible explanation. The I/O field is currently numeric; String tags remain editable in the tag table. Slider movement writes continuously; cancelling ends movement without rolling back values already written. All native PLC adapters remain read only, so these interactions are available in **Simulation**, not **Monitor PLCs**.
 
-Operation targets participate in Where used, delete warnings, renaming and undo, including nested group references. Format 3 persists the optional operation properties and simulation profile. Version 2 controls migrate with operation None and ordinary tag simulation.
+Tags named by event actions take part in Where used ("Click event"), delete warnings, renaming and undo, including objects inside groups. Format 4 stores events under `"events": {"click": [...], "press": [...], "release": [...]}` in the screen files. Format 3 files are converted on load: a Set, Toggle or Increment operation becomes a Click action, and a Momentary operation becomes Set true on Press and Set false on Release.
 
 ## Buffer-filling training project
 

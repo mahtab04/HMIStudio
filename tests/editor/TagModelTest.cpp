@@ -15,6 +15,7 @@
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
+#include "editor/models/EventModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/TagConnections.h"
@@ -413,6 +414,55 @@ private Q_SLOTS:
         const QString chosen = m_dir.filePath(u"chosen.dll"_s);
         m_app->tags().connections()->setLibraryFile(QUrl::fromLocalFile(chosen));
         QVERIFY(m_app->settings().trustedLibraries().contains(QDir::cleanPath(chosen)));
+    }
+
+    void eventsTabEditsActions()
+    {
+        // The Start button: Click sets RunCommand.
+        auto* screen = project().screens()[0].get();
+        const auto start = std::ranges::find_if(screen->objects(), [](const auto& object)
+                                                { return object->name() == u"Start transfer"; });
+        QVERIFY(start != screen->objects().end());
+        HmiObject& button = **start;
+        EventModel& events = m_app->events();
+        QVERIFY(!events.available());
+        m_app->selection().selectOnly(button.id());
+        QVERIFY(events.available());
+        QCOMPARE(events.event(), 0); // Click
+        QCOMPARE(events.rowCount(), 1);
+        QCOMPARE(events.data(events.index(0), EventModel::TagRole).toString(), u"RunCommand"_s);
+        QCOMPARE(events.eventNames().front(), u"Click (1)"_s);
+        QVERIFY(events.screenNames().contains(u"01 Overview"_s));
+        QVERIFY(!events.screenNames().contains(u"02 Filling"_s)); // the screen being edited
+
+        // Each edit is one undo step.
+        QUndoStack& stack = m_app->undoStack();
+        const int index = stack.index();
+        events.addAction(int(Action::Kind::OpenScreen));
+        events.setScreen(1, u"01 Overview"_s);
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(2));
+        QCOMPARE(button.events().actions(EventKind::Click)[1].screen, u"01 Overview"_s);
+        QCOMPARE(events.data(events.index(1), EventModel::FieldsRole).toString(), u"screen"_s);
+        events.moveAction(1, -1);
+        QCOMPARE(int(button.events().actions(EventKind::Click)[0].kind),
+                 int(Action::Kind::OpenScreen));
+        events.setValue(1, u" false "_s);
+        QCOMPARE(button.events().actions(EventKind::Click)[1].value, u"false"_s);
+        events.removeAction(0);
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(1));
+        QCOMPARE(stack.index(), index + 5);
+        for (int i = 0; i < 5; ++i)
+            stack.undo();
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(1));
+        QCOMPARE(button.events().actions(EventKind::Click)[0].value, u"true"_s);
+        QCOMPARE(events.rowCount(), 1);
+
+        // Press has nothing; several objects selected: nothing to edit.
+        events.setEvent(1);
+        QCOMPARE(events.rowCount(), 0);
+        m_app->selection().set({button.id(), tank()->id()});
+        QVERIFY(!events.available());
+        QCOMPARE(events.rowCount(), 0);
     }
 
     void openScreenNavigates()

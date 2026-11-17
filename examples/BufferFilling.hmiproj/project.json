@@ -1,10 +1,11 @@
 {
     "connections": [
     ],
-    "formatVersion": 3,
+    "formatVersion": 4,
     "name": "Line 3 - Buffer Filling Station",
     "screens": [
-        "screens/01_02_filling.json"
+        "screens/01_02_filling.json",
+        "screens/02_01_overview.json"
     ],
     "simulationProfile": "filling-station",
     "style": {
