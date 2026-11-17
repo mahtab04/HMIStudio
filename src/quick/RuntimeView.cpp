@@ -3,8 +3,11 @@
 #include "core/model/Screen.h"
 #include "quick/ScreenItem.h"
 
+#include <QKeyEvent>
+#include <QMouseEvent>
 #include <QQuickWindow>
 #include <QSGSimpleRectNode>
+#include <QTouchEvent>
 
 #include <algorithm>
 
@@ -18,10 +21,39 @@ const QColor kSurround(0x10, 0x12, 0x15);
 
 RuntimeView::RuntimeView(QQuickItem* parent)
     : QQuickItem(parent)
+    , m_recognizer(m_settings, this)
     , m_screenItem(new ScreenItem(this))
 {
     setFlag(ItemHasContents);
+    m_screenItem->setEditing(false);
     setClip(true);
+    setAcceptedMouseButtons(Qt::LeftButton);
+    setAcceptTouchEvents(true);
+    setActiveFocusOnTab(true);
+    m_recognizer.setImmediateGestures(true);
+    const auto observeWindow = [this](QQuickWindow* target)
+    {
+        disconnect(m_activationConnection);
+        if (target)
+            m_activationConnection = connect(target, &QWindow::activeChanged, this,
+                                             [this, target]
+                                             {
+                                                 if (!target->isActive())
+                                                 {
+                                                     m_recognizer.cancel();
+                                                     Q_EMIT inputCancelled();
+                                                 }
+                                             });
+    };
+    connect(this, &QQuickItem::windowChanged, this, observeWindow);
+    observeWindow(window());
+    connect(&m_recognizer, &GestureRecognizer::gesture, this,
+            [this](PointerGesture g)
+            {
+                g.scenePos = m_screenItem->mapFromItem(this, g.viewPos);
+                g.startScenePos = m_screenItem->mapFromItem(this, g.startViewPos);
+                Q_EMIT gesture(g);
+            });
     connect(m_screenItem, &ScreenItem::contentChanged, this,
             [this]
             {
@@ -34,10 +66,63 @@ RuntimeView::~RuntimeView() = default;
 
 void RuntimeView::setScreen(const Screen* screen, DocumentNotifier* notifier)
 {
+    m_recognizer.cancel();
+    Q_EMIT inputCancelled();
     m_screen = screen;
     m_screenItem->setScreen(screen, notifier);
     layout();
     update();
+}
+
+void RuntimeView::mousePressEvent(QMouseEvent* event)
+{
+    forceActiveFocus();
+    event->setAccepted(m_recognizer.mousePress(*event));
+}
+void RuntimeView::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    mousePressEvent(event);
+}
+void RuntimeView::mouseMoveEvent(QMouseEvent* event)
+{
+    event->setAccepted(m_recognizer.mouseMove(*event));
+}
+void RuntimeView::mouseReleaseEvent(QMouseEvent* event)
+{
+    event->setAccepted(m_recognizer.mouseRelease(*event));
+}
+void RuntimeView::mouseUngrabEvent()
+{
+    m_recognizer.cancel();
+    Q_EMIT inputCancelled();
+}
+void RuntimeView::touchEvent(QTouchEvent* event)
+{
+    if (event->type() == QEvent::TouchBegin)
+        forceActiveFocus();
+    event->setAccepted(m_recognizer.touch(*event));
+}
+void RuntimeView::touchUngrabEvent()
+{
+    mouseUngrabEvent();
+}
+void RuntimeView::keyPressEvent(QKeyEvent* event)
+{
+    if (!event->isAutoRepeat())
+        Q_EMIT keyInput(event->key(), event->modifiers(), false);
+    event->accept();
+}
+void RuntimeView::keyReleaseEvent(QKeyEvent* event)
+{
+    if (!event->isAutoRepeat())
+        Q_EMIT keyInput(event->key(), event->modifiers(), true);
+    event->accept();
+}
+void RuntimeView::focusOutEvent(QFocusEvent* event)
+{
+    m_recognizer.cancel();
+    Q_EMIT inputCancelled();
+    QQuickItem::focusOutEvent(event);
 }
 
 void RuntimeView::setGraphics(const IGraphicProvider* graphics)

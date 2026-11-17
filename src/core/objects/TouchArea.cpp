@@ -25,9 +25,8 @@ TouchArea::TouchArea(ObjectId id)
 std::span<const PropertyDescriptor> TouchArea::staticDescriptors()
 {
     using namespace PropertyCategory;
-    static const std::vector<PropertyDescriptor> table = withCommonDescriptors({120.0, 80.0}, {
-
-                                                                                              });
+    static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
+        {120.0, 80.0}, {Describe::tagAction(), Describe::actionTag(), Describe::actionValue()});
     return table;
 }
 
@@ -50,6 +49,11 @@ void TouchArea::paint(QPainter& painter, const PaintContext& context) const
     painter.setPen(pen);
     painter.drawRect(bounds.adjusted(0.5, 0.5, -0.5, -0.5));
     painter.restore();
+}
+
+RuntimeBehavior TouchArea::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Action, {}};
 }
 
 void TouchArea::accept(ObjectVisitor& visitor)

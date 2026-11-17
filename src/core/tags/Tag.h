@@ -24,9 +24,9 @@ namespace TagValues
 [[nodiscard]] QVariant toVariant(const TagValue& value);
 } // namespace TagValues
 
-// A process variable an HMI screen shows or sets (ARCHITECTURE.md section
-// 5.3). Without a PLC connection (until phase 8) tags are simulated: the
-// simulation mode says how the value moves between minimum and maximum.
+// A named HMI value. An empty connection means internal storage, otherwise
+// connection is a stable Connection::id and address identifies the PLC value.
+// Simulation settings are independent of the configured process source.
 struct Tag
 {
     enum class Type
@@ -55,9 +55,15 @@ struct Tag
     Simulation simulation = Simulation::None;
     double period = 10.0; // seconds
     TagValue initial;
-    // Where the value comes from (phase 8: a PLC connection and address).
+    // Process source, independent of simulation settings.
     QString connection;
     QString address;
+    QString table = QStringLiteral("Default");
+    int acquisitionMs = 500;
+    // When set, operator input outside minimum..maximum is refused, as with
+    // the optional limits of a WinCC tag. Otherwise minimum and maximum are
+    // only the simulation and display range.
+    bool limitInput = false;
     // Keys this version does not know, written back unchanged.
     QJsonObject preserved;
 

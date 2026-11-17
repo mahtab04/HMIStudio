@@ -77,6 +77,11 @@ void Switch::paint(QPainter& painter, const PaintContext& context) const
                            value<QString>(on ? Prop::OnText : Prop::OffText));
 }
 
+RuntimeBehavior Switch::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Toggle, Prop::Checked};
+}
+
 void Switch::accept(ObjectVisitor& visitor)
 {
     visitor.visit(*this);

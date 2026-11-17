@@ -30,6 +30,9 @@ std::span<const PropertyDescriptor> Button::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {120.0, 40.0},
         {
+            Describe::tagAction(),
+            Describe::actionTag(),
+            Describe::actionValue(),
             Describe::text(QStringLiteral("Button")),
             Describe::fillColor(QColor(0xC9, 0xCE, 0xD6)),
             Describe::styled(Describe::lineColor(QColor(0x7C, 0x85, 0x90)), StyleRole::Line),
@@ -56,6 +59,11 @@ void Button::paint(QPainter& painter, const PaintContext& context) const
     const double k = PaintHelpers::contentScale(*this);
     PaintHelpers::drawText(painter, *this, bounds.adjusted(4 * k, 0, -4 * k, 0),
                            Qt::AlignCenter | Qt::TextWordWrap, value<QString>(Prop::Text), k);
+}
+
+RuntimeBehavior Button::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Action, {}};
 }
 
 void Button::accept(ObjectVisitor& visitor)

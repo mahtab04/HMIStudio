@@ -7,8 +7,7 @@
 namespace hmi
 {
 
-// A small filling-station project to edit until projects can be opened
-// (phase 4). Built from the basic shapes only.
+// Operable buffer-filling training project with an explicitly saved process simulator.
 [[nodiscard]] std::unique_ptr<Project> makeSampleProject();
 
 } // namespace hmi

@@ -23,6 +23,8 @@ qt_add_qml_module(hmi_editor_lib
         app/EditorController.h
         app/SampleProject.cpp
         app/SampleProject.h
+        app/FillingStationDriver.cpp
+        app/FillingStationDriver.h
         app/SimulationController.cpp
         app/SimulationController.h
         app/Theme.cpp
@@ -57,6 +59,8 @@ qt_add_qml_module(hmi_editor_lib
         models/ScreenListModel.h
         models/SelectionModel.cpp
         models/SelectionModel.h
+        models/TagConnections.cpp
+        models/TagConnections.h
         models/TagModel.cpp
         models/TagModel.h
         models/ToolboxDragController.cpp
@@ -82,6 +86,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/DocumentDialogs.qml
         qml/Main.qml
         qml/SimulatorWindow.qml
+        qml/RuntimeValueDialog.qml
         qml/controls/IconButton.qml
         qml/panels/BottomPanel.qml
         qml/panels/CanvasContextMenu.qml
@@ -103,6 +108,8 @@ qt_add_qml_module(hmi_editor_lib
         qml/panels/properties/TextEditor.qml
         qml/panels/SelectionToolbar.qml
         qml/panels/TagsPanel.qml
+        qml/panels/NewTagDialog.qml
+        qml/panels/ConnectionsDialog.qml
         qml/panels/StatusBar.qml
         qml/panels/ToolboxPanel.qml
         qml/panels/ToolboxTile.qml

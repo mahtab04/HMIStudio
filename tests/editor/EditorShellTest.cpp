@@ -1,7 +1,9 @@
 // Loads the real QML shell offscreen. Set HMI_SCREENSHOT=<file.png> to save
 // an image of the window for a visual check.
 
+#include "comm/TagEngine.h"
 #include "core/model/Project.h"
+#include "core/property/Prop.h"
 #include "editor/app/AppContext.h"
 #include "editor/app/AppSettings.h"
 #include "editor/app/DocumentController.h"
@@ -120,7 +122,11 @@ private Q_SLOTS:
         auto* toolbar = window->findChild<QQuickItem*>(QStringLiteral("selectionToolbar"));
         QVERIFY(sizeLabel && toolbar);
         QVERIFY(!sizeLabel->isVisible());
-        const HmiObject& object = *screen.objects()[2];
+        const auto rectangle = std::ranges::find_if(
+            screen.objects(), [](const auto& item)
+            { return item->typeId() == ObjectTypeId{"rectangle"} && item->geometry().y() > 100; });
+        QVERIFY(rectangle != screen.objects().end());
+        const HmiObject& object = **rectangle;
         context.selection().selectOnly(object.id());
         QTRY_VERIFY(sizeLabel->isVisible());
         QCOMPARE(sizeLabel->property("text").toString(),
@@ -145,6 +151,8 @@ private Q_SLOTS:
         QVERIFY(menu);
         Q_EMIT context.editor().contextMenuRequested(QPointF(100, 100));
         QTRY_VERIFY(menu->property("opened").toBool());
+        QMetaObject::invokeMethod(menu, "close");
+        QTRY_VERIFY(!menu->property("visible").toBool());
 
         // The binding dialog lists the tags as they are when it opens.
         {
@@ -165,15 +173,15 @@ private Q_SLOTS:
             QVERIFY(popup && list);
             context.properties().requestBinding(row);
             QTRY_VERIFY(popup->property("opened").toBool());
-            QTRY_COMPARE(list->property("count").toInt(), 5);
+            QTRY_COMPARE(list->property("count").toInt(), 10);
             QMetaObject::invokeMethod(popup, "close");
             QTRY_VERIFY(!popup->property("visible").toBool());
 
-            context.tags().removeTag(0);
+            context.tags().removeTag(5);
             context.tags().addTag();
             context.properties().requestBinding(row);
             QTRY_VERIFY(popup->property("opened").toBool());
-            QTRY_COMPARE(list->property("count").toInt(), 5);
+            QTRY_COMPARE(list->property("count").toInt(), 10);
             const QVariant names = list->property("model");
             QVERIFY(names.toStringList().contains(QStringLiteral("Tag_1")));
             QVERIFY(!names.toStringList().contains(QStringLiteral("Level")));
@@ -202,25 +210,75 @@ private Q_SLOTS:
             return item;
         };
         QQuickItem* nameCell = nullptr;
-        QTRY_VERIFY((nameCell = cellItem(4, TagModel::NameColumn)) != nullptr);
+        table->setProperty("contentY", 9 * (context.theme().controlHeight() + 1));
+        QTRY_VERIFY((nameCell = cellItem(9, TagModel::NameColumn)) != nullptr);
+        if (const QString path = qEnvironmentVariable("HMI_TAGS_SCREENSHOT"); !path.isEmpty())
+        {
+            QTest::qWait(200);
+            QVERIFY(window->grabWindow().save(path));
+        }
         QTest::mouseClick(window, Qt::LeftButton, {},
                           nameCell->mapToScene(QPointF(10, nameCell->height() / 2)).toPoint());
         QTRY_VERIFY(deleteButton->isEnabled());
         // Every row's type is a drop-down.
-        QQuickItem* typeCell = cellItem(4, TagModel::TypeColumn);
+        QQuickItem* typeCell = cellItem(9, TagModel::TypeColumn);
         QVERIFY(typeCell);
-        QVERIFY(std::ranges::any_of(typeCell->childItems(), [](QQuickItem* child)
-                                    { return child->inherits("QQuickComboBox") && child->isVisible(); }));
+        QVERIFY(std::ranges::any_of(
+            typeCell->childItems(), [](QQuickItem* child)
+            { return child->inherits("QQuickComboBox") && child->isVisible(); }));
         // Temperature is bound on the screen: Delete asks first.
         QMetaObject::invokeMethod(deleteButton, "click");
         auto* deleteDialog = window->findChild<QObject*>(QStringLiteral("deleteTagDialog"));
         QVERIFY(deleteDialog);
         QTRY_VERIFY(deleteDialog->property("opened").toBool());
         QMetaObject::invokeMethod(deleteDialog, "accept");
-        QTRY_COMPARE(context.tags().rowCount(), 4);
+        QTRY_COMPARE(context.tags().rowCount(), 9);
         QVERIFY(!context.project().tags().find(QStringLiteral("Temperature")));
         context.undoStack().undo();
-        QCOMPARE(context.tags().rowCount(), 5);
+        QCOMPARE(context.tags().rowCount(), 10);
+
+        // Connection setup and tag creation work through their QML dialogs.
+        auto* connectionsButton = window->findChild<QObject*>(QStringLiteral("connectionsButton"));
+        auto* connectionsDialog = window->findChild<QObject*>(QStringLiteral("connectionsDialog"));
+        QVERIFY(connectionsButton && connectionsDialog);
+        QMetaObject::invokeMethod(connectionsButton, "click");
+        QTRY_VERIFY(connectionsDialog->property("opened").toBool());
+        auto* connections = context.tags().connections();
+        connections->setDraftField(QStringLiteral("name"), QStringLiteral("LinePLC"));
+        connections->setDraftField(QStringLiteral("host"), QStringLiteral("fixture.invalid"));
+        if (const QString path = qEnvironmentVariable("HMI_CONNECTIONS_SCREENSHOT");
+            !path.isEmpty())
+        {
+            QTest::qWait(200);
+            QVERIFY(window->grabWindow().save(path));
+        }
+        auto* saveConnection = window->findChild<QObject*>(QStringLiteral("saveConnectionButton"));
+        QVERIFY(saveConnection);
+        QMetaObject::invokeMethod(saveConnection, "click");
+        QTRY_VERIFY(!connectionsDialog->property("opened").toBool());
+        QCOMPARE(context.project().connections().size(), std::size_t(1));
+
+        auto* newTagDialog = window->findChild<QObject*>(QStringLiteral("newTagDialog"));
+        auto* newTagName = window->findChild<QObject*>(QStringLiteral("newTagName"));
+        auto* createTag = window->findChild<QObject*>(QStringLiteral("createTagButton"));
+        QVERIFY(newTagDialog && newTagName && createTag);
+        QMetaObject::invokeMethod(newTagDialog, "open");
+        QTRY_VERIFY(newTagDialog->property("opened").toBool());
+        newTagName->setProperty("text", QStringLiteral("OperatorSetpoint"));
+        if (const QString path = qEnvironmentVariable("HMI_NEW_TAG_SCREENSHOT"); !path.isEmpty())
+        {
+            QTest::qWait(200);
+            QVERIFY(window->grabWindow().save(path));
+        }
+        QMetaObject::invokeMethod(createTag, "click");
+        QTRY_VERIFY(!newTagDialog->property("opened").toBool());
+        QCOMPARE(context.tags().rowCount(), 11);
+        QVERIFY(context.project().tags().find(QStringLiteral("OperatorSetpoint")));
+        context.undoStack().undo();
+        context.undoStack().undo();
+        QCOMPARE(context.tags().rowCount(), 10);
+        QVERIFY(context.project().connections().empty());
+
         if (const QString path = qEnvironmentVariable("HMI_TAGS_SCREENSHOT"); !path.isEmpty())
         {
             context.theme().setDensity(Theme::Density::Compact);
@@ -246,11 +304,56 @@ private Q_SLOTS:
         QCOMPARE(view->screenItem()->objectItemCount(), int(screen.objectCount()));
         QCOMPARE(canvas->screenItem()->screen(), &screen);
         QVERIFY(simulator->title().startsWith(screen.name()));
+        const int undoBeforeOperation = context.undoStack().index();
+        const auto operate = [&](const QString& name)
+        {
+            const auto target = std::ranges::find_if(play->objects(), [&](const auto& item)
+                                                     { return item->name() == name; });
+            if (target == play->objects().end())
+                return false;
+            QTest::mouseClick(
+                simulator, Qt::LeftButton, {},
+                view->screenItem()->mapToScene((*target)->sceneBoundingRect().center()).toPoint());
+            return true;
+        };
+        QVERIFY(operate(QStringLiteral("Start transfer")));
+        QTRY_COMPARE(context.tagEngine().value(QStringLiteral("RunCommand")), TagValue(true));
+        QTRY_COMPARE(context.tagEngine().value(QStringLiteral("PumpRunning")), TagValue(true));
+        QVERIFY(operate(QStringLiteral("Flow setpoint")));
+        QTRY_VERIFY(context.simulation().input()->isOpen());
+        auto* valueEntry = simulator->findChild<QQuickItem*>(QStringLiteral("runtimeValueEntry"));
+        QVERIFY(valueEntry);
+        QTRY_VERIFY(valueEntry->hasActiveFocus());
+        QTest::keyClick(simulator, Qt::Key_A, Qt::ControlModifier);
+        QTest::keyClick(simulator, Qt::Key_3);
+        QTest::keyClick(simulator, Qt::Key_2);
+        QCOMPARE(context.simulation().input()->text(), QStringLiteral("32"));
+        if (const QString path = qEnvironmentVariable("HMI_RUNTIME_INPUT_SCREENSHOT");
+            !path.isEmpty())
+        {
+            QTest::qWait(150);
+            QVERIFY(simulator->grabWindow().save(path));
+        }
+        auto* applyValue = simulator->findChild<QObject*>(QStringLiteral("runtimeApply"));
+        QVERIFY(applyValue);
+        QMetaObject::invokeMethod(applyValue, "click");
+        QTRY_VERIFY(!context.simulation().input()->isOpen());
+        QCOMPARE(context.tagEngine().value(QStringLiteral("FlowSetpoint")), TagValue(32.0));
+        for (const auto& item : play->objects())
+        {
+            const auto* binding = item->binding(Prop::Value);
+            if (binding && binding->tag == QStringLiteral("FlowSetpoint"))
+                QTRY_COMPARE(item->value<double>(Prop::Value), 32.0);
+        }
+        QCOMPARE(context.undoStack().index(), undoBeforeOperation);
         if (const QString path = qEnvironmentVariable("HMI_SIMULATE_SCREENSHOT"); !path.isEmpty())
         {
             QTest::qWait(1500);
             QVERIFY(simulator->grabWindow().save(path));
         }
+        QVERIFY(operate(QStringLiteral("Stop transfer")));
+        QTRY_COMPARE(context.tagEngine().value(QStringLiteral("RunCommand")), TagValue(false));
+        QTRY_COMPARE(context.tagEngine().value(QStringLiteral("PumpRunning")), TagValue(false));
         // Closing the window stops the simulation.
         simulator->close();
         QTRY_VERIFY(!context.simulation().isRunning());

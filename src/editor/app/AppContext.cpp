@@ -12,6 +12,7 @@
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagConnections.h"
 #include "editor/models/TagModel.h"
 #include "editor/models/ToolboxDragController.h"
 #include "editor/models/ToolboxModel.h"
@@ -54,6 +55,10 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
     m_tags = std::make_unique<TagModel>(*m_toolContext, *m_tagEngine);
     m_simulation = std::make_unique<SimulationController>(*m_toolContext, *m_tagEngine);
+    // Native PLC libraries load only from paths chosen on this computer.
+    m_simulation->setTrustedLibraries([this] { return m_settings->trustedLibraries(); });
+    QObject::connect(m_tags->connections(), &TagConnections::libraryChosen, m_settings.get(),
+                     [this](const QString& path) { m_settings->trustLibrary(path); });
 
     // Models follow the screen the editor shows.
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_properties.get(),

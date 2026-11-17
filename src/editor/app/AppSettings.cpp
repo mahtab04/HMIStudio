@@ -129,6 +129,21 @@ void AppSettings::removeRecentProject(const QString& folder)
     Q_EMIT recentProjectsChanged();
 }
 
+QStringList AppSettings::trustedLibraries() const
+{
+    return m_settings->value(QStringLiteral("plc/trustedLibraries")).toStringList();
+}
+
+void AppSettings::trustLibrary(const QString& path)
+{
+    const QString clean = QDir::cleanPath(path);
+    QStringList trusted = trustedLibraries();
+    if (clean.isEmpty() || trusted.contains(clean))
+        return;
+    trusted.append(clean);
+    m_settings->setValue(QStringLiteral("plc/trustedLibraries"), trusted);
+}
+
 int AppSettings::autosaveSeconds() const
 {
     return m_settings->value(kAutosave, kDefaultAutosaveSeconds).toInt();

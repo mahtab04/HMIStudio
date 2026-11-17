@@ -1,11 +1,13 @@
 # hmi_comm: tag values at runtime. IDriver and its implementations (the
-# simulator now, PLC drivers from phase 8), the TagEngine that runs them on a
+# simulator and optional native PLC adapters), the TagEngine that runs them on a
 # worker thread, and the BindingEvaluator that drives a screen from tag
 # values. Depends on hmi_core only (ARCHITECTURE.md section 8).
 add_library(hmi_comm STATIC
     BindingEvaluator.cpp
     BindingEvaluator.h
     IDriver.h
+    PlcDriver.cpp
+    PlcDriver.h
     SimulatorDriver.cpp
     SimulatorDriver.h
     TagEngine.cpp

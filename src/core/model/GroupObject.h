@@ -47,7 +47,7 @@ public:
     Result<void> setChildren(std::vector<std::unique_ptr<HmiObject>> children) override;
 
     // Maps child coordinates to the group's local coordinates.
-    [[nodiscard]] QTransform childTransform() const;
+    [[nodiscard]] QTransform childTransform() const override;
 
     // Copies of the children in screen coordinates, with the group's
     // position, scale and rotation applied, for ungrouping. Ids are kept.

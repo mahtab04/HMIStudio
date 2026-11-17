@@ -42,15 +42,25 @@ public:
     TagEngine& operator=(TagEngine&&) = delete;
 
     // Starts serving `tags` from `driver` (the simulator when null). Every
-    // tag starts at its start value, announced at once.
+    // writable source starts at its start value. Read-only external tags
+    // wait for a successful acquisition.
     void start(std::span<const Tag> tags, std::unique_ptr<IDriver> driver = {});
     void stop();
+    [[nodiscard]] bool isReadOnly() const noexcept { return m_readOnly; }
+    [[nodiscard]] bool isSimulating() const noexcept { return m_simulating; }
+    [[nodiscard]] QString quality(const QString& tag) const;
+    [[nodiscard]] QString problem(const QString& tag) const;
     [[nodiscard]] bool isRunning() const noexcept { return m_running; }
 
     // The current value; empty for unknown tags or while stopped.
     [[nodiscard]] TagValue value(const QString& tag) const;
-    // Sets a tag through its driver; the new value is shown at once.
+    // Sets a tag through a writable driver; the new value is shown at once.
     void write(const QString& tag, const TagValue& value);
+    // Operator input: rejects invalid types and non-finite values, and values
+    // outside minimum..maximum for tags with limitInput, with a reason for
+    // the runtime UI.
+    [[nodiscard]] Result<void> writeChecked(const QString& tag, const TagValue& value);
+    [[nodiscard]] const Tag* definition(const QString& tag) const;
 
 Q_SIGNALS:
     // Names of the tags whose value changed since the last announcement.
@@ -58,7 +68,8 @@ Q_SIGNALS:
     void runningChanged();
 
 private:
-    void receive(const QHash<QString, TagValue>& values);
+    void receive(quint64 generation, const QHash<QString, TagValue>& values,
+                 const QHash<QString, QString>& errors);
     void publish();
 
     QThread m_thread;
@@ -68,6 +79,11 @@ private:
     QHash<QString, Tag> m_tags;        // by lower-case name, for conversions
     QSet<QString> m_dirty;
     QTimer m_publishTimer;
+    QHash<QString, QString> m_errors;
+    QSet<QString> m_received;
+    quint64 m_generation = 0;
+    bool m_readOnly = false;
+    bool m_simulating = true;
     bool m_running = false;
 };
 

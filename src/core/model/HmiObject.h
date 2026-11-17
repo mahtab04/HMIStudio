@@ -3,6 +3,7 @@
 #include "core/Result.h"
 #include "core/model/Ids.h"
 #include "core/model/PaintContext.h"
+#include "core/model/RuntimeBehavior.h"
 #include "core/property/PropertyDescriptor.h"
 #include "core/property/PropertyValue.h"
 #include "core/tags/Binding.h"
@@ -76,6 +77,14 @@ public:
     // Area that counts as "on the object", in local coordinates. Defaults to
     // the bounding rectangle; non-rectangular types override it.
     [[nodiscard]] virtual QPainterPath hitShape() const;
+
+    [[nodiscard]] virtual RuntimeBehavior runtimeBehavior() const { return {}; }
+    // Value chosen at a local point (slider track or a selector row).
+    [[nodiscard]] virtual std::optional<PropertyValue> runtimeValueAt(QPointF) const
+    {
+        return std::nullopt;
+    }
+    [[nodiscard]] virtual QTransform childTransform() const { return {}; }
 
     virtual void accept(ObjectVisitor& visitor) = 0;
 

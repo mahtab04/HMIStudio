@@ -19,6 +19,7 @@ public:
     [[nodiscard]] std::unique_ptr<HmiObject> clone() const override;
     void paint(QPainter& painter, const PaintContext& context) const override;
     void accept(ObjectVisitor& visitor) override;
+    [[nodiscard]] RuntimeBehavior runtimeBehavior() const override;
 
 private:
     CheckBox(const CheckBox&) = default;

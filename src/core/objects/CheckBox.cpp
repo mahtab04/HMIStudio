@@ -77,6 +77,11 @@ void CheckBox::paint(QPainter& painter, const PaintContext& context) const
                            Qt::AlignLeft | Qt::AlignVCenter, value<QString>(Prop::Text));
 }
 
+RuntimeBehavior CheckBox::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Toggle, Prop::Checked};
+}
+
 void CheckBox::accept(ObjectVisitor& visitor)
 {
     visitor.visit(*this);

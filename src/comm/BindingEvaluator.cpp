@@ -4,6 +4,8 @@
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 
+#include <functional>
+
 namespace hmi
 {
 
@@ -37,14 +39,18 @@ void BindingEvaluator::show(const Screen& screen)
     Q_ASSERT(inserted);
     m_play = std::move(play);
     QStringList tags;
-    for (const auto& object : (*inserted)->objects())
+    const std::function<void(HmiObject&, ObjectId)> collect = [&](HmiObject& object, ObjectId root)
     {
-        for (const Binding& binding : object->bindings())
+        for (const Binding& binding : object.bindings())
         {
-            m_byTag[binding.tag.toLower()].push_back({object->id(), binding});
+            m_byTag[binding.tag.toLower()].push_back({&object, root, binding});
             tags << binding.tag;
         }
-    }
+        for (const auto& child : object.children())
+            collect(*child, root);
+    };
+    for (const auto& object : (*inserted)->objects())
+        collect(*object, object->id());
     m_problems.clear();
     apply(tags);
     Q_EMIT problemsChanged();
@@ -71,7 +77,7 @@ void BindingEvaluator::apply(const QStringList& tags)
             continue; // unknown tag: the property keeps its designed value
         for (const Target& target : *it)
         {
-            HmiObject* object = screen->object(target.object);
+            HmiObject* object = target.object;
             const PropertyDescriptor* d =
                 object ? findDescriptor(object->descriptors(), target.binding.property) : nullptr;
             if (!d)
@@ -79,11 +85,13 @@ void BindingEvaluator::apply(const QStringList& tags)
             auto result = target.binding.transform->apply(value, *d);
             if (result)
                 result = object->setProperty(d->id, *result).map([&] { return *result; });
+            if (result && object->id() != target.root)
+                Q_EMIT m_play->notifier().propertyChanged(target.root, d->id);
             if (!result)
             {
                 const QString problem =
                     QStringLiteral("%1.%2: %3")
-                        .arg(object->name().isEmpty() ? target.object.toString() : object->name(),
+                        .arg(object->name().isEmpty() ? object->id().toString() : object->name(),
                              QLatin1StringView(d->key), result.error().message);
                 if (!m_problems.contains(problem))
                 {

@@ -123,6 +123,8 @@ bool GestureRecognizer::touch(const QTouchEvent& event)
         if (down.size() >= 2)
         {
             m_longPressTimer.stop();
+            if (m_immediateGestures)
+                emitGesture(PointerGesture::Kind::Cancel, m_last);
             if (m_state == State::Dragging)
                 emitGesture(PointerGesture::Kind::DragCancel, m_last);
             beginPinch(down[0], down[1]);
@@ -175,6 +177,8 @@ bool GestureRecognizer::wheel(const QWheelEvent& event)
 void GestureRecognizer::cancel()
 {
     m_longPressTimer.stop();
+    if (m_immediateGestures && m_state != State::Idle)
+        emitGesture(PointerGesture::Kind::Cancel, m_last);
     switch (m_state)
     {
     case State::Dragging:
@@ -219,6 +223,8 @@ void GestureRecognizer::press(QPointF pos, PointerDevice device, Qt::MouseButton
     }
 
     m_state = State::Pressed;
+    if (m_immediateGestures && button == Qt::LeftButton)
+        emitGesture(PointerGesture::Kind::Press, pos);
     if (device != PointerDevice::Mouse && button == Qt::LeftButton)
         m_longPressTimer.start(m_settings.longPressMs);
 }
@@ -258,6 +264,9 @@ void GestureRecognizer::release(QPointF pos, Qt::KeyboardModifiers modifiers)
 {
     m_longPressTimer.stop();
     m_modifiers = modifiers;
+    if (m_immediateGestures && m_button == Qt::LeftButton &&
+        (m_state == State::Pressed || m_state == State::LongPressed || m_state == State::Dragging))
+        emitGesture(PointerGesture::Kind::Release, pos);
     switch (m_state)
     {
     case State::Pressed:

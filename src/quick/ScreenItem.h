@@ -42,6 +42,7 @@ public:
     // deep zoom does not hold full-resolution textures for the whole screen.
     void setRenderScale(double scale, const QRectF& sharpArea);
     void setGraphics(const IGraphicProvider* graphics);
+    void setEditing(bool editing);
 
     void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
     void clearPreview();
@@ -63,6 +64,7 @@ private:
     DocumentNotifier* m_notifier = nullptr;
     QHash<ObjectId, ObjectItem*> m_items;
     QList<ObjectId> m_previewed;
+    bool m_editing = true;
     double m_renderScale = 1.0;
     QRectF m_sharpArea;
     const IGraphicProvider* m_graphics = nullptr;

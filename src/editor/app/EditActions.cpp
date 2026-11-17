@@ -129,8 +129,12 @@ void EditActions::selectAll()
         return;
     std::vector<ObjectId> ids;
     ids.reserve(screen->objectCount());
+    // Hidden objects are left out, so they cannot be moved by accident.
     for (const auto& object : screen->objects())
-        ids.push_back(object->id());
+    {
+        if (object->isVisible())
+            ids.push_back(object->id());
+    }
     m_context.selection().set(std::move(ids));
 }
 

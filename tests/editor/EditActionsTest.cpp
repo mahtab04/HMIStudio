@@ -135,6 +135,11 @@ private Q_SLOTS:
     {
         m_actions->selectAll();
         QCOMPARE(m_selection.size(), std::size_t(4));
+        // Hidden objects are left out.
+        QVERIFY(m_screen->object(m_c)->setProperty(Prop::Visible, false));
+        m_actions->selectAll();
+        QCOMPARE(m_selection.size(), std::size_t(3));
+        QVERIFY(!m_selection.contains(m_c));
     }
 
     void deleteSelection()

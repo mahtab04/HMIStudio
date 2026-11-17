@@ -24,6 +24,7 @@ Q_SIGNALS:
 
     // The project style (HmiStyle) changed.
     void styleChanged();
+    void connectionsChanged();
 
     void screenAdded(hmi::ScreenId screen, int index);
     void screenRemoved(hmi::ScreenId screen);

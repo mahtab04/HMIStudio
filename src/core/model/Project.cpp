@@ -1,5 +1,7 @@
 #include "core/model/Project.h"
 
+#include <QSet>
+
 #include <algorithm>
 
 namespace hmi
@@ -28,13 +30,23 @@ void Project::setStyle(const HmiStyle& style)
     Q_EMIT m_notifier->styleChanged();
 }
 
+Result<void> Project::setSimulationProfile(QString profile)
+{
+    if (!profile.isEmpty() && profile != u"filling-station")
+        return makeError(ErrorCode::InvalidArgument, QStringLiteral("Unknown simulation profile"));
+    m_simulationProfile = std::move(profile);
+    return {};
+}
+
 void Project::replaceContents(Project&& other)
 {
     std::vector<std::unique_ptr<Screen>> old = std::move(m_screens);
     for (const auto& screen : old)
         screen->setNotifier(nullptr);
 
+    m_connections = std::move(other.m_connections);
     m_name = std::move(other.m_name);
+    m_simulationProfile = std::move(other.m_simulationProfile);
     m_preserved = std::move(other.m_preserved);
     m_style = other.m_style;
     m_assets->takeFrom(*other.m_assets);
@@ -45,6 +57,32 @@ void Project::replaceContents(Project&& other)
         screen->setNotifier(m_notifier.get());
     Q_EMIT m_notifier->projectReset();
     // `old` is destroyed here, after every view has let go of it.
+}
+
+const Connection* Project::connection(const QString& id) const
+{
+    const auto found = std::ranges::find(m_connections, id, &Connection::id);
+    return found == m_connections.end() ? nullptr : &*found;
+}
+
+Result<void> Project::setConnections(std::vector<Connection> connections)
+{
+    QSet<QString> ids;
+    QSet<QString> names;
+    for (const Connection& connection : connections)
+    {
+        if (auto checked = connection.validate(); !checked)
+            return checked;
+        if (ids.contains(connection.id) || names.contains(connection.name.toCaseFolded()))
+            return makeError(ErrorCode::Duplicate, QStringLiteral("Duplicate PLC connection"));
+        ids.insert(connection.id);
+        names.insert(connection.name.toCaseFolded());
+    }
+    if (connections == m_connections)
+        return {};
+    m_connections = std::move(connections);
+    Q_EMIT m_notifier->connectionsChanged();
+    return {};
 }
 
 Screen* Project::screen(ScreenId id) const noexcept

@@ -72,8 +72,18 @@ struct Migration
 // the same as version 1; only formatVersion was missing.
 void migrateV0ToV1(QJsonObject& /*file*/) {}
 
+// Version 2 adds optional connection definitions and tag organization.
+// Legacy tags keep their existing simulator settings and default table.
+void migrateV1ToV2(QJsonObject& /*file*/) {}
+
+// Version 3 adds optional button operations and a saved demo simulation
+// profile. Missing operations default to None; old projects keep tag simulation.
+void migrateV2ToV3(QJsonObject& /*file*/) {}
+
 constexpr Migration kMigrations[] = {
     {0, &migrateV0ToV1},
+    {1, &migrateV1ToV2},
+    {2, &migrateV2ToV3},
 };
 static_assert(std::size(kMigrations) == kCurrentFormatVersion,
               "every version needs a migration from the one before");
@@ -196,6 +206,8 @@ QByteArray toBytes(const QJsonObject& json)
 Result<QJsonObject> migrate(QJsonObject file, const QString& name)
 {
     int version = file.value(kFormatVersion).toInt(0);
+    if (version < 0)
+        return makeError(ErrorCode::BadFormat, QStringLiteral("Negative file format version"));
     if (version > kCurrentFormatVersion)
     {
         return makeError(ErrorCode::TooNew,
@@ -239,6 +251,11 @@ std::vector<File> toFiles(const Project& project)
     projectJson.insert(kName, project.name());
     projectJson.insert(kScreens, screenList);
     projectJson.insert(kStyle, project.style().toJson());
+    projectJson.insert(QStringLiteral("simulationProfile"), project.simulationProfile());
+    QJsonArray connections;
+    for (const Connection& connection : project.connections())
+        connections.append(connection.toJson());
+    projectJson.insert(QStringLiteral("connections"), connections);
     QJsonArray assetList;
     for (const QString& id : usedAssets(project))
     {
@@ -279,6 +296,25 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
 
     auto project = std::make_unique<Project>(projectJson->value(kName).toString());
     project->setStyle(HmiStyle::fromJson(projectJson->value(kStyle).toObject()));
+    const auto profile = projectJson->value(QStringLiteral("simulationProfile"));
+    if (!profile.isUndefined() && !profile.isString())
+        return makeError(ErrorCode::BadFormat,
+                         QStringLiteral("simulationProfile must be a string"));
+    if (auto set = project->setSimulationProfile(profile.toString()); !set)
+        return tl::unexpected(set.error());
+    if (projectJson->contains(QStringLiteral("connections")) &&
+        !projectJson->value(QStringLiteral("connections")).isArray())
+        return makeError(ErrorCode::BadFormat, QStringLiteral("Connections must be an array"));
+    std::vector<Connection> connections;
+    for (const QJsonValue& value : projectJson->value(QStringLiteral("connections")).toArray())
+    {
+        auto connection = Connection::fromJson(value.toObject());
+        if (!connection)
+            return tl::unexpected(connection.error());
+        connections.push_back(std::move(*connection));
+    }
+    if (auto set = project->setConnections(std::move(connections)); !set)
+        return tl::unexpected(set.error());
     const QJsonArray screenList = projectJson->value(kScreens).toArray();
     for (const QJsonValue& entry : screenList)
     {
@@ -349,7 +385,9 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
     }
 
     QJsonObject preserved = *projectJson;
-    for (const QString& known : {kFormatVersion, kName, kScreens, kAssets, kStyle})
+    for (const QString& known :
+         {kFormatVersion, kName, kScreens, kAssets, kStyle, QStringLiteral("connections"),
+          QStringLiteral("simulationProfile")})
         preserved.remove(known);
     project->setPreservedJson(preserved);
     return project;

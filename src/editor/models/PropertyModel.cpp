@@ -58,8 +58,9 @@ QString editorFor(ValueKind kind)
         return QStringLiteral("enum");
     case ValueKind::Points:
         return QStringLiteral("points");
-    case ValueKind::String:
     case ValueKind::Tag:
+        return QStringLiteral("tagReference");
+    case ValueKind::String:
         break;
     }
     return QStringLiteral("text");
@@ -553,6 +554,12 @@ QVariant PropertyModel::data(const QModelIndex& index, int role) const
     case OptionsRole:
     {
         QStringList options;
+        if (valueKind(d.defaultValue) == ValueKind::Tag)
+        {
+            for (const Tag& tag : m_context.project().tags().tags())
+                options << tag.name;
+            return options;
+        }
         if (d.id == Prop::ScreenName)
         {
             // Every screen but the one being edited: a screen cannot show itself.

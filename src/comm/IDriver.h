@@ -11,8 +11,8 @@
 namespace hmi
 {
 
-// A source of tag values: the simulator now, PLC drivers (OPC UA, S7,
-// Modbus) from phase 8, each adapting its client library (Adapter). Every
+// A source of tag values, with the simulator and optional native PLC
+// adapters exposing their capabilities through one interface. Every
 // member is called on the TagEngine's worker thread, never on the GUI
 // thread, so a driver may block on I/O.
 class IDriver
@@ -27,6 +27,9 @@ public:
     IDriver(IDriver&&) = delete;
     IDriver& operator=(IDriver&&) = delete;
 
+    [[nodiscard]] virtual bool isReadOnly() const noexcept { return false; }
+    [[nodiscard]] virtual bool isSimulation() const noexcept { return false; }
+
     // Starts serving these tags.
     virtual Result<void> start(std::span<const Tag> tags) = 0;
     virtual void stop() = 0;
@@ -35,6 +38,7 @@ public:
     // Called every TagEngine tick with the seconds since start; reports
     // values that changed since the last call.
     virtual void poll(double seconds, const Publish& publish) = 0;
+    [[nodiscard]] virtual QString problem(const QString& /*tag*/) const { return {}; }
 };
 
 } // namespace hmi

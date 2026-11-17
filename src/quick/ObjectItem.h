@@ -42,12 +42,14 @@ public:
     // Where imported graphics come from; must outlive the item.
     void setGraphics(const IGraphicProvider* graphics);
 
+    void setEditing(bool editing);
     void paint(QPainter* painter) override;
 
 private:
     void updateTextureSize();
 
     const HmiObject* m_object = nullptr;
+    bool m_editing = true;
     double m_renderScale = 1.0;
     const IGraphicProvider* m_graphics = nullptr;
 };

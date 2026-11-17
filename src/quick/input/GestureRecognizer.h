@@ -40,6 +40,7 @@ public:
 
     // Held pan key (Space): a left drag pans instead of dragging.
     void setPanKeyHeld(bool held) noexcept { m_panKeyHeld = held; }
+    void setImmediateGestures(bool enabled) noexcept { m_immediateGestures = enabled; }
 
     // Ends the current sequence: a drag emits DragCancel, a pan or pinch its
     // end. Further events of the sequence are ignored until all pointers are
@@ -82,6 +83,7 @@ private:
     QPointF m_last;
     bool m_afterLongPress = false;
     bool m_panKeyHeld = false;
+    bool m_immediateGestures = false;
 
     QPointF m_pinchCentre;
     double m_pinchDistance = 0.0;

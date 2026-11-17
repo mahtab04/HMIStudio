@@ -28,6 +28,7 @@ add_library(hmi_core_impl STATIC
     model/Ids.h
     model/ObjectVisitor.h
     model/PaintContext.h
+    model/RuntimeBehavior.h
     model/Project.cpp
     model/Project.h
     model/Screen.cpp
@@ -124,6 +125,8 @@ add_library(hmi_core_impl STATIC
     property/PropertyValue.cpp
     property/PropertyValue.h
 
+    tags/Connection.cpp
+    tags/Connection.h
     tags/Binding.cpp
     tags/Binding.h
     tags/Expression.cpp

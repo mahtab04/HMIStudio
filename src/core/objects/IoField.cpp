@@ -83,6 +83,13 @@ QString IoField::displayText() const
     return unit.isEmpty() ? number : number + u' ' + unit;
 }
 
+RuntimeBehavior IoField::runtimeBehavior() const
+{
+    return value<EnumValue>(Prop::IoMode).value == Output
+               ? RuntimeBehavior{}
+               : RuntimeBehavior{RuntimeBehavior::Kind::ValueInput, Prop::Value};
+}
+
 void IoField::accept(ObjectVisitor& visitor)
 {
     visitor.visit(*this);

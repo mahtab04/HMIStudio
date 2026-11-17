@@ -1,0 +1,17 @@
+{
+    "connections": [
+    ],
+    "formatVersion": 3,
+    "name": "Line 3 - Buffer Filling Station",
+    "screens": [
+        "screens/01_02_filling.json"
+    ],
+    "simulationProfile": "filling-station",
+    "style": {
+        "accent": "#ff3b82f6",
+        "face": "#ffffffff",
+        "fontFamily": "",
+        "line": "#ff9aa1ab",
+        "text": "#ff1f2328"
+    }
+}

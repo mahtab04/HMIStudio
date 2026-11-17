@@ -31,9 +31,9 @@ std::span<const PropertyDescriptor> SymbolicIoField::staticDescriptors()
         {140.0, 34.0},
         {
             Describe::items(QStringLiteral("Stopped;Running;Fault")),
-            Describe::integer(Prop::SelectedIndex, "selectedIndex",
-                              QT_TRANSLATE_NOOP("hmi::Property", "Value"), Behaviour, 0, 0,
-                              std::nullopt, true),
+            Describe::process(Describe::integer(Prop::SelectedIndex, "selectedIndex",
+                                                QT_TRANSLATE_NOOP("hmi::Property", "Value"),
+                                                Behaviour, 0, 0, std::nullopt, true)),
             Describe::styled(Describe::fillColor(QColor(Qt::white),
                                                  QT_TRANSLATE_NOOP("hmi::Property", "Background")),
                              StyleRole::Face),
@@ -72,6 +72,11 @@ void SymbolicIoField::paint(QPainter& painter, const PaintContext& context) cons
     painter.setBrush(QColor(0x2B, 0x2F, 0x36));
     painter.drawPolygon(
         QPolygonF{c + QPointF(-a, -a * 0.7), c + QPointF(a, -a * 0.7), c + QPointF(0, a * 0.5)});
+}
+
+RuntimeBehavior SymbolicIoField::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Choice, Prop::SelectedIndex};
 }
 
 void SymbolicIoField::accept(ObjectVisitor& visitor)

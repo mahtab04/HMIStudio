@@ -15,6 +15,8 @@ qt_add_qml_module(hmi_quick
         ICanvasView.h
         ObjectItem.cpp
         ObjectItem.h
+        RuntimeInputHandler.cpp
+        RuntimeInputHandler.h
         RuntimeView.cpp
         RuntimeView.h
         ScreenItem.cpp
@@ -40,5 +42,5 @@ qt_add_qml_module(hmi_quick
 target_include_directories(hmi_quick PUBLIC "${PROJECT_SOURCE_DIR}/src")
 # The generated QML type registration includes headers by file name only.
 target_include_directories(hmi_quick PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/overlays")
-target_link_libraries(hmi_quick PUBLIC hmi::core Qt6::Quick)
+target_link_libraries(hmi_quick PUBLIC hmi::core hmi_comm Qt6::Quick)
 hmi_set_project_options(hmi_quick)

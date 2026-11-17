@@ -94,6 +94,24 @@ private Q_SLOTS:
         QVERIFY(m_selection.isEmpty());
     }
 
+    void hiddenObjectsAreNotPicked()
+    {
+        // A hidden object on top of A: a click goes to A, as if it were not
+        // there; a rubber band does not take it either.
+        ScreenBuilder builder(QStringLiteral("cover"));
+        builder.add(Rectangle::kTypeId, {0, 0, 150, 80}).with(Prop::Visible, false);
+        const ObjectId hidden = builder.lastId();
+        auto cover = builder.build();
+        auto taken = cover->takeObject(hidden);
+        QVERIFY(taken);
+        QVERIFY(m_screen->insertObject(std::move(*taken)));
+
+        m_tool->handleGesture(m_gestures.tap({50, 30}));
+        QCOMPARE(m_selection.ids(), std::vector{m_a});
+        run(m_gestures.drag({-5, -5}, {160, 90}));
+        QCOMPARE(m_selection.ids(), std::vector{m_a});
+    }
+
     void touchToleranceIsLarger()
     {
         // 8 px outside the rectangle: a miss for the mouse, a hit for a finger.

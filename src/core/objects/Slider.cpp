@@ -111,6 +111,27 @@ void Slider::paint(QPainter& painter, const PaintContext& context) const
     painter.drawEllipse(current, knob / 2.0 - 0.5, knob / 2.0 - 0.5);
 }
 
+RuntimeBehavior Slider::runtimeBehavior() const
+{
+    return {RuntimeBehavior::Kind::Slider, Prop::Value};
+}
+
+std::optional<PropertyValue> Slider::runtimeValueAt(QPointF point) const
+{
+    const QSizeF size = geometry().size();
+    const bool vertical = value<EnumValue>(Prop::Orientation).value == Describe::kVertical;
+    const double knob = (vertical ? size.width() : size.height()) * 0.42;
+    const double length = (vertical ? size.height() : size.width()) - knob;
+    const double low = value<double>(Prop::Minimum);
+    const double high = value<double>(Prop::Maximum);
+    if (length <= 0 || high <= low)
+        return std::nullopt;
+    double fraction = ((vertical ? point.y() : point.x()) - knob / 2.0) / length;
+    if (vertical)
+        fraction = 1.0 - fraction;
+    return low + std::clamp(fraction, 0.0, 1.0) * (high - low);
+}
+
 void Slider::accept(ObjectVisitor& visitor)
 {
     visitor.visit(*this);

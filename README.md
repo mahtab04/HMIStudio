@@ -5,7 +5,13 @@ properties, tag binding, simulation), written in C++20 with Qt 6 Qt Quick.
 
 - Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Roadmap: [docs/PLAN.md](docs/PLAN.md)
+- Tag workflow and PLC setup: [docs/TAGS.md](docs/TAGS.md)
 - Target UI: [docs/HMI Editor@2x.png](docs/HMI%20Editor@2x.png)
+
+Open `examples/BufferFilling.hmiproj` and press **F5** to operate the training
+station: Start/Stop, automatic filling, hold-to-jog, and a shared flow setpoint
+edited through the I/O field, slider or adjustment buttons. The process runs
+locally in simulation. See the [supported controls and setup](docs/TAGS.md#runtime-operation).
 
 ## Status
 

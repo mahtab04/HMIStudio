@@ -1,5 +1,6 @@
 #pragma once
 
+#include "quick/RuntimeInputHandler.h"
 #include "quick/RuntimeView.h"
 
 #include <QObject>
@@ -8,6 +9,7 @@
 #include <QStringList>
 #include <qqmlintegration.h>
 
+#include <functional>
 #include <memory>
 
 namespace hmi
@@ -27,6 +29,8 @@ class SimulationController : public QObject
     Q_OBJECT
     QML_ELEMENT
     QML_UNCREATABLE("SimulationController is provided by the application")
+    Q_PROPERTY(hmi::RuntimeInputHandler* input READ input CONSTANT)
+    Q_PROPERTY(bool monitoring READ isMonitoring NOTIFY runningChanged)
     Q_PROPERTY(bool running READ isRunning NOTIFY runningChanged)
     Q_PROPERTY(QString screenTitle READ screenTitle NOTIFY runningChanged)
     Q_PROPERTY(QSizeF screenSize READ screenSize NOTIFY runningChanged)
@@ -42,6 +46,8 @@ public:
 
     // Starts with the screen the editor shows.
     Q_INVOKABLE void start();
+    Q_INVOKABLE void startMonitoring();
+    [[nodiscard]] bool isMonitoring() const noexcept { return m_monitoring; }
     Q_INVOKABLE void stop();
     Q_INVOKABLE void toggle();
     // Takes a new copy of the screen and the tags, keeping the window.
@@ -49,6 +55,12 @@ public:
     // The simulator window's view; it shows the play copy until stop().
     Q_INVOKABLE void attachView(hmi::RuntimeView* view);
 
+    [[nodiscard]] RuntimeInputHandler* input() const noexcept { return m_input.get(); }
+    // Where PLC monitoring reads the native libraries the user trusts.
+    void setTrustedLibraries(std::function<QStringList()> trusted)
+    {
+        m_trustedLibraries = std::move(trusted);
+    }
     [[nodiscard]] bool isRunning() const noexcept { return m_running; }
     [[nodiscard]] QString screenTitle() const;
     [[nodiscard]] QSizeF screenSize() const;
@@ -67,7 +79,10 @@ private:
     ToolContext& m_context;
     TagEngine& m_engine;
     std::unique_ptr<BindingEvaluator> m_evaluator;
+    std::unique_ptr<RuntimeInputHandler> m_input;
     QPointer<RuntimeView> m_view;
+    std::function<QStringList()> m_trustedLibraries;
+    bool m_monitoring = false;
     bool m_running = false;
 };
 

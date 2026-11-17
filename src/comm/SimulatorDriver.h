@@ -20,6 +20,7 @@ public:
     // `seed` makes random values repeatable (tests).
     explicit SimulatorDriver(std::optional<quint32> seed = std::nullopt);
 
+    [[nodiscard]] bool isSimulation() const noexcept override { return true; }
     Result<void> start(std::span<const Tag> tags) override;
     void stop() override;
     Result<void> write(const QString& tag, const TagValue& value) override;

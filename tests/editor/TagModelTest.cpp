@@ -11,18 +11,22 @@
 #include "core/property/Prop.h"
 #include "core/tags/TagUsage.h"
 #include "editor/app/AppContext.h"
+#include "editor/app/AppSettings.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagConnections.h"
 
 #include <QAbstractItemModelTester>
+#include <QDir>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <algorithm>
 #include <memory>
 
 using namespace hmi;
@@ -89,28 +93,63 @@ private:
 private Q_SLOTS:
     void init()
     {
+        auto sample = makeSampleProject();
+        QVERIFY(sample->setSimulationProfile({})); // isolate the generic tag model and generators
         m_app = std::make_unique<AppContext>(
-            makeSampleProject(), AppContext::Paths{.settingsFile = m_dir.filePath(u"s.ini"_s),
-                                                   .autosaveFolder = m_dir.filePath(u"auto"_s)});
+            std::move(sample), AppContext::Paths{.settingsFile = m_dir.filePath(u"s.ini"_s),
+                                                 .autosaveFolder = m_dir.filePath(u"auto"_s)});
     }
     void cleanup() { m_app.reset(); }
 
     void sampleScreenIsBound()
     {
-        QCOMPARE(project().tags().size(), std::size_t(5));
+        QCOMPARE(project().tags().size(), std::size_t(10));
         QVERIFY(uses(u"Level"_s) >= 4);
         QVERIFY(uses(u"PumpRunning"_s) >= 3);
         QVERIFY(tank()->binding(Prop::Value));
+    }
+
+    void buttonTargetPickerAndRenameUndo()
+    {
+        auto* screen = project().screens()[0].get();
+        const auto button = std::ranges::find_if(
+            screen->objects(),
+            [](const auto& object)
+            {
+                const auto target = object->property(Prop::ActionTag);
+                return target && std::get<TagRef>(*target).tagName == u"RunCommand";
+            });
+        QVERIFY(button != screen->objects().end());
+        m_app->selection().selectOnly((*button)->id());
+        const int row = propertyRow(u"actionTag"_s);
+        QVERIFY(row >= 0);
+        QCOMPARE(
+            m_app->properties().data(m_app->properties().index(row), PropertyModel::EditorRole),
+            QVariant(u"tagReference"_s));
+        QCOMPARE(m_app->properties()
+                     .data(m_app->properties().index(row), PropertyModel::OptionsRole)
+                     .toStringList()
+                     .size(),
+                 10);
+        QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        QVERIFY(tags().setCell(tagRow(u"RunCommand"_s), TagModel::NameColumn, u"RequestRun"_s));
+        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
+        QCOMPARE(uses(u"RequestRun"_s), std::size_t(2));
+        m_app->undoStack().undo();
+        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RunCommand"_s);
+        QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        m_app->undoStack().redo();
+        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
     }
 
     void tableAndFilter()
     {
         QAbstractItemModelTester tester(&tags(),
                                         QAbstractItemModelTester::FailureReportingMode::QtTest);
-        QCOMPARE(tags().rowCount(), 5);
+        QCOMPARE(tags().rowCount(), 10);
         QCOMPARE(tags().columnCount(), int(TagModel::ColumnCount));
         QCOMPARE(cell(u"Level"_s, TagModel::UnitColumn).toString(), u"%"_s);
-        QCOMPARE(cell(u"Level"_s, TagModel::SimulationColumn).toString(), u"Sine"_s);
+        QCOMPARE(cell(u"Level"_s, TagModel::SimulationColumn).toString(), u"None"_s);
         QCOMPARE(tags().headerData(TagModel::PeriodColumn, Qt::Horizontal, Qt::DisplayRole),
                  QVariant(u"Period (s)"_s));
 
@@ -118,17 +157,17 @@ private Q_SLOTS:
         QCOMPARE(tags().rowCount(), 1);
         tags().setFilterText(u"temperature"_s); // also the comment
         QCOMPARE(tags().rowCount(), 1);
-        QCOMPARE(tags().tagCount(), 5);
+        QCOMPARE(tags().tagCount(), 10);
         tags().setFilterText({});
-        QCOMPARE(tags().rowCount(), 5);
-        QCOMPARE(tags().namesMatching(u"E"_s).size(), 3); // not Flow or PumpRunning
+        QCOMPARE(tags().rowCount(), 10);
+        QCOMPARE(tags().namesMatching(u"E"_s).size(), 6); // not Flow or PumpRunning
     }
 
     void editingIsUndoable()
     {
         QUndoStack& stack = m_app->undoStack();
         const int row = tags().addTag();
-        QCOMPARE(tags().rowCount(), 6);
+        QCOMPARE(tags().rowCount(), 11);
         QCOMPARE(tags().data(tags().index(row, TagModel::NameColumn), Qt::DisplayRole),
                  QVariant(u"Tag_1"_s));
         // The type of the last tag (Temperature, Real), then the next number.
@@ -147,7 +186,7 @@ private Q_SLOTS:
         stack.undo();
         QCOMPARE(project().tags().find(u"Tag_1"_s)->unit, QString());
         stack.undo();
-        QCOMPARE(tags().rowCount(), 5);
+        QCOMPARE(tags().rowCount(), 10);
     }
 
     void renamingUpdatesBindings()
@@ -170,7 +209,7 @@ private Q_SLOTS:
     {
         const int index = m_app->undoStack().index();
         const int row = tags().addTags(u"Counter"_s, 1, 5); // Int
-        QCOMPARE(tags().rowCount(), 10);
+        QCOMPARE(tags().rowCount(), 15);
         QCOMPARE(tags().data(tags().index(row, TagModel::NameColumn), Qt::DisplayRole),
                  QVariant(u"Counter_1"_s));
         QCOMPARE(project().tags().find(u"Counter_5"_s)->type, Tag::Type::Int);
@@ -183,7 +222,65 @@ private Q_SLOTS:
         QCOMPARE(cell(u"Counter_7"_s, TagModel::MinimumColumn).toString(), QString()); // a flag
         m_app->undoStack().undo();
         m_app->undoStack().undo();
-        QCOMPARE(tags().rowCount(), 5);
+        QCOMPARE(tags().rowCount(), 10);
+    }
+
+    void connectionWorkflowAndUndo()
+    {
+        TagConnections* connections = tags().connections();
+        const int before = m_app->undoStack().index();
+        QVERIFY(connections->save(-1, {{u"name"_s, u"LinePLC"_s},
+                                       {u"driver"_s, u"s7"_s},
+                                       {u"host"_s, u"fixture.invalid"_s}}));
+        QCOMPARE(project().connections().size(), std::size_t(1));
+        const QString id = project().connections()[0].id;
+        const int row = tags().createTag(u"TankLevel"_s, 2, u"Tank"_s, 1, u"DB1.DBD4"_s);
+        QVERIFY(row >= 0);
+        QCOMPARE(project().tags().find(u"TankLevel"_s)->connection, id);
+        QCOMPARE(project().tags().find(u"TankLevel"_s)->table, u"Tank"_s);
+        QCOMPARE(cell(u"TankLevel"_s, TagModel::ConnectionColumn), QVariant(u"LinePLC"_s));
+        QVERIFY(tags().setCell(row, TagModel::AcquisitionColumn, u"1000"_s));
+        QVERIFY(!tags().setCell(row, TagModel::AcquisitionColumn, u"0"_s));
+        QVERIFY(!connections->remove(0));
+        QVERIFY(connections->save(0, {{u"name"_s, u"RenamedPLC"_s}}));
+        QCOMPARE(project().tags().find(u"TankLevel"_s)->connection, id);
+        QCOMPARE(cell(u"TankLevel"_s, TagModel::ConnectionColumn), QVariant(u"RenamedPLC"_s));
+        tags().setTableFilter(u"Tank"_s);
+        QCOMPARE(tags().rowCount(), 1);
+        QVERIFY(tags().columnWidth(TagModel::ConnectionColumn, 1200, 50) > 0);
+        QCOMPARE(tags().columnWidth(TagModel::SimulationColumn, 1200, 50), 0.0);
+        tags().setSimulationSettings(true);
+        QCOMPARE(tags().columnWidth(TagModel::ConnectionColumn, 1200, 50), 0.0);
+        QVERIFY(tags().columnWidth(TagModel::SimulationColumn, 1200, 50) > 0);
+        tags().setTableFilter({});
+        while (m_app->undoStack().index() > before)
+            m_app->undoStack().undo();
+        QVERIFY(project().connections().empty());
+        QVERIFY(!project().tags().find(u"TankLevel"_s));
+    }
+
+    void externalTagCreationValidationAndCsv()
+    {
+        auto* connections = tags().connections();
+        QVERIFY(connections->save(
+            -1,
+            {{u"name"_s, u"AB"_s}, {u"driver"_s, u"ab-eip"_s}, {u"host"_s, u"fixture.invalid"_s}}));
+        QVERIFY(tags().createTag(u"External"_s, 1, u"Process"_s, 1, u"Motor.Counter"_s) >= 0);
+        QCOMPARE(tags().createTag(u"External"_s, 1, u"Process"_s, 1, u"Other"_s), -1);
+        QCOMPARE(tags().createTag(u"Bad"_s, 1, u"Process"_s, 1, u"A&gateway=other"_s), -1);
+        const QString id = project().connections()[0].id;
+        const QUrl file = QUrl::fromLocalFile(m_dir.filePath(u"external.csv"_s));
+        QVERIFY(tags().exportCsv(file));
+        QFile csv(file.toLocalFile());
+        QVERIFY(csv.open(QIODevice::ReadOnly));
+        const QByteArray bytes = csv.readAll();
+        QVERIFY(bytes.contains(",AB,Motor.Counter,"));
+        csv.close();
+        tags().removeTag(tagRow(u"External"_s));
+        QVERIFY(tags().importCsv(file) > 0);
+        QCOMPARE(project().tags().find(u"External"_s)->connection, id);
+        QCOMPARE(project().tags().find(u"External"_s)->address, u"Motor.Counter"_s);
+        QCOMPARE(project().tags().find(u"External"_s)->table, u"Process"_s);
     }
 
     void processTagInProperties()
@@ -195,7 +292,7 @@ private Q_SLOTS:
         QCOMPARE(model.data(first, PropertyModel::EditorRole).toString(), u"tag"_s);
         QCOMPARE(model.data(first, PropertyModel::CategoryRole).toString(), u"Process"_s);
         QCOMPARE(model.data(first, PropertyModel::ValueRole).toString(), u"Level"_s);
-        QCOMPARE(model.data(first, PropertyModel::OptionsRole).toStringList().size(), 5);
+        QCOMPARE(model.data(first, PropertyModel::OptionsRole).toStringList().size(), 10);
 
         // Picking another tag keeps the transform; None removes the binding.
         QVERIFY(model.setValue(0, u"Flow"_s));
@@ -227,7 +324,7 @@ private Q_SLOTS:
         QVERIFY(!project().tags().find(u"Level"_s));
         QVERIFY(tank()->binding(Prop::Value)); // stays, shows the tag as missing
         m_app->undoStack().undo();
-        QCOMPARE(tags().rowCount(), 5);
+        QCOMPARE(tags().rowCount(), 10);
         QCOMPARE(tagRow(u"Level"_s), row); // back where it was
     }
 
@@ -243,13 +340,13 @@ private Q_SLOTS:
         out.close();
         QVERIFY(tags().setCell(tagRow(u"Flow"_s), TagModel::UnitColumn, u"m3/h"_s));
         const int index = m_app->undoStack().index();
-        QCOMPARE(tags().importCsv(file), 6);
+        QCOMPARE(tags().importCsv(file), 11);
         QCOMPARE(m_app->undoStack().index(), index + 1);
-        QCOMPARE(tags().rowCount(), 6);
+        QCOMPARE(tags().rowCount(), 11);
         QCOMPARE(project().tags().find(u"Flow"_s)->unit, u"L/min"_s);
         QCOMPARE(project().tags().find(u"Speed"_s)->maximum, 3000.0);
         m_app->undoStack().undo();
-        QCOMPARE(tags().rowCount(), 5);
+        QCOMPARE(tags().rowCount(), 10);
 
         QSignalSpy problems(&tags(), &TagModel::problem);
         QCOMPARE(tags().importCsv(QUrl::fromLocalFile(m_dir.filePath(u"none.csv"_s))), -1);
@@ -312,6 +409,18 @@ private Q_SLOTS:
         QSignalSpy rejected(&model, &PropertyModel::editRejected);
         QVERIFY(model.rangesParameters(u"0-50 = red"_s).isEmpty());
         QCOMPARE(rejected.count(), 1);
+    }
+
+    void chosenLibrariesAreTrusted()
+    {
+        // A native library picked with Browse may be loaded on this computer;
+        // a path typed into the project is not trusted by that.
+        const QString typed = m_dir.filePath(u"typed.dll"_s);
+        m_app->tags().connections()->setDraftField(u"library"_s, typed);
+        QVERIFY(!m_app->settings().trustedLibraries().contains(QDir::cleanPath(typed)));
+        const QString chosen = m_dir.filePath(u"chosen.dll"_s);
+        m_app->tags().connections()->setLibraryFile(QUrl::fromLocalFile(chosen));
+        QVERIFY(m_app->settings().trustedLibraries().contains(QDir::cleanPath(chosen)));
     }
 
     void simulating()

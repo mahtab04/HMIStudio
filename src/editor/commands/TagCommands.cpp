@@ -5,8 +5,30 @@
 
 #include <QCoreApplication>
 
+#include <functional>
+
 namespace hmi
 {
+
+ChangeConnectionsCommand::ChangeConnectionsCommand(Project& project, std::vector<Connection> after)
+    : m_project(project)
+    , m_before(project.connections().begin(), project.connections().end())
+    , m_after(std::move(after))
+{
+    setText(QCoreApplication::translate("hmi::Commands", "Change PLC connections"));
+}
+
+void ChangeConnectionsCommand::redo()
+{
+    [[maybe_unused]] const auto result = m_project.setConnections(m_after);
+    Q_ASSERT(result);
+}
+
+void ChangeConnectionsCommand::undo()
+{
+    [[maybe_unused]] const auto result = m_project.setConnections(m_before);
+    Q_ASSERT(result);
+}
 
 AddTagCommand::AddTagCommand(Project& project, Tag tag, std::optional<std::size_t> index,
                              QUndoCommand* parent)
@@ -58,20 +80,88 @@ ChangeTagCommand::ChangeTagCommand(Project& project, const QString& name, Tag af
 {
     if (const Tag* tag = m_project.tags().find(name))
         m_before = *tag;
+    if (m_before.name != m_after.name)
+    {
+        const std::function<void(const HmiObject&, ScreenId, ObjectId)> collect =
+            [&](const HmiObject& object, ScreenId screen, ObjectId root)
+        {
+            for (const Binding& binding : object.bindings())
+            {
+                if (binding.tag.compare(m_before.name, Qt::CaseInsensitive) == 0)
+                    m_references.push_back(
+                        {screen, root, object.id(), binding.property, binding, binding.tag});
+            }
+            for (const auto& descriptor : object.descriptors())
+            {
+                if (valueKind(descriptor.defaultValue) != ValueKind::Tag)
+                    continue;
+                const QString spelling = object.value<TagRef>(descriptor.id).tagName;
+                if (spelling.compare(m_before.name, Qt::CaseInsensitive) == 0)
+                    m_references.push_back(
+                        {screen, root, object.id(), descriptor.id, std::nullopt, spelling});
+            }
+            for (const auto& child : object.children())
+                collect(*child, screen, root);
+        };
+        for (const auto& screen : project.screens())
+            for (const auto& object : screen->objects())
+                collect(*object, screen->id(), object->id());
+    }
     setText(m_before.name != m_after.name
                 ? QCoreApplication::translate("hmi::Commands", "Rename tag %1").arg(m_after.name)
                 : QCoreApplication::translate("hmi::Commands", "Change tag %1").arg(m_after.name));
+}
+
+void ChangeTagCommand::applyReferences(bool forward)
+{
+    const std::function<HmiObject*(HmiObject&, ObjectId)> find = [&](HmiObject& object,
+                                                                     ObjectId id) -> HmiObject*
+    {
+        if (object.id() == id)
+            return &object;
+        for (const auto& child : object.children())
+            if (auto* found = find(*child, id))
+                return found;
+        return nullptr;
+    };
+    for (const auto& ref : m_references)
+    {
+        const auto* screen = m_project.screen(ref.screen);
+        auto* root = screen ? screen->object(ref.root) : nullptr;
+        auto* object = root ? find(*root, ref.object) : nullptr;
+        if (!object)
+            continue;
+        if (ref.binding)
+        {
+            Binding binding = *ref.binding;
+            binding.tag = forward ? m_after.name : ref.spelling;
+            [[maybe_unused]] const auto result = object->setBinding(std::move(binding));
+            Q_ASSERT(result);
+            if (object != root)
+                Q_EMIT m_project.notifier().bindingChanged(root->id(), ref.property);
+        }
+        else
+        {
+            [[maybe_unused]] const auto result =
+                object->setProperty(ref.property, TagRef{forward ? m_after.name : ref.spelling});
+            Q_ASSERT(result);
+            if (object != root)
+                Q_EMIT m_project.notifier().propertyChanged(root->id(), ref.property);
+        }
+    }
 }
 
 void ChangeTagCommand::redo()
 {
     if (auto replaced = m_project.tags().replace(m_before.name, m_after); !replaced)
         qWarning("ChangeTagCommand: %s", qPrintable(replaced.error().message));
+    applyReferences(true);
 }
 
 void ChangeTagCommand::undo()
 {
     (void)m_project.tags().replace(m_after.name, m_before);
+    applyReferences(false);
 }
 
 SetBindingCommand::SetBindingCommand(Project& project, ScreenId screen,

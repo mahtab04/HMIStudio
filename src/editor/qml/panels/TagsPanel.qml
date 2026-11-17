@@ -18,7 +18,7 @@ Item {
     required property TagModel tags
     required property SimulationController simulation
 
-    property string message
+    readonly property string message: panel.tags.message
     // The row of the current cell: a click on any cell makes it current.
     readonly property int currentRow: selection.currentIndex.valid ? selection.currentIndex.row : -1
 
@@ -31,7 +31,7 @@ Item {
     }
 
     function addTag() {
-        panel.message = ""
+        panel.tags.clearMessage()
         const row = panel.tags.addTag()
         panel.selectRow(row)
         if (row >= 0)
@@ -52,8 +52,11 @@ Item {
     Connections {
         target: panel.tags
 
-        function onProblem(message: string) {
-            panel.message = message
+        function onTagCreated(row: int) {
+            panel.selectRow(row)
+        }
+        function onViewChanged() {
+            table.forceLayout()
         }
     }
 
@@ -77,7 +80,7 @@ Item {
                     text: qsTr("Add")
                     implicitHeight: panel.theme.controlHeight
                     focusPolicy: Qt.NoFocus
-                    onClicked: panel.addTag()
+                    onClicked: newTagDialog.open()
                 }
                 ToolButton {
                     text: qsTr("Add several…")
@@ -119,7 +122,7 @@ Item {
                 }
                 Label {
                     visible: panel.simulation.running
-                    text: qsTr("● Live values")
+                    text: panel.simulation.monitoring ? qsTr("PLC monitoring - read only") : qsTr("Simulated values")
                     color: panel.theme.good
                 }
                 TextField {
@@ -134,14 +137,51 @@ Item {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: panel.theme.padding
+            Layout.rightMargin: panel.theme.padding
+            spacing: panel.theme.spacing
+
+            ComboBox {
+                implicitHeight: panel.theme.controlHeight
+                objectName: "tagViewPicker"
+                model: [qsTr("Tags"), qsTr("Simulation settings")]
+                currentIndex: panel.tags.simulationSettings ? 1 : 0
+                Accessible.name: qsTr("Tag view")
+                onActivated: index => panel.tags.simulationSettings = index === 1
+            }
+            ComboBox {
+                implicitHeight: panel.theme.controlHeight
+                objectName: "tagTablePicker"
+                model: panel.tags.tableNames
+                currentIndex: panel.tags.tableFilter.length === 0 ? 0 : panel.tags.tableNames.indexOf(panel.tags.tableFilter)
+                Accessible.name: qsTr("Filter tag table")
+                onActivated: index => panel.tags.tableFilter = index === 0 ? "" : panel.tags.tableNames[index]
+            }
+            Button {
+                implicitHeight: panel.theme.controlHeight
+                objectName: "connectionsButton"
+                text: qsTr("Connections")
+                onClicked: connectionsDialog.open()
+            }
+            Item { Layout.fillWidth: true }
+            Button {
+                implicitHeight: panel.theme.controlHeight
+                objectName: "monitorPlcsButton"
+                text: panel.simulation.running && panel.simulation.monitoring ? qsTr("Stop monitoring") : qsTr("Monitor PLCs")
+                onClicked: panel.simulation.running && panel.simulation.monitoring ? panel.simulation.stop() : panel.simulation.startMonitoring()
+            }
+        }
+
         Label {
             Layout.fillWidth: true
             Layout.leftMargin: panel.theme.padding
             Layout.topMargin: panel.theme.spacing / 2
-            visible: panel.message.length > 0
-            text: panel.message
+            visible: panel.message.length > 0 || panel.tags.monitorProblem.length > 0
+            text: panel.message.length > 0 ? panel.message : panel.tags.monitorProblem
             color: panel.theme.warning
-            elide: Text.ElideRight
+            wrapMode: Text.WordWrap
         }
 
         HorizontalHeaderView {
@@ -158,13 +198,11 @@ Item {
             id: table
 
             objectName: "tagTable"
-            // Name, type, unit, minimum, maximum, simulation, period, comment, value.
-            readonly property var weights: [1.8, 0.9, 0.7, 0.8, 0.8, 1.0, 0.8, 2.2, 1.0]
-            readonly property real weightSum: 10.0
 
             // As tall as its rows, so "<Add new>" follows the last one.
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: table.contentHeight
             Layout.maximumHeight: Math.max(1, table.contentHeight)
             clip: true
             model: panel.tags
@@ -179,8 +217,9 @@ Item {
 
                 model: panel.tags
             }
-            columnWidthProvider: column => Math.max(panel.theme.controlHeight * 2, table.width * table.weights[column] / table.weightSum - 1)
+            columnWidthProvider: column => panel.tags.columnWidth(column, table.width, panel.theme.controlHeight * 2)
             ScrollBar.vertical: ScrollBar {}
+            ScrollBar.horizontal: ScrollBar {}
             onWidthChanged: table.forceLayout()
             Keys.onDeletePressed: panel.deleteCurrent()
 
@@ -201,16 +240,21 @@ Item {
                 required property var display
                 required property string editor
                 required property int choice
+                required property string toolTip
                 required property bool selected
                 required property bool current
 
                 readonly property bool live: cell.editor === "value" && panel.simulation.running
-                readonly property bool isChoice: cell.editor === "type" || cell.editor === "simulation"
+                readonly property bool isChoice: cell.editor === "type" || cell.editor === "simulation" || cell.editor === "connection" || cell.editor === "limit"
 
                 implicitHeight: panel.theme.controlHeight
                 color: cell.selected ? Qt.alpha(panel.theme.accent, 0.28) : cell.row % 2 ? panel.theme.panel : panel.theme.window
                 border.width: cell.current ? 1 : 0
                 border.color: panel.theme.accent
+                Accessible.description: cell.toolTip
+                ToolTip.visible: hover.hovered && cell.toolTip.length > 0
+                ToolTip.text: cell.toolTip
+                HoverHandler { id: hover }
 
                 Label {
                     anchors.fill: parent
@@ -232,19 +276,20 @@ Item {
                     anchors.margins: 1
                     visible: cell.isChoice
                     flat: true
-                    model: cell.editor === "type" ? panel.tags.typeNames : cell.editor === "simulation" ? panel.tags.simulationNames : []
+                    model: cell.editor === "type" ? panel.tags.typeNames : cell.editor === "simulation" ? panel.tags.simulationNames : cell.editor === "connection" ? panel.tags.connections.names : cell.editor === "limit" ? panel.tags.limitNames : []
                     currentIndex: cell.choice
+                    displayText: cell.choice < 0 ? String(cell.display) : combo.currentText
                     focusPolicy: Qt.NoFocus
                     Accessible.name: panel.tags.columnTitles[cell.column]
                     onPressedChanged: if (combo.pressed)
                         selection.setCurrentIndex(panel.tags.index(cell.row, cell.column), ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows)
                     onActivated: index => {
-                        panel.message = ""
+                        panel.tags.clearMessage()
                         panel.tags.setCell(cell.row, cell.column, index)
                     }
                 }
 
-                TableView.editDelegate: cell.isChoice ? null : textEditor
+                TableView.editDelegate: cell.isChoice || cell.editor === "readonly" ? null : textEditor
 
                 Component {
                     id: textEditor
@@ -258,7 +303,7 @@ Item {
                         verticalAlignment: TextInput.AlignVCenter
                         Component.onCompleted: field.selectAll()
                         TableView.onCommit: {
-                            panel.message = ""
+                            panel.tags.clearMessage()
                             if (field.text !== String(cell.display ?? ""))
                                 panel.tags.setCell(cell.row, cell.column, field.text)
                         }
@@ -284,13 +329,25 @@ Item {
             palette.windowText: panel.theme.accent
             palette.buttonText: panel.theme.accent
             focusPolicy: Qt.NoFocus
-            onClicked: panel.addTag()
+            onClicked: newTagDialog.open()
         }
 
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
         }
+    }
+
+    NewTagDialog {
+        id: newTagDialog
+        theme: panel.theme
+        tags: panel.tags
+    }
+
+    ConnectionsDialog {
+        id: connectionsDialog
+        theme: panel.theme
+        connections: panel.tags.connections
     }
 
     // Several tags of one type at once: Name_1, Name_2, …
@@ -303,7 +360,7 @@ Item {
         width: panel.theme.sidePanelWidth * 1.6
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: {
-            panel.message = ""
+            panel.tags.clearMessage()
             panel.selectRow(panel.tags.addTags(baseName.text, typeBox.currentIndex, countBox.value))
         }
 
@@ -400,7 +457,7 @@ Item {
         fileMode: FileDialog.OpenFile
         nameFilters: [qsTr("CSV files (*.csv)"), qsTr("All files (*)")]
         onAccepted: {
-            panel.message = ""
+            panel.tags.clearMessage()
             panel.tags.importCsv(importDialog.selectedFile)
         }
     }
@@ -413,7 +470,7 @@ Item {
         defaultSuffix: "csv"
         nameFilters: [qsTr("CSV files (*.csv)")]
         onAccepted: {
-            panel.message = ""
+            panel.tags.clearMessage()
             panel.tags.exportCsv(exportDialog.selectedFile)
         }
     }
