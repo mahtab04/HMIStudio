@@ -112,7 +112,8 @@ private Q_SLOTS:
         QCOMPARE((*loaded)->simulationProfile(), u"filling-station"_s);
         QCOMPARE((*loaded)->tags().size(), std::size_t(10));
         // Every button's actions name tags and screens the project has: six
-        // operator buttons and the header's navigation button.
+        // operator buttons, the header's navigation button and the popup
+        // button.
         int buttons = 0;
         for (const auto& object : (*loaded)->screens()[0]->objects())
         {
@@ -126,14 +127,14 @@ private Q_SLOTS:
                 {
                     if (action.usesTag())
                         QVERIFY2((*loaded)->tags().find(action.tag), qPrintable(action.tag));
-                    else
+                    else if (action.usesScreen())
                         QVERIFY(std::ranges::any_of((*loaded)->screens(), [&](const auto& s)
                                                     { return s->name() == action.screen; }));
                 }
             }
         }
-        QCOMPARE(buttons, 7);
-        QCOMPARE((*loaded)->screenCount(), std::size_t(2));
+        QCOMPARE(buttons, 8);
+        QCOMPARE((*loaded)->screenCount(), std::size_t(3));
         if (const QString folder = qEnvironmentVariable("HMI_SAMPLE_EXPORT"); !folder.isEmpty())
             QVERIFY(ProjectSerializer::save(*project, folder));
     }

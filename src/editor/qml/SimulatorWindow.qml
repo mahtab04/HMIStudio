@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
@@ -48,8 +50,92 @@ Window {
         }
     }
 
+    // A popup screen over the current one: the screen behind is dimmed and
+    // takes no input until the popup closes.
+    Loader {
+        anchors.fill: parent
+        active: window.simulation.popupOpen
+        sourceComponent: Item {
+            // Dims the screen and swallows its input.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#000000"
+                    opacity: 0.4
+                }
+            }
+
+            Rectangle {
+                id: frame
+
+                readonly property real titleHeight: window.theme.controlHeight
+                // The popup at the same scale as the screen, smaller if it
+                // does not fit.
+                readonly property real popupScale: Math.min(runtime.zoom, (window.width - 24) / Math.max(1, window.simulation.popupSize.width), (window.height - 24 - frame.titleHeight) / Math.max(1, window.simulation.popupSize.height))
+
+                objectName: "popupFrame"
+                anchors.centerIn: parent
+                width: Math.round(window.simulation.popupSize.width * frame.popupScale) + 4
+                height: Math.round(window.simulation.popupSize.height * frame.popupScale) + frame.titleHeight + 4
+                color: window.theme.panel
+                border.color: window.theme.border
+                border.width: 2
+                radius: 4
+
+                Rectangle {
+                    id: titleBar
+
+                    x: 2
+                    y: 2
+                    width: frame.width - 4
+                    height: frame.titleHeight
+                    color: window.theme.panelRaised
+
+                    Label {
+                        anchors.left: parent.left
+                        anchors.leftMargin: window.theme.padding
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: window.simulation.popupTitle
+                        color: window.theme.text
+                        font.bold: true
+                    }
+                    ToolButton {
+                        objectName: "closePopupButton"
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitWidth: frame.titleHeight
+                        implicitHeight: frame.titleHeight
+                        text: "✕"
+                        focusPolicy: Qt.NoFocus
+                        Accessible.name: qsTr("Close popup")
+                        onClicked: window.simulation.closePopup()
+                    }
+                }
+
+                RuntimeView {
+                    objectName: "popupView"
+                    x: 2
+                    y: 2 + frame.titleHeight
+                    width: frame.width - 4
+                    height: frame.height - frame.titleHeight - 4
+                    focus: true
+                    Component.onCompleted: {
+                        window.simulation.attachPopupView(this)
+                        forceActiveFocus()
+                    }
+                }
+            }
+        }
+    }
+
     RuntimeValueDialog {
         input: window.simulation.input
+        theme: window.theme
+    }
+    RuntimeValueDialog {
+        input: window.simulation.popupInput
         theme: window.theme
     }
 
@@ -58,8 +144,8 @@ Window {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         padding: window.theme.padding
-        visible: !window.simulation.input.open && text.length > 0
-        text: window.simulation.input.error
+        visible: !window.simulation.input.open && !window.simulation.popupInput.open && text.length > 0
+        text: window.simulation.popupOpen && window.simulation.popupInput.error.length > 0 ? window.simulation.popupInput.error : window.simulation.input.error
         color: window.theme.warning
         wrapMode: Text.WordWrap
         background: Rectangle {

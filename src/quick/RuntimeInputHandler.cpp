@@ -122,11 +122,19 @@ PropertyValue RuntimeInputHandler::currentValue(const HmiObject& object, Propert
 
 bool RuntimeInputHandler::runAction(const Action& action)
 {
-    if (action.kind == Action::Kind::OpenScreen)
+    if (action.usesScreen())
     {
         if (action.screen.isEmpty())
             return reject(tr("Choose the screen to open in the object's events."));
-        Q_EMIT screenRequested(action.screen);
+        if (action.kind == Action::Kind::OpenScreen)
+            Q_EMIT screenRequested(action.screen);
+        else
+            Q_EMIT popupRequested(action.screen);
+        return true;
+    }
+    if (action.kind == Action::Kind::ClosePopup)
+    {
+        Q_EMIT popupCloseRequested();
         return true;
     }
     const QString& name = action.tag;

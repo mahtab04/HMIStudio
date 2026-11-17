@@ -376,6 +376,23 @@ private Q_SLOTS:
             QTest::qWait(1500);
             QVERIFY(simulator->grabWindow().save(path));
         }
+
+        // A popup opens over the screen, in a frame with a close button.
+        QVERIFY(context.simulation().openPopup(QStringLiteral("P-101 details")));
+        QQuickItem* popupView = nullptr;
+        QTRY_VERIFY((popupView = simulator->findChild<RuntimeView*>(QStringLiteral("popupView"))) !=
+                    nullptr);
+        QTRY_VERIFY(static_cast<RuntimeView*>(popupView)->screenItem()->objectItemCount() > 0);
+        if (const QString path = qEnvironmentVariable("HMI_POPUP_SCREENSHOT"); !path.isEmpty())
+        {
+            QTest::qWait(1000);
+            QVERIFY(simulator->grabWindow().save(path));
+        }
+        auto* closePopup = simulator->findChild<QQuickItem*>(QStringLiteral("closePopupButton"));
+        QVERIFY(closePopup);
+        QMetaObject::invokeMethod(closePopup, "click");
+        QTRY_VERIFY(!context.simulation().popupOpen());
+        QTRY_VERIFY(simulator->findChild<RuntimeView*>(QStringLiteral("popupView")) == nullptr);
         QVERIFY(operate(QStringLiteral("Stop transfer")));
         QTRY_COMPARE(context.tagEngine().value(QStringLiteral("RunCommand")), TagValue(false));
         QTRY_COMPARE(context.tagEngine().value(QStringLiteral("PumpRunning")), TagValue(false));

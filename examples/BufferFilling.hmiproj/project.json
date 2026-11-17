@@ -5,7 +5,8 @@
     "name": "Line 3 - Buffer Filling Station",
     "screens": [
         "screens/01_02_filling.json",
-        "screens/02_01_overview.json"
+        "screens/02_01_overview.json",
+        "screens/03_p_101_details.json"
     ],
     "simulationProfile": "filling-station",
     "style": {

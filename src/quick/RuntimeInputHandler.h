@@ -57,6 +57,9 @@ Q_SIGNALS:
     void focusChanged();
     // An Open screen action: the controller shows that screen.
     void screenRequested(const QString& screen);
+    // Show popup and Close popup actions.
+    void popupRequested(const QString& screen);
+    void popupCloseRequested();
 
 private:
     struct Hit
