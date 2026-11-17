@@ -74,7 +74,12 @@ ApplicationWindow {
         }
     }
 
-    // Panel sizes are restored at start and saved when the window goes.
+    // Panel sizes are restored at start and saved when the window goes. A
+    // side panel never takes more than 30 % of the window (nor twice its
+    // usual width), so a size saved in a larger window, or dragged too far,
+    // cannot squeeze the screen.
+    readonly property real sidePanelMaximum: Math.max(root.theme.sidePanelWidth, Math.min(root.width * 0.3, root.theme.sidePanelWidth * 2))
+
     SplitView {
         id: mainSplit
 
@@ -85,9 +90,11 @@ ApplicationWindow {
         Component.onDestruction: root.settings.mainSplitState = mainSplit.saveState()
 
         ToolboxPanel {
+            objectName: "toolboxPanel"
             visible: root.settings.toolboxPanelVisible && !workArea.showingTags
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
+            SplitView.maximumWidth: root.sidePanelMaximum
             editor: root.editor
             theme: root.theme
             toolbox: root.toolbox
@@ -125,9 +132,11 @@ ApplicationWindow {
         }
 
         PropertiesPanel {
+            objectName: "propertiesPanel"
             visible: root.settings.propertiesPanelVisible && !workArea.showingTags
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
+            SplitView.maximumWidth: root.sidePanelMaximum
             editor: root.editor
             theme: root.theme
             properties: root.properties

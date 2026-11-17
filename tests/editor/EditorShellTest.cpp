@@ -24,6 +24,8 @@
 #include "quick/ScreenItem.h"
 
 #include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QQmlProperty>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QRegularExpression>
@@ -147,6 +149,23 @@ private Q_SLOTS:
         QTRY_VERIFY(context.properties().title().startsWith(u"Rectangle"));
         QVERIFY(context.properties().rowCount() > 8);
         QCOMPARE(context.screens().rowCount(), int(context.project().screenCount()));
+
+        // A side panel never takes more than 30 % of the window (a size saved
+        // in a larger window cannot squeeze the screen), nor less than its
+        // usual width.
+        {
+            auto* properties = window->findChild<QQuickItem*>(QStringLiteral("propertiesPanel"));
+            QVERIFY(properties);
+            QQmlProperty maximum(properties, QStringLiteral("SplitView.maximumWidth"),
+                                 qmlContext(properties));
+            QVERIFY(maximum.isValid());
+            window->resize(1432, 900);
+            QTRY_COMPARE(window->width(), 1432);
+            // The QML bindings follow the resize a moment later.
+            QTRY_VERIFY(maximum.read().toDouble() <= 1432 * 0.3 + 1);
+            QVERIFY(maximum.read().toDouble() >= context.theme().sidePanelWidth());
+            QVERIFY(properties->width() <= maximum.read().toDouble());
+        }
 
         // Right-click (or the toolbar's "more" button) opens the menu.
         auto* menu = window->findChild<QObject*>(QStringLiteral("contextMenu"));
@@ -329,7 +348,8 @@ private Q_SLOTS:
             QTRY_VERIFY((live = simulatorWindow(engine)) != nullptr);
             QVERIFY(QTest::qWaitForWindowExposed(live));
             QTest::qWait(1200);
-            QVERIFY(live->grabWindow().save(QString(path).replace(QStringLiteral(".png"), QStringLiteral("_live.png"))));
+            QVERIFY(live->grabWindow().save(
+                QString(path).replace(QStringLiteral(".png"), QStringLiteral("_live.png"))));
             context.simulation().stop();
             QTRY_VERIFY(simulatorWindow(engine) == nullptr);
             context.editor().setCurrentScreen(0);
