@@ -105,4 +105,12 @@ void BindingEvaluator::apply(const QStringList& tags)
         Q_EMIT this->problemsChanged();
 }
 
+void BindingEvaluator::report(const QString& problem)
+{
+    if (m_problems.contains(problem))
+        return;
+    m_problems << problem;
+    Q_EMIT problemsChanged();
+}
+
 } // namespace hmi

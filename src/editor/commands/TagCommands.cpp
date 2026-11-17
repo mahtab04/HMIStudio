@@ -5,6 +5,7 @@
 
 #include <QCoreApplication>
 
+#include <algorithm>
 #include <functional>
 
 namespace hmi
@@ -100,6 +101,18 @@ ChangeTagCommand::ChangeTagCommand(Project& project, const QString& name, Tag af
                     m_references.push_back(
                         {screen, root, object.id(), descriptor.id, std::nullopt, spelling});
             }
+            for (const EventKind event : kEventKinds)
+            {
+                const ActionList& actions = object.events().actions(event);
+                if (std::ranges::any_of(actions,
+                                        [this](const Action& action)
+                                        {
+                                            return action.usesTag() &&
+                                                   action.tag.compare(m_before.name,
+                                                                      Qt::CaseInsensitive) == 0;
+                                        }))
+                    m_eventReferences.push_back({screen, root, object.id(), event, actions});
+            }
             for (const auto& child : object.children())
                 collect(*child, screen, root);
         };
@@ -148,6 +161,26 @@ void ChangeTagCommand::applyReferences(bool forward)
             if (object != root)
                 Q_EMIT m_project.notifier().propertyChanged(root->id(), ref.property);
         }
+    }
+    for (const auto& ref : m_eventReferences)
+    {
+        const auto* screen = m_project.screen(ref.screen);
+        auto* root = screen ? screen->object(ref.root) : nullptr;
+        auto* object = root ? find(*root, ref.object) : nullptr;
+        if (!object)
+            continue;
+        ActionList actions = ref.before;
+        if (forward)
+        {
+            for (Action& action : actions)
+            {
+                if (action.usesTag() && action.tag.compare(m_before.name, Qt::CaseInsensitive) == 0)
+                    action.tag = m_after.name;
+            }
+        }
+        object->setActions(ref.event, std::move(actions));
+        if (object != root)
+            Q_EMIT m_project.notifier().eventsChanged(root->id());
     }
 }
 

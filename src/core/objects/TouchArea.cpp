@@ -25,8 +25,7 @@ TouchArea::TouchArea(ObjectId id)
 std::span<const PropertyDescriptor> TouchArea::staticDescriptors()
 {
     using namespace PropertyCategory;
-    static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {120.0, 80.0}, {Describe::tagAction(), Describe::actionTag(), Describe::actionValue()});
+    static const std::vector<PropertyDescriptor> table = withCommonDescriptors({120.0, 80.0}, {});
     return table;
 }
 

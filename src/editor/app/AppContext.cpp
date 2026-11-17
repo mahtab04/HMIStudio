@@ -8,6 +8,7 @@
 #include "editor/app/EditorController.h"
 #include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/EventModel.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/ScreenListModel.h"
@@ -51,6 +52,7 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     m_document =
         std::make_unique<DocumentController>(*m_project, m_undoStack, *m_settings, autosave);
     m_properties = std::make_unique<PropertyModel>(*m_toolContext);
+    m_events = std::make_unique<EventModel>(*m_toolContext);
     m_layers = std::make_unique<LayerModel>(*m_toolContext);
     m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
     m_tags = std::make_unique<TagModel>(*m_toolContext, *m_tagEngine);
@@ -63,6 +65,8 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     // Models follow the screen the editor shows.
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_properties.get(),
                      &PropertyModel::refresh);
+    QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_events.get(),
+                     &EventModel::refresh);
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_layers.get(),
                      &LayerModel::refresh);
     QObject::connect(m_editor.get(), &EditorController::currentScreenChanged, m_screens.get(),
@@ -88,6 +92,7 @@ AppContext::~AppContext()
     m_tags.reset();
     m_screens.reset();
     m_layers.reset();
+    m_events.reset();
     m_properties.reset();
     m_document.reset();
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Result.h"
+#include "core/model/Events.h"
 #include "core/model/Ids.h"
 #include "core/model/PaintContext.h"
 #include "core/model/RuntimeBehavior.h"
@@ -109,8 +110,8 @@ public:
     // Validates and stores a value; notifies only if the value changed.
     Result<void> setProperty(PropertyId id, const PropertyValue& value);
 
-    // True when both objects have the same type, property values and
-    // bindings, and their children (if any) compare the same, in order. Ids
+    // True when both objects have the same type, property values, bindings
+    // and events, and their children (if any) compare the same, in order. Ids
     // are not compared.
     [[nodiscard]] bool hasSameProperties(const HmiObject& other) const;
 
@@ -123,6 +124,12 @@ public:
     Result<void> setBinding(Binding binding);
     // Returns whether there was a binding to remove.
     bool removeBinding(PropertyId property);
+
+    // What happens at runtime when the operator clicks, presses or releases
+    // the object: an action list per event. Announced through the notifier
+    // (eventsChanged).
+    [[nodiscard]] const EventTable& events() const noexcept { return m_events; }
+    void setActions(EventKind event, ActionList actions);
 
     // Data from a file this version does not understand (unknown
     // properties, bindings of a newer format, ...). Kept with the object and
@@ -178,6 +185,7 @@ private:
     std::vector<PropertyValue> m_values;
     QJsonObject m_preserved;
     std::vector<Binding> m_bindings;
+    EventTable m_events;
     ObjectId m_id;
     DocumentNotifier* m_notifier = nullptr;
 };

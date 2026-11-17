@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/model/Events.h"
 #include "core/model/Ids.h"
 #include "core/tags/Binding.h"
 #include "core/tags/Connection.h"
@@ -83,6 +84,16 @@ private:
         QString spelling;
     };
     std::vector<Reference> m_references;
+    // Event action lists naming the tag, before the rename.
+    struct EventReference
+    {
+        ScreenId screen;
+        ObjectId root;
+        ObjectId object;
+        EventKind event;
+        ActionList before;
+    };
+    std::vector<EventReference> m_eventReferences;
     void applyReferences(bool forward);
 };
 

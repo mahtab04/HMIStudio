@@ -36,6 +36,8 @@ Q_SIGNALS:
 
     void propertyChanged(hmi::ObjectId object, hmi::PropertyId property);
     void bindingChanged(hmi::ObjectId object, hmi::PropertyId property);
+    // An object's event actions changed.
+    void eventsChanged(hmi::ObjectId object);
 
     // Tags of the project's TagDatabase. A rename reports old and new name.
     void tagAdded(const QString& name);

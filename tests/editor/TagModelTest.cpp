@@ -15,6 +15,7 @@
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
+#include "editor/models/EventModel.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/SelectionModel.h"
 #include "editor/models/TagConnections.h"
@@ -109,37 +110,29 @@ private Q_SLOTS:
         QVERIFY(tank()->binding(Prop::Value));
     }
 
-    void buttonTargetPickerAndRenameUndo()
+    void eventActionsFollowTagRenames()
     {
+        // Start and Stop set RunCommand on Click: two uses, renamed with the
+        // tag in one undo step.
         auto* screen = project().screens()[0].get();
-        const auto button = std::ranges::find_if(
-            screen->objects(),
-            [](const auto& object)
-            {
-                const auto target = object->property(Prop::ActionTag);
-                return target && std::get<TagRef>(*target).tagName == u"RunCommand";
-            });
+        const auto clickTag = [](const HmiObject& object)
+        {
+            const ActionList& actions = object.events().actions(EventKind::Click);
+            return actions.empty() ? QString() : actions.front().tag;
+        };
+        const auto button = std::ranges::find_if(screen->objects(), [&](const auto& object)
+                                                 { return clickTag(*object) == u"RunCommand"; });
         QVERIFY(button != screen->objects().end());
-        m_app->selection().selectOnly((*button)->id());
-        const int row = propertyRow(u"actionTag"_s);
-        QVERIFY(row >= 0);
-        QCOMPARE(
-            m_app->properties().data(m_app->properties().index(row), PropertyModel::EditorRole),
-            QVariant(u"tagReference"_s));
-        QCOMPARE(m_app->properties()
-                     .data(m_app->properties().index(row), PropertyModel::OptionsRole)
-                     .toStringList()
-                     .size(),
-                 10);
         QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        QVERIFY(tags().whereUsed(tagRow(u"RunCommand"_s)).front().endsWith(u"Click event"_s));
         QVERIFY(tags().setCell(tagRow(u"RunCommand"_s), TagModel::NameColumn, u"RequestRun"_s));
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
+        QCOMPARE(clickTag(**button), u"RequestRun"_s);
         QCOMPARE(uses(u"RequestRun"_s), std::size_t(2));
         m_app->undoStack().undo();
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RunCommand"_s);
+        QCOMPARE(clickTag(**button), u"RunCommand"_s);
         QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
         m_app->undoStack().redo();
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
+        QCOMPARE(clickTag(**button), u"RequestRun"_s);
     }
 
     void tableAndFilter()
@@ -421,6 +414,83 @@ private Q_SLOTS:
         const QString chosen = m_dir.filePath(u"chosen.dll"_s);
         m_app->tags().connections()->setLibraryFile(QUrl::fromLocalFile(chosen));
         QVERIFY(m_app->settings().trustedLibraries().contains(QDir::cleanPath(chosen)));
+    }
+
+    void eventsTabEditsActions()
+    {
+        // The Start button: Click sets RunCommand.
+        auto* screen = project().screens()[0].get();
+        const auto start = std::ranges::find_if(screen->objects(), [](const auto& object)
+                                                { return object->name() == u"Start transfer"; });
+        QVERIFY(start != screen->objects().end());
+        HmiObject& button = **start;
+        EventModel& events = m_app->events();
+        QVERIFY(!events.available());
+        m_app->selection().selectOnly(button.id());
+        QVERIFY(events.available());
+        QCOMPARE(events.event(), 0); // Click
+        QCOMPARE(events.rowCount(), 1);
+        QCOMPARE(events.data(events.index(0), EventModel::TagRole).toString(), u"RunCommand"_s);
+        QCOMPARE(events.eventNames().front(), u"Click (1)"_s);
+        QVERIFY(events.screenNames().contains(u"01 Overview"_s));
+        QVERIFY(!events.screenNames().contains(u"02 Filling"_s)); // the screen being edited
+
+        // Each edit is one undo step.
+        QUndoStack& stack = m_app->undoStack();
+        const int index = stack.index();
+        events.addAction(int(Action::Kind::OpenScreen));
+        events.setScreen(1, u"01 Overview"_s);
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(2));
+        QCOMPARE(button.events().actions(EventKind::Click)[1].screen, u"01 Overview"_s);
+        QCOMPARE(events.data(events.index(1), EventModel::FieldsRole).toString(), u"screen"_s);
+        events.moveAction(1, -1);
+        QCOMPARE(int(button.events().actions(EventKind::Click)[0].kind),
+                 int(Action::Kind::OpenScreen));
+        events.setValue(1, u" false "_s);
+        QCOMPARE(button.events().actions(EventKind::Click)[1].value, u"false"_s);
+        events.removeAction(0);
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(1));
+        QCOMPARE(stack.index(), index + 5);
+        for (int i = 0; i < 5; ++i)
+            stack.undo();
+        QCOMPARE(button.events().actions(EventKind::Click).size(), std::size_t(1));
+        QCOMPARE(button.events().actions(EventKind::Click)[0].value, u"true"_s);
+        QCOMPARE(events.rowCount(), 1);
+
+        // Press has nothing; several objects selected: nothing to edit.
+        events.setEvent(1);
+        QCOMPARE(events.rowCount(), 0);
+        m_app->selection().set({button.id(), tank()->id()});
+        QVERIFY(!events.available());
+        QCOMPARE(events.rowCount(), 0);
+    }
+
+    void openScreenNavigates()
+    {
+        SimulationController& simulation = m_app->simulation();
+        TagEngine& engine = m_app->tagEngine();
+        simulation.start();
+        QVERIFY(engine.writeChecked(u"FlowSetpoint"_s, 70.0));
+        QSignalSpy screens(&simulation, &SimulationController::screenChanged);
+
+        // Another screen: shown, tags keep running and keep their values.
+        QVERIFY(simulation.openScreen(u"01 overview"_s)); // names match case-insensitively
+        QCOMPARE(simulation.screenTitle(), u"01 Overview"_s);
+        QCOMPARE(screens.count(), 1);
+        QVERIFY(engine.isRunning());
+        QCOMPARE(engine.value(u"FlowSetpoint"_s), TagValue(70.0));
+        QVERIFY(simulation.evaluator().playScreen()->name() == u"01 Overview"_s);
+
+        // An unknown screen changes nothing and says why.
+        QVERIFY(!simulation.openScreen(u"Nowhere"_s));
+        QCOMPARE(simulation.screenTitle(), u"01 Overview"_s);
+        QVERIFY(simulation.problems().join(u' ').contains(u"Nowhere"));
+
+        // The header button of the Overview opens Filling again, queued.
+        Q_EMIT simulation.input()->screenRequested(u"02 Filling"_s);
+        QTRY_COMPARE(simulation.screenTitle(), u"02 Filling"_s);
+        simulation.stop();
+        QVERIFY(!simulation.openScreen(u"01 Overview"_s)); // not running
     }
 
     void simulating()

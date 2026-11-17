@@ -625,10 +625,10 @@ QStringList TagModel::whereUsed(int row) const
             continue;
         const PropertyDescriptor* d = findDescriptor(object->descriptors(), use.property);
         const QString objectName = object->name().isEmpty() ? tr("(unnamed)") : object->name();
-        places << tr("%1 · %2 · %3")
-                      .arg(screen->name(), objectName,
-                           d ? QCoreApplication::translate("hmi::Property", d->displayName)
-                             : QString());
+        const QString where = use.event ? tr("%1 event").arg(Events::displayName(*use.event))
+                              : d ? QCoreApplication::translate("hmi::Property", d->displayName)
+                                  : QString();
+        places << tr("%1 · %2 · %3").arg(screen->name(), objectName, where);
     }
     return places;
 }

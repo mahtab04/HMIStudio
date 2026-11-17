@@ -353,6 +353,15 @@ with Start/Stop, Auto and Jog. See `docs/TAGS.md` for the supported-object
 matrix and limits. General event lists, navigation, alarms and history remain
 open; this does not complete all of phase 7.
 
+Events and navigation implemented on `feat/events-navigation`: every object
+has Click, Press and Release action lists (Set tag, Toggle tag, Increment
+tag, Open screen), edited in an Events tab of the properties panel with
+undo, saved in format 4 (format 3 operations are converted on load). Open
+screen switches the simulator to another screen while tags keep running.
+The sample has a second screen, 01 Overview, reached from header buttons.
+Still open in phase 7: popups (Show popup, Close popup), live screen
+windows, alarms, trends and the validation pass.
+
 ## Phase 8 — Real connections
 
 - Connection editor (type, address, rack/slot or endpoint, cycle time).

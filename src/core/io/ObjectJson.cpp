@@ -18,6 +18,7 @@ const auto kId = QStringLiteral("id");
 const auto kProps = QStringLiteral("props");
 const auto kChildren = QStringLiteral("children");
 const auto kBindings = QStringLiteral("bindings");
+const auto kEvents = QStringLiteral("events");
 
 QJsonArray pair(double a, double b)
 {
@@ -205,6 +206,25 @@ QJsonObject write(const HmiObject& object)
         json.remove(kBindings);
     else
         json.insert(kBindings, bindings);
+    // Events this version reads, then actions and events it could not. An
+    // "events" entry of another shape (a newer format) is kept as it was.
+    if (const QJsonValue kept = object.preservedJson().value(kEvents);
+        kept.isUndefined() || kept.isObject())
+    {
+        QJsonObject events = object.events().toJson();
+        const QJsonObject keptEvents = kept.toObject();
+        for (auto it = keptEvents.constBegin(); it != keptEvents.constEnd(); ++it)
+        {
+            QJsonArray list = events.value(it.key()).toArray();
+            for (const QJsonValue& entry : it.value().toArray())
+                list.append(entry);
+            events.insert(it.key(), list);
+        }
+        if (events.isEmpty())
+            json.remove(kEvents);
+        else
+            json.insert(kEvents, events);
+    }
     if (!object.children().empty())
     {
         QJsonArray children;
@@ -275,10 +295,29 @@ Result<std::unique_ptr<HmiObject>> read(const QJsonObject& json)
             unreadBindings.append(entry);
     }
 
+    // Events: read as action lists; an "events" entry of another shape (a
+    // newer format) is kept whole.
+    QJsonValue unreadEvents(QJsonValue::Undefined);
+    if (const QJsonValue entry = json.value(kEvents); entry.isObject())
+    {
+        QJsonObject unread;
+        const EventTable events = EventTable::fromJson(entry.toObject(), &unread);
+        for (const EventKind event : kEventKinds)
+            object->setActions(event, events.actions(event));
+        if (!unread.isEmpty())
+            unreadEvents = unread;
+    }
+    else if (!entry.isUndefined())
+    {
+        unreadEvents = entry;
+    }
+
     // Whatever this version did not understand stays with the object.
     QJsonObject preserved = json;
-    for (const QString& known : {kType, kId, kProps, kChildren, kBindings})
+    for (const QString& known : {kType, kId, kProps, kChildren, kBindings, kEvents})
         preserved.remove(known);
+    if (!unreadEvents.isUndefined())
+        preserved.insert(kEvents, unreadEvents);
     if (!unreadBindings.isEmpty())
         preserved.insert(kBindings, unreadBindings);
     if (!unknownProps.isEmpty())

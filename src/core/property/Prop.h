@@ -46,9 +46,6 @@ inline constexpr PropertyId BackgroundColor{"backgroundColor"};
 inline constexpr PropertyId AccentColor{"accentColor"};
 inline constexpr PropertyId ShowScale{"showScale"};
 inline constexpr PropertyId ClockMode{"clockMode"};
-inline constexpr PropertyId Action{"action"};
-inline constexpr PropertyId ActionTag{"actionTag"};
-inline constexpr PropertyId ActionValue{"actionValue"};
 
 // Process symbols
 inline constexpr PropertyId Running{"running"};
