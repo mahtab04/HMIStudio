@@ -264,8 +264,10 @@ std::unique_ptr<Project> makeSampleProject()
         tag(QStringLiteral("Temperature"), Tag::Type::Real, 0, 50, 22.0, tr("Measurements"),
             tr("Product temperature"), QStringLiteral("°C")),
     };
-    for (const Tag& t : tags)
+    for (Tag t : tags)
     {
+        // The operator sets the flow within the pump's 0..100 L/min.
+        t.limitInput = t.name == u"FlowSetpoint";
         [[maybe_unused]] const auto added = project->tags().insert(t);
         Q_ASSERT(added);
     }

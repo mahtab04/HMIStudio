@@ -263,8 +263,9 @@ void RuntimeInputHandler::activate(const Hit& target, QPointF scene)
         beginInput(object);
         break;
     case Kind::Toggle:
-        writeProperty(object, behavior.property,
-                      !std::get<bool>(currentValue(object, behavior.property)));
+        if (const auto value = currentValue(object, behavior.property);
+            const bool* flag = std::get_if<bool>(&value))
+            writeProperty(object, behavior.property, !*flag);
         break;
     case Kind::RowChoice:
         if (auto value = object.runtimeValueAt(target.toScreen.inverted().map(scene)))
@@ -302,7 +303,9 @@ void RuntimeInputHandler::beginInput(const HmiObject& object)
     if (behavior.kind == Kind::Choice)
     {
         m_choices = Describe::splitItems(object.value<QString>(Prop::Items));
-        m_selected = std::get<int>(currentValue(object, behavior.property));
+        const auto current = currentValue(object, behavior.property);
+        const int* index = std::get_if<int>(&current);
+        m_selected = index ? *index : -1;
         if (m_choices.isEmpty())
         {
             dismiss();
@@ -443,21 +446,19 @@ void RuntimeInputHandler::keyInput(int key, Qt::KeyboardModifiers modifiers, boo
         const double step =
             std::max(tag && tag->type == Tag::Type::Int ? 1.0 : 0.01, (high - low) / 100.0);
         const double direction = key == Qt::Key_Left || key == Qt::Key_Down ? -1.0 : 1.0;
-        if (low <= high)
+        const auto current = currentValue(object, behavior.property);
+        if (const double* number = std::get_if<double>(&current); number && low <= high)
             writeProperty(object, behavior.property,
-                          std::clamp(std::get<double>(currentValue(object, behavior.property)) +
-                                         direction * step,
-                                     low, high));
+                          std::clamp(*number + direction * step, low, high));
     }
     if (!released && behavior.kind == Kind::RowChoice && (key == Qt::Key_Up || key == Qt::Key_Down))
     {
         const HmiObject& object = *m_focus.object;
         const int count = int(Describe::splitItems(object.value<QString>(Prop::Items)).size());
-        if (count > 0)
+        const auto current = currentValue(object, behavior.property);
+        if (const int* index = std::get_if<int>(&current); index && count > 0)
             writeProperty(object, behavior.property,
-                          std::clamp(std::get<int>(currentValue(object, behavior.property)) +
-                                         (key == Qt::Key_Up ? -1 : 1),
-                                     0, count - 1));
+                          std::clamp(*index + (key == Qt::Key_Up ? -1 : 1), 0, count - 1));
     }
 }
 } // namespace hmi

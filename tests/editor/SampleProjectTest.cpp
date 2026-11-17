@@ -1,8 +1,8 @@
 #include "editor/app/SampleProject.h"
 
-#include "comm/FillingStationDriver.h"
 #include "core/io/ProjectSerializer.h"
 #include "core/property/Prop.h"
+#include "editor/app/FillingStationDriver.h"
 
 #include <QTemporaryDir>
 #include <QTest>
@@ -14,6 +14,24 @@ class SampleProjectTest : public QObject
 {
     Q_OBJECT
 private Q_SLOTS:
+    void exampleProjectMatchesTheSample()
+    {
+        // examples/BufferFilling.hmiproj is the built-in sample saved: it
+        // must load, and its tags must be the sample's.
+        auto example = ProjectSerializer::load(QString::fromUtf8(HMI_EXAMPLE_PROJECT));
+        QVERIFY2(example, example ? "" : qPrintable(example.error().message));
+        const auto sample = makeSampleProject();
+        QCOMPARE((*example)->tags().size(), sample->tags().size());
+        for (const Tag& tag : sample->tags().tags())
+        {
+            const Tag* saved = (*example)->tags().find(tag.name);
+            QVERIFY2(saved, qPrintable(tag.name));
+            QCOMPARE(saved->type, tag.type);
+            QCOMPARE(saved->limitInput, tag.limitInput);
+        }
+        QVERIFY((*example)->tags().find(u"FlowSetpoint"_s)->limitInput);
+    }
+
     void processRespondsToCommands()
     {
         auto project = makeSampleProject();

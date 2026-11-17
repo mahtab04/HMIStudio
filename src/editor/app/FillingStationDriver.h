@@ -4,7 +4,9 @@
 
 namespace hmi
 {
-// Deterministic training process for the sample project. Commands, feedback
+// Deterministic training process for the sample project, chosen by the
+// project's simulationProfile "filling-station". It belongs to the sample,
+// so it lives with it in the editor app rather than in hmi_comm. Commands, feedback
 // and measurements are separate tags. This driver never connects to a PLC.
 class FillingStationDriver final : public IDriver
 {

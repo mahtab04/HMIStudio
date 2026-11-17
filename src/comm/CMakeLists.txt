@@ -6,8 +6,6 @@ add_library(hmi_comm STATIC
     BindingEvaluator.cpp
     BindingEvaluator.h
     IDriver.h
-    FillingStationDriver.cpp
-    FillingStationDriver.h
     PlcDriver.cpp
     PlcDriver.h
     SimulatorDriver.cpp

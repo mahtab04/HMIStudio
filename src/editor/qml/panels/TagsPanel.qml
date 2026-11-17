@@ -245,7 +245,7 @@ Item {
                 required property bool current
 
                 readonly property bool live: cell.editor === "value" && panel.simulation.running
-                readonly property bool isChoice: cell.editor === "type" || cell.editor === "simulation" || cell.editor === "connection"
+                readonly property bool isChoice: cell.editor === "type" || cell.editor === "simulation" || cell.editor === "connection" || cell.editor === "limit"
 
                 implicitHeight: panel.theme.controlHeight
                 color: cell.selected ? Qt.alpha(panel.theme.accent, 0.28) : cell.row % 2 ? panel.theme.panel : panel.theme.window
@@ -276,7 +276,7 @@ Item {
                     anchors.margins: 1
                     visible: cell.isChoice
                     flat: true
-                    model: cell.editor === "type" ? panel.tags.typeNames : cell.editor === "simulation" ? panel.tags.simulationNames : cell.editor === "connection" ? panel.tags.connections.names : []
+                    model: cell.editor === "type" ? panel.tags.typeNames : cell.editor === "simulation" ? panel.tags.simulationNames : cell.editor === "connection" ? panel.tags.connections.names : cell.editor === "limit" ? panel.tags.limitNames : []
                     currentIndex: cell.choice
                     displayText: cell.choice < 0 ? String(cell.display) : combo.currentText
                     focusPolicy: Qt.NoFocus

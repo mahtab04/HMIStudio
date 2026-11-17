@@ -114,6 +114,7 @@ private Q_SLOTS:
         number.name = u"Setpoint"_s;
         number.type = Tag::Type::Int;
         number.initial = qint64(30);
+        number.limitInput = true; // operator input stays within 0..100
         Tag flag;
         flag.name = u"Flag"_s;
         flag.type = Tag::Type::Bool;
@@ -336,12 +337,22 @@ private Q_SLOTS:
         tag.name = u"Counter"_s;
         tag.type = Tag::Type::Int;
         tag.maximum = 99.8;
+        tag.limitInput = true;
         m_engine.start(std::vector<Tag>{tag});
         QVERIFY(!m_engine.writeChecked(tag.name, 99.7));
         QVERIFY(!m_engine.writeChecked(tag.name, u"1.5"_s));
         QVERIFY(!m_engine.writeChecked(tag.name, u"999999999999999999999999"_s));
         QVERIFY(m_engine.writeChecked(tag.name, qint64(42)));
         QCOMPARE(m_engine.value(tag.name), TagValue(qint64(42)));
+        m_engine.stop();
+
+        // Without limitInput, minimum and maximum are only the simulation
+        // range: an operator may enter 150 into a 0..100 tag.
+        Tag free;
+        free.name = u"Free"_s;
+        m_engine.start(std::vector<Tag>{free});
+        QVERIFY(m_engine.writeChecked(free.name, 150.0));
+        QCOMPARE(m_engine.value(free.name), TagValue(150.0));
     }
 };
 QTEST_MAIN(RuntimeInputTest)

@@ -23,6 +23,8 @@ qt_add_qml_module(hmi_editor_lib
         app/EditorController.h
         app/SampleProject.cpp
         app/SampleProject.h
+        app/FillingStationDriver.cpp
+        app/FillingStationDriver.h
         app/SimulationController.cpp
         app/SimulationController.h
         app/Theme.cpp

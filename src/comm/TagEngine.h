@@ -56,8 +56,9 @@ public:
     [[nodiscard]] TagValue value(const QString& tag) const;
     // Sets a tag through a writable driver; the new value is shown at once.
     void write(const QString& tag, const TagValue& value);
-    // Operator input: rejects invalid types, non-finite values and values
-    // outside the configured tag range, with a reason for the runtime UI.
+    // Operator input: rejects invalid types and non-finite values, and values
+    // outside minimum..maximum for tags with limitInput, with a reason for
+    // the runtime UI.
     [[nodiscard]] Result<void> writeChecked(const QString& tag, const TagValue& value);
     [[nodiscard]] const Tag* definition(const QString& tag) const;
 

@@ -852,4 +852,11 @@ properties and use existing property commands and JSON serialization.
 The explicitly saved `Project::simulationProfile()` chooses ordinary tag
 simulation or the buffer-filling training model. `FillingStationDriver` runs
 on the existing worker boundary, never opens a device connection and resets
-its process state on restart. Native PLC monitoring remains read only.
+its process state on restart. It belongs to the sample project, so it lives
+in `editor/app/` next to it, not in `hmi_comm`. Native PLC monitoring remains
+read only, and loads a native library named by a project only from a path
+the user chose on this computer (`AppSettings::trustedLibraries`).
+
+Tag minimum and maximum are the simulation and display range. They limit
+operator input only for tags with `limitInput`, like the optional limits of
+a WinCC tag.

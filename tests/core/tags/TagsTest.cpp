@@ -36,6 +36,27 @@ class TagsTest : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void inputLimitsAreOptional()
+    {
+        Tag tag;
+        tag.name = QStringLiteral("Setpoint");
+        // Off: not written, so older projects save byte for byte as before.
+        QVERIFY(!tag.toJson().contains(QStringLiteral("limitInput")));
+        tag.limitInput = true;
+        const QJsonObject json = tag.toJson();
+        QCOMPARE(json.value(QStringLiteral("limitInput")), QJsonValue(true));
+        QVERIFY(Tag::fromJson(json)->limitInput);
+        QJsonObject bad = json;
+        bad.insert(QStringLiteral("limitInput"), QStringLiteral("yes"));
+        QVERIFY(!Tag::fromJson(bad));
+
+        // CSV carries it too, and files without the column still import.
+        const auto read = TagCsv::read(TagCsv::write(std::vector{tag}));
+        QVERIFY(read);
+        QVERIFY(read->front().limitInput);
+        QVERIFY(!TagCsv::read("name,type\nOld,real\n")->front().limitInput);
+    }
+
     void valuesConvert()
     {
         QCOMPARE(TagValues::toNumber(TagValue(true)), std::optional(1.0));

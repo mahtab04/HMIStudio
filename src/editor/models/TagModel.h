@@ -30,6 +30,7 @@ class TagModel : public QAbstractTableModel
     Q_PROPERTY(QStringList columnTitles READ columnTitles CONSTANT)
     Q_PROPERTY(QStringList typeNames READ typeNames CONSTANT)
     Q_PROPERTY(QStringList simulationNames READ simulationNames CONSTANT)
+    Q_PROPERTY(QStringList limitNames READ limitNames CONSTANT)
     Q_PROPERTY(QString message READ message NOTIFY messageChanged)
     Q_PROPERTY(QString monitorProblem READ monitorProblem NOTIFY monitorProblemChanged)
     Q_PROPERTY(hmi::TagConnections* connections READ connections CONSTANT)
@@ -54,6 +55,7 @@ public:
         UnitColumn,
         MinimumColumn,
         MaximumColumn,
+        LimitColumn,
         SimulationColumn,
         PeriodColumn,
         InitialColumn,
@@ -85,6 +87,7 @@ public:
     [[nodiscard]] QStringList columnTitles() const;
     [[nodiscard]] QStringList typeNames() const;
     [[nodiscard]] QStringList simulationNames() const;
+    [[nodiscard]] QStringList limitNames() const;
     [[nodiscard]] int tagCount() const;
 
     [[nodiscard]] QString message() const { return m_message; }

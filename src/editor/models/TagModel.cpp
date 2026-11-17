@@ -158,8 +158,9 @@ double TagModel::columnWidth(int column, double width, double minimum) const
 {
     const std::vector<int> columns =
         m_simulationSettings
-            ? std::vector<int>{NameColumn,       TypeColumn,   MinimumColumn, MaximumColumn,
-                               SimulationColumn, PeriodColumn, ValueColumn,   InitialColumn}
+            ? std::vector<int>{NameColumn,    TypeColumn,  MinimumColumn,
+                               MaximumColumn, LimitColumn, SimulationColumn,
+                               PeriodColumn,  ValueColumn, InitialColumn}
             : std::vector<int>{NameColumn,        TypeColumn,  ConnectionColumn, AddressColumn,
                                AcquisitionColumn, ValueColumn, TableColumn,      QualityColumn,
                                CommentColumn,     UnitColumn};
@@ -235,10 +236,10 @@ int TagModel::columnCount(const QModelIndex& parent) const
 
 QStringList TagModel::columnTitles() const
 {
-    return {tr("Name"),       tr("Type"),       tr("Connection"), tr("PLC address"),
-            tr("Tag table"),  tr("Cycle (ms)"), tr("Value"),      tr("Quality"),
-            tr("Comment"),    tr("Unit"),       tr("Minimum"),    tr("Maximum"),
-            tr("Simulation"), tr("Period (s)"), tr("Start value")};
+    return {tr("Name"),        tr("Type"),       tr("Connection"), tr("PLC address"),
+            tr("Tag table"),   tr("Cycle (ms)"), tr("Value"),      tr("Quality"),
+            tr("Comment"),     tr("Unit"),       tr("Minimum"),    tr("Maximum"),
+            tr("Limit input"), tr("Simulation"), tr("Period (s)"), tr("Start value")};
 }
 
 QStringList TagModel::typeNames() const
@@ -249,6 +250,11 @@ QStringList TagModel::typeNames() const
 QStringList TagModel::simulationNames() const
 {
     return {tr("None"), tr("Ramp"), tr("Sine"), tr("Random"), tr("Toggle")};
+}
+
+QStringList TagModel::limitNames() const
+{
+    return {tr("No"), tr("Yes")};
 }
 
 QVariant TagModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -279,6 +285,8 @@ QVariant TagModel::data(const QModelIndex& index, int role) const
             return QStringLiteral("type");
         case SimulationColumn:
             return QStringLiteral("simulation");
+        case LimitColumn:
+            return QStringLiteral("limit");
         case MinimumColumn:
         case MaximumColumn:
         case PeriodColumn:
@@ -298,6 +306,8 @@ QVariant TagModel::data(const QModelIndex& index, int role) const
             return m_connections->choice(tag->connection);
         if (column == SimulationColumn)
             return int(std::ranges::find(kSimulations, tag->simulation) - std::begin(kSimulations));
+        if (column == LimitColumn)
+            return tag->limitInput ? 1 : 0;
         return -1;
     }
     if (role == Qt::ToolTipRole)
@@ -351,6 +361,8 @@ QVariant TagModel::data(const QModelIndex& index, int role) const
         return tag->type == Tag::Type::Bool || tag->type == Tag::Type::String
                    ? QVariant(QString())
                    : QVariant(tag->maximum);
+    case LimitColumn:
+        return limitNames().at(tag->limitInput ? 1 : 0);
     case SimulationColumn:
         return simulationNames().at(data(index, ChoiceRole).toInt());
     case PeriodColumn:
@@ -477,6 +489,13 @@ bool TagModel::setCell(int row, int column, const QVariant& value)
     case MaximumColumn:
         changed.maximum = number();
         break;
+    case LimitColumn:
+    {
+        const int i = value.toInt();
+        ok = i == 0 || i == 1;
+        changed.limitInput = i == 1;
+        break;
+    }
     case SimulationColumn:
     {
         const int i = value.toInt();

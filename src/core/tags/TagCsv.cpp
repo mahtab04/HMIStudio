@@ -13,7 +13,7 @@ const QStringList kColumns{
     QStringLiteral("minimum"),       QStringLiteral("maximum"),    QStringLiteral("simulation"),
     QStringLiteral("period"),        QStringLiteral("initial"),    QStringLiteral("comment"),
     QStringLiteral("table"),         QStringLiteral("connection"), QStringLiteral("address"),
-    QStringLiteral("acquisitionMs"),
+    QStringLiteral("acquisitionMs"), QStringLiteral("limitInput"),
 };
 
 QString quoted(const QString& field, QChar separator)
@@ -106,6 +106,7 @@ QByteArray write(std::span<const Tag> tags)
             tag.connection,
             tag.address,
             QString::number(tag.acquisitionMs),
+            tag.limitInput ? QStringLiteral("true") : QStringLiteral("false"),
         };
         QStringList out;
         for (const QString& f : fields)
@@ -164,6 +165,12 @@ Result<std::vector<Tag>> read(const QByteArray& csv)
         tag.address = field(row, "address");
         if (const QString table = field(row, "table"); !table.isEmpty())
             tag.table = table;
+        if (const QString limit = field(row, "limitinput").trimmed().toLower(); !limit.isEmpty())
+        {
+            if (limit != u"true" && limit != u"false" && limit != u"1" && limit != u"0")
+                return fail(QStringLiteral("limitInput must be true or false"));
+            tag.limitInput = limit == u"true" || limit == u"1";
+        }
         if (const QString cycle = field(row, "acquisitionms"); !cycle.isEmpty())
         {
             bool valid = false;

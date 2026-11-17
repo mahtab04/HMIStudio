@@ -61,6 +61,8 @@ For a Start button choose **Set value**, select a Boolean command tag, and enter
 
 Mouse and touch use the same gesture path. Tab selects an operating element, Enter/Space activates it, arrows operate sliders and row selectors, and Escape cancels input. Numeric entry has an on-screen keypad. Touch area outlines and hidden objects are omitted in the runtime. Hidden objects cannot be operated.
 
+A tag's **Minimum** and **Maximum** are its simulation and display range. They limit operator input only when **Limit input** is Yes (in the table's simulation settings view), like the optional limits of a WinCC tag; the sample's `FlowSetpoint` has it on, so the operator cannot set more than 100 L/min.
+
 Input accepts direct bindings and invertible linear scaling. Range maps, expression transforms and zero-span scales are display only and report an error on input. Invalid numbers, non-finite numbers, missing tags and out-of-range values are rejected with a visible explanation. The I/O field is currently numeric; String tags remain editable in the tag table. Slider movement writes continuously; cancelling ends movement without rolling back values already written. All native PLC adapters remain read only, so these interactions are available in **Simulation**, not **Monitor PLCs**.
 
 Operation targets participate in Where used, delete warnings, renaming and undo, including nested group references. Format 3 persists the optional operation properties and simulation profile. Version 2 controls migrate with operation None and ordinary tag simulation.

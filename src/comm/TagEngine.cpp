@@ -209,7 +209,7 @@ Result<void> TagEngine::writeChecked(const QString& name, const TagValue& value)
         if (!number || !std::isfinite(*number))
             return makeError(ErrorCode::TypeMismatch,
                              tr("Enter a finite number for '%1'.").arg(name));
-        if (*number < tag->minimum || *number > tag->maximum)
+        if (tag->limitInput && (*number < tag->minimum || *number > tag->maximum))
             return makeError(
                 ErrorCode::OutOfRange,
                 tr("%1 must be between %2 and %3.").arg(name).arg(tag->minimum).arg(tag->maximum));
@@ -238,7 +238,7 @@ Result<void> TagEngine::writeChecked(const QString& name, const TagValue& value)
         else
             converted = *number;
         const double stored = TagValues::toNumber(converted).value_or(*number);
-        if (stored < tag->minimum || stored > tag->maximum)
+        if (tag->limitInput && (stored < tag->minimum || stored > tag->maximum))
             return makeError(ErrorCode::OutOfRange,
                              tr("The rounded integer is outside the tag's limits."));
     }

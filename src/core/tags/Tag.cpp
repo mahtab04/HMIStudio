@@ -238,6 +238,9 @@ QJsonObject Tag::toJson() const
     json.insert(kAddress, address);
     json.insert(QStringLiteral("table"), table);
     json.insert(QStringLiteral("acquisitionMs"), acquisitionMs);
+    // Written only when on, so projects without limits save as before.
+    if (limitInput)
+        json.insert(QStringLiteral("limitInput"), true);
     return json;
 }
 
@@ -270,6 +273,10 @@ Result<Tag> Tag::fromJson(const QJsonObject& json)
                          QStringLiteral("Invalid tag table or acquisition cycle"));
     tag.table = json.value(QStringLiteral("table")).toString(QStringLiteral("Default"));
     tag.acquisitionMs = json.value(QStringLiteral("acquisitionMs")).toInt(500);
+    const QJsonValue limit = json.value(QStringLiteral("limitInput"));
+    if (!limit.isUndefined() && !limit.isBool())
+        return makeError(ErrorCode::BadFormat, QStringLiteral("limitInput must be true or false"));
+    tag.limitInput = limit.toBool(false);
     if (tag.table.trimmed().isEmpty() || tag.acquisitionMs < 100 || tag.acquisitionMs > 60000)
         return makeError(ErrorCode::BadFormat,
                          QStringLiteral("Invalid tag table or acquisition cycle"));
@@ -278,9 +285,9 @@ Result<Tag> Tag::fromJson(const QJsonObject& json)
                          QStringLiteral("Tag '%1' has an invalid period or limits").arg(tag.name));
 
     QJsonObject rest = json;
-    for (const QString& key :
-         {kName, kType, kUnit, kComment, kMinimum, kMaximum, kSimulation, kPeriod, kInitial,
-          kConnection, kAddress, QStringLiteral("table"), QStringLiteral("acquisitionMs")})
+    for (const QString& key : {kName, kType, kUnit, kComment, kMinimum, kMaximum, kSimulation,
+                               kPeriod, kInitial, kConnection, kAddress, QStringLiteral("table"),
+                               QStringLiteral("acquisitionMs"), QStringLiteral("limitInput")})
         rest.remove(key);
     tag.preserved = rest;
     return tag;

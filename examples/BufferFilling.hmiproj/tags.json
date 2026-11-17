@@ -52,6 +52,7 @@
             "comment": "Shared flow setpoint",
             "connection": "",
             "initial": 50,
+            "limitInput": true,
             "maximum": 100,
             "minimum": 0,
             "name": "FlowSetpoint",

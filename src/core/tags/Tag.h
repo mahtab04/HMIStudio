@@ -60,6 +60,10 @@ struct Tag
     QString address;
     QString table = QStringLiteral("Default");
     int acquisitionMs = 500;
+    // When set, operator input outside minimum..maximum is refused, as with
+    // the optional limits of a WinCC tag. Otherwise minimum and maximum are
+    // only the simulation and display range.
+    bool limitInput = false;
     // Keys this version does not know, written back unchanged.
     QJsonObject preserved;
 
