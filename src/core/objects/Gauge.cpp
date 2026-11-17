@@ -36,7 +36,7 @@ std::span<const PropertyDescriptor> Gauge::staticDescriptors()
             Describe::value(60.0),
             Describe::minimum(0.0),
             Describe::maximum(100.0),
-            Describe::string(Prop::Unit, "unit", QT_TRANSLATE_NOOP("hmi::Property", "Unit"), Text,
+            Describe::string(Prop::Unit, "unit", QT_TRANSLATE_NOOP("hmi::Property", "Unit"), General,
                              QString()),
             Describe::fillColor(QColor(0xE9, 0xEB, 0xEE),
                                 QT_TRANSLATE_NOOP("hmi::Property", "Dial colour")),

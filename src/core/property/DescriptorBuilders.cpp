@@ -46,7 +46,7 @@ PropertyDescriptor text(const QString& value)
     return {.id = Prop::Text,
             .key = "text",
             .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Text"),
-            .category = PropertyCategory::Text,
+            .category = PropertyCategory::General,
             .defaultValue = value,
             .bindable = true};
 }

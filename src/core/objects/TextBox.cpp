@@ -64,7 +64,7 @@ std::span<const PropertyDescriptor> TextBox::staticDescriptors()
             {.id = Prop::Text,
              .key = "text",
              .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Text"),
-             .category = PropertyCategory::Text,
+             .category = PropertyCategory::General,
              .defaultValue = QStringLiteral("Text"),
              .bindable = true},
             {.id = Prop::Font,

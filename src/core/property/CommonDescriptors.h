@@ -16,7 +16,8 @@ namespace PropertyCategory
 inline constexpr const char* General = "General";
 inline constexpr const char* Layout = "Layout";
 inline constexpr const char* Appearance = "Appearance";
-inline constexpr const char* Text = "Text";
+// Font, colour and alignment of text; the text itself is General.
+inline constexpr const char* Text = "Text format";
 inline constexpr const char* Behaviour = "Behaviour";
 } // namespace PropertyCategory
 

@@ -43,7 +43,7 @@ std::span<const PropertyDescriptor> IoField::staticDescriptors()
             Describe::value(0.0),
             Describe::integer(Prop::Decimals, "decimals",
                               QT_TRANSLATE_NOOP("hmi::Property", "Decimals"), Behaviour, 1, 0, 6),
-            Describe::string(Prop::Unit, "unit", QT_TRANSLATE_NOOP("hmi::Property", "Unit"), Text,
+            Describe::string(Prop::Unit, "unit", QT_TRANSLATE_NOOP("hmi::Property", "Unit"), General,
                              QString()),
             Describe::choice(Prop::IoMode, "ioMode", QT_TRANSLATE_NOOP("hmi::Property", "Mode"),
                              Behaviour, InputOutput, kModeOptions),
