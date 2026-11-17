@@ -4,6 +4,7 @@
 #include "core/graphics/AssetStore.h"
 #include "core/model/DocumentNotifier.h"
 #include "core/model/HmiStyle.h"
+#include "core/model/IScreenSource.h"
 #include "core/model/Ids.h"
 #include "core/model/Screen.h"
 #include "core/tags/Connection.h"
@@ -23,7 +24,7 @@ namespace hmi
 // Root of the document tree: owns screens, tags, connection definitions,
 // assets and the document's DocumentNotifier. Screens added here, and
 // their objects, report every change through notifier().
-class Project
+class Project : public IScreenSource
 {
 public:
     explicit Project(QString name = {});
@@ -73,6 +74,7 @@ public:
         return m_screens;
     }
     [[nodiscard]] Screen* screen(ScreenId id) const noexcept;
+    [[nodiscard]] const Screen* screenNamed(const QString& name) const override;
     [[nodiscard]] std::optional<std::size_t> indexOf(ScreenId id) const noexcept;
 
     // Adds a screen at `index` (default: last). Fails for null, duplicate id

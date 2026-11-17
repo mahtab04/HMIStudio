@@ -4,6 +4,7 @@ namespace hmi
 {
 
 class IGraphicProvider;
+class IScreenSource;
 
 // Information an object needs while painting that is not part of the object:
 // the current zoom, for level of detail (ARCHITECTURE.md section 14.5);
@@ -19,6 +20,11 @@ struct PaintContext
     bool editing = true;
     // Draws imported images and SVG; null where none are available.
     const IGraphicProvider* graphics = nullptr;
+    // Other screens of the project, for screen windows; null where none are.
+    const IScreenSource* screens = nullptr;
+    // How many screen windows deep this drawing is (a window showing a
+    // screen with a window ...); stops endless nesting.
+    int depth = 0;
 
     [[nodiscard]] constexpr bool lowDetail() const noexcept { return zoom < kLowDetailZoom; }
 };

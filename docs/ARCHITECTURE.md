@@ -862,7 +862,17 @@ cancelled. Open screen is a signal, queued to `SimulationController`, which
 replaces the play screen after the list has finished. Show popup gives the
 popup screen a second `BindingEvaluator` play copy and `RuntimeInputHandler`
 in the controller; the simulator window shows it in its own `RuntimeView`
-above the dimmed screen, which takes no input while the popup is open. `TagUsage` and
+above the dimmed screen, which takes no input while the popup is open.
+
+Screen windows: `Project` implements `IScreenSource` (screens by name). The
+editor passes it to the canvas items in `PaintContext::screens`, and
+`ScreenWindow::paint` draws a scaled preview of the screen it shows
+(`PaintContext::depth` stops endless nesting). In play mode
+`BindingEvaluator::show` asks each top-level object for
+`expandForRuntime()`: a screen window returns a `GroupObject` holding a copy
+of its screen (new ids, a background rectangle the size of the screen)
+fitted into the window, so the evaluator, input and painting treat it like
+any group, without knowing the type. `TagUsage` and
 `ChangeTagCommand` include tags named by actions.
 
 The explicitly saved `Project::simulationProfile()` chooses ordinary tag

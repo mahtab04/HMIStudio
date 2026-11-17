@@ -22,6 +22,7 @@ namespace hmi
 class DocumentNotifier;
 class GridItem;
 class IGraphicProvider;
+class IScreenSource;
 class GuideOverlay;
 class Screen;
 class ScreenItem;
@@ -84,6 +85,8 @@ public:
     void setSelection(std::vector<ObjectId> ids);
     // Where objects get imported graphics from; must outlive the canvas.
     void setGraphics(const IGraphicProvider* graphics);
+    // The project's screens, for screen window previews.
+    void setScreens(const IScreenSource* screens);
 
     [[nodiscard]] QRectF selectionBounds() const noexcept { return m_selectionBounds; }
     [[nodiscard]] bool previewActive() const noexcept

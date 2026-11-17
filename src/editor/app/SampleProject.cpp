@@ -9,6 +9,7 @@
 #include "core/objects/Pipe.h"
 #include "core/objects/Pump.h"
 #include "core/objects/Rectangle.h"
+#include "core/objects/ScreenWindow.h"
 #include "core/objects/Slider.h"
 #include "core/objects/Switch.h"
 #include "core/objects/Tank.h"
@@ -320,7 +321,11 @@ std::unique_ptr<Project> makeSampleProject()
     readout(o, links, 720, tr("Actual flow"), QStringLiteral("Flow"), QStringLiteral("L/min"), 1);
     readout(o, links, 960, tr("Line pressure"), QStringLiteral("Pressure"), QStringLiteral("bar"),
             2);
-    label(o, at(480, 200, 700, 80),
+    // A screen window: the pump's details screen, live, inside this one.
+    o.add(ScreenWindow::kTypeId, at(880, 200, 360, 300))
+        .with(Prop::Name, tr("P-101 details window"))
+        .with(Prop::ScreenName, tr("P-101 details"));
+    label(o, at(480, 200, 380, 80),
           tr("Operate the pump on the Filling screen.\nThe values here follow the same tags."), 18,
           kMuted);
     auto second = project->insertScreen(o.build());

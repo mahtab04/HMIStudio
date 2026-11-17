@@ -68,6 +68,11 @@ void CanvasItem::setScreen(const Screen* screen, DocumentNotifier* notifier)
         applyView();
 }
 
+void CanvasItem::setScreens(const IScreenSource* screens)
+{
+    m_screenItem->setScreens(screens);
+}
+
 void CanvasItem::setGraphics(const IGraphicProvider* graphics)
 {
     m_screenItem->setGraphics(graphics);

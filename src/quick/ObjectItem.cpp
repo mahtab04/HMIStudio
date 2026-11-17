@@ -52,6 +52,14 @@ void ObjectItem::showPreview(const QRectF& sceneGeometry, double rotation)
     update();
 }
 
+void ObjectItem::setScreens(const IScreenSource* screens)
+{
+    if (screens == m_screens)
+        return;
+    m_screens = screens;
+    update();
+}
+
 void ObjectItem::setGraphics(const IGraphicProvider* graphics)
 {
     if (graphics == m_graphics)
@@ -101,9 +109,11 @@ void ObjectItem::paint(QPainter* painter)
 
     painter->setRenderHint(QPainter::Antialiasing);
     painter->setRenderHint(QPainter::TextAntialiasing);
-    m_object->paint(
-        *painter,
-        PaintContext{.zoom = m_renderScale, .editing = m_editing, .graphics = m_graphics});
+    m_object->paint(*painter, PaintContext{.zoom = m_renderScale,
+                                           .editing = m_editing,
+                                           .graphics = m_graphics,
+                                           .screens = m_screens,
+                                           .depth = 0});
 }
 
 } // namespace hmi

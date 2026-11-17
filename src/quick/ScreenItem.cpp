@@ -85,6 +85,7 @@ void ScreenItem::addItem(ObjectId id)
     item->setEditing(m_editing);
     item->setRenderScale(renderScaleFor(*item));
     item->setGraphics(m_graphics);
+    item->setScreens(m_screens);
     m_items.insert(id, item);
     syncZOrder();
 }
@@ -144,6 +145,13 @@ void ScreenItem::setEditing(bool editing)
     m_editing = editing;
     for (ObjectItem* item : std::as_const(m_items))
         item->setEditing(editing);
+}
+
+void ScreenItem::setScreens(const IScreenSource* screens)
+{
+    m_screens = screens;
+    for (ObjectItem* item : std::as_const(m_items))
+        item->setScreens(screens);
 }
 
 void ScreenItem::setGraphics(const IGraphicProvider* graphics)

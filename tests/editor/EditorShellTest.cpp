@@ -315,6 +315,26 @@ private Q_SLOTS:
         work->setProperty("showingTags", false);
         QTRY_VERIFY(canvas->isVisible());
 
+        // The Overview's screen window shows the P-101 details screen: a
+        // preview in the editor, live in the simulator.
+        if (const QString path = qEnvironmentVariable("HMI_OVERVIEW_SCREENSHOT"); !path.isEmpty())
+        {
+            QMetaObject::invokeMethod(menu, "close");
+            context.editor().setCurrentScreen(1);
+            context.theme().setDensity(Theme::Density::Compact);
+            QTest::qWait(500);
+            QVERIFY(window->grabWindow().save(path));
+            context.simulation().start();
+            QQuickWindow* live = nullptr;
+            QTRY_VERIFY((live = simulatorWindow(engine)) != nullptr);
+            QVERIFY(QTest::qWaitForWindowExposed(live));
+            QTest::qWait(1200);
+            QVERIFY(live->grabWindow().save(QString(path).replace(QStringLiteral(".png"), QStringLiteral("_live.png"))));
+            context.simulation().stop();
+            QTRY_VERIFY(simulatorWindow(engine) == nullptr);
+            context.editor().setCurrentScreen(0);
+        }
+
         // The runtime simulation opens a window of its own showing a play
         // copy of the screen at its size; the editor keeps the document.
         QMetaObject::invokeMethod(menu, "close");

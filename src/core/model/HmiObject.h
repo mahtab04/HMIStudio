@@ -86,6 +86,13 @@ public:
         return std::nullopt;
     }
     [[nodiscard]] virtual QTransform childTransform() const { return {}; }
+    // In play mode, what replaces the object: a screen window becomes a live
+    // copy of the screen it shows. Null for objects that stay as they are.
+    [[nodiscard]] virtual std::unique_ptr<HmiObject>
+    expandForRuntime(const class IScreenSource& /*screens*/, int /*depth*/) const
+    {
+        return nullptr;
+    }
 
     virtual void accept(ObjectVisitor& visitor) = 0;
 

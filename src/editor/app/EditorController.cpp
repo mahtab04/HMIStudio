@@ -98,6 +98,7 @@ void EditorController::attachCanvas(CanvasItem* canvas)
 
     canvas->setInputSettings(m_context.input());
     canvas->setGraphics(m_context.graphics());
+    canvas->setScreens(&m_context.project());
     canvas->setGridSpacing(kGridSpacing);
     canvas->setScreen(m_context.screen(), &m_context.project().notifier());
     canvas->setSelection(m_context.selection().ids());

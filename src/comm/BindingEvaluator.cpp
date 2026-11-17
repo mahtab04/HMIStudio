@@ -30,13 +30,31 @@ void BindingEvaluator::clear()
     }
 }
 
-void BindingEvaluator::show(const Screen& screen)
+void BindingEvaluator::show(const Screen& screen, const IScreenSource* screens)
 {
     m_byTag.clear();
     // A fresh project for each screen, so items of the last one are gone.
     auto play = std::make_unique<Project>();
     auto inserted = play->insertScreen(screen.clone());
     Q_ASSERT(inserted);
+    // Screen windows become live copies of the screens they show.
+    if (screens)
+    {
+        std::vector<ObjectId> ids;
+        for (const auto& object : (*inserted)->objects())
+            ids.push_back(object->id());
+        for (const ObjectId& id : ids)
+        {
+            Screen& copy = **inserted;
+            auto stand = copy.object(id)->expandForRuntime(*screens, 0);
+            if (!stand)
+                continue;
+            const auto index = copy.indexOf(id);
+            (void)copy.takeObject(id);
+            [[maybe_unused]] const auto placed = copy.insertObject(std::move(stand), index);
+            Q_ASSERT(placed);
+        }
+    }
     m_play = std::move(play);
     QStringList tags;
     const std::function<void(HmiObject&, ObjectId)> collect = [&](HmiObject& object, ObjectId root)
