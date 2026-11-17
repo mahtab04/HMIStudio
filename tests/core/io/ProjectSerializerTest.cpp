@@ -145,9 +145,10 @@ private Q_SLOTS:
 
         QVERIFY(ProjectSerializer::save(**loaded, second.path()));
         const auto a = filesIn(first.path());
-        QCOMPARE(a.keys(), (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
-                                        u"screens/02_filling.json"_s,
-                                        u"screens/03_empty_alarms.json"_s, u"tags.json"_s}));
+        QCOMPARE(a.keys(),
+                 (QStringList{u"alarms.json"_s, u"project.json"_s,
+                              u"screens/01_line_overview.json"_s, u"screens/02_filling.json"_s,
+                              u"screens/03_empty_alarms.json"_s, u"tags.json"_s}));
         QCOMPARE(filesIn(second.path()), a);
 
         // Saving again over the same folder changes nothing.
@@ -250,7 +251,7 @@ private Q_SLOTS:
         QVERIFY(ProjectSerializer::save(*project, dir.path()));
         QCOMPARE(
             filesIn(dir.path()).keys(),
-            (QStringList{u"project.json"_s, u"screens/01_line_overview.json"_s,
+            (QStringList{u"alarms.json"_s, u"project.json"_s, u"screens/01_line_overview.json"_s,
                          u"screens/02_alarms.json"_s, u"screens/notes.json"_s, u"tags.json"_s}));
     }
 
@@ -473,6 +474,65 @@ private Q_SLOTS:
         QCOMPARE(holder->events().actions(EventKind::Release).front().tag, u"Jog"_s);
         // The old properties are gone, not kept as unknown data.
         QVERIFY(!holder->preservedJson().value(u"props"_s).toObject().contains(u"action"_s));
+    }
+
+    void alarmsRoundTrip()
+    {
+        auto project = sampleProject();
+        AlarmConfiguration alarms = project->alarms();
+        QCOMPARE(alarms.classes.size(), AlarmClass::predefinedClasses().size());
+        // A user class, a discrete and an analog alarm.
+        AlarmClass maintenance;
+        maintenance.name = u"Maintenance"_s;
+        maintenance.stateMachine = AlarmStateMachine::WithoutAcknowledgment;
+        maintenance.priority = 2;
+        maintenance.colors[AlarmClass::IncomingColors] = {Qt::black, Qt::cyan, true};
+        alarms.classes.push_back(maintenance);
+        alarms.classes[0].priority = 15; // a predefined class's priority may change
+        Alarm pump;
+        pump.id = 7;
+        pump.name = u"PumpFault"_s;
+        pump.text = u"P-101 fault"_s;
+        pump.tag = u"Faults"_s;
+        pump.bit = 3;
+        pump.fallingEdge = true;
+        pump.infoText = u"Check the motor protection switch."_s;
+        pump.origin = u"Line 3"_s;
+        Alarm level;
+        level.id = 8;
+        level.kind = Alarm::Kind::Analog;
+        level.text = u"Level {Level} % too high"_s;
+        level.alarmClass = u"Maintenance"_s;
+        level.tag = u"Level"_s;
+        level.mode = Alarm::Mode::GreaterOrEqual;
+        level.limit = 90.5;
+        alarms.alarms = {pump, level};
+        QVERIFY(project->setAlarms(alarms));
+
+        QTemporaryDir dir;
+        QVERIFY(ProjectSerializer::save(*project, dir.path()));
+        auto loaded = ProjectSerializer::load(dir.path());
+        QVERIFY2(loaded, loaded ? "" : qPrintable(loaded.error().message));
+        const AlarmConfiguration& read = (*loaded)->alarms();
+        QVERIFY(read == project->alarms());
+
+        // Invalid configurations are refused.
+        AlarmConfiguration twice = alarms;
+        twice.alarms[1].id = 7;
+        QVERIFY(!project->setAlarms(twice));
+        AlarmConfiguration unknownClass = alarms;
+        unknownClass.alarms[0].alarmClass = u"Nope"_s;
+        QVERIFY(!project->setAlarms(unknownClass));
+        AlarmConfiguration renamed = alarms;
+        renamed.classes[0].name = u"Alarms"_s;
+        QVERIFY(!project->setAlarms(renamed));
+
+        // A project without alarms.json has none, and the predefined classes.
+        QVERIFY(QFile::remove(dir.filePath(u"alarms.json"_s)));
+        auto old = ProjectSerializer::load(dir.path());
+        QVERIFY(old);
+        QVERIFY((*old)->alarms().alarms.empty());
+        QCOMPARE((*old)->alarms().classes.size(), AlarmClass::predefinedClasses().size());
     }
 
     void connectionAndTagMetadataRoundTrip()
