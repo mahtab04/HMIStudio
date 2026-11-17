@@ -13,8 +13,10 @@ const auto kDensity = QStringLiteral("ui/density");
 const auto kToolbox = QStringLiteral("ui/toolboxPanelVisible");
 const auto kProperties = QStringLiteral("ui/propertiesPanelVisible");
 const auto kBottom = QStringLiteral("ui/bottomPanelVisible");
-const auto kMainSplit = QStringLiteral("ui/mainSplitState");
-const auto kCentreSplit = QStringLiteral("ui/centreSplitState");
+// Version 2: sizes saved before side panels had a maximum width could make
+// a panel take half the window; they are not restored.
+const auto kMainSplit = QStringLiteral("ui/mainSplitState2");
+const auto kCentreSplit = QStringLiteral("ui/centreSplitState2");
 const auto kRecent = QStringLiteral("projects/recent");
 const auto kAutosave = QStringLiteral("projects/autosaveSeconds");
 
