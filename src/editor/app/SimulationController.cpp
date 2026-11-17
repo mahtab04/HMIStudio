@@ -22,6 +22,9 @@ SimulationController::SimulationController(ToolContext& context, TagEngine& engi
 {
     connect(m_evaluator.get(), &BindingEvaluator::problemsChanged, this,
             &SimulationController::problemsChanged);
+    // Queued: the action list that asked runs to its end on the old screen.
+    connect(m_input.get(), &RuntimeInputHandler::screenRequested, this,
+            &SimulationController::openScreen, Qt::QueuedConnection);
     // A new or opened document ends the simulation.
     connect(&m_context.project().notifier(), &DocumentNotifier::projectReset, this,
             &SimulationController::stop);
@@ -48,10 +51,36 @@ bool SimulationController::begin()
     else if (m_context.project().simulationProfile() == u"filling-station")
         driver = std::make_unique<FillingStationDriver>();
     m_engine.start(m_context.project().tags().tags(), std::move(driver));
-    m_evaluator->show(*screen);
+    show(*screen);
+    return true;
+}
+
+void SimulationController::show(const Screen& screen)
+{
+    // Input and view let go of the old play copy before it is replaced.
+    m_input->setScreen(nullptr);
+    if (m_view)
+        m_view->setScreen(nullptr, nullptr);
+    m_evaluator->show(screen);
     m_input->setScreen(m_evaluator->playScreen());
     showOnView();
-    return true;
+    Q_EMIT screenChanged();
+}
+
+bool SimulationController::openScreen(const QString& name)
+{
+    if (!m_running)
+        return false;
+    for (const auto& screen : m_context.project().screens())
+    {
+        if (screen->name().compare(name, Qt::CaseInsensitive) == 0)
+        {
+            show(*screen);
+            return true;
+        }
+    }
+    m_evaluator->report(tr("Open screen: the project has no screen called %1.").arg(name));
+    return false;
 }
 
 void SimulationController::end()

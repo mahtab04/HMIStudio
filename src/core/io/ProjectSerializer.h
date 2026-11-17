@@ -32,7 +32,7 @@ class Project;
 namespace ProjectSerializer
 {
 
-inline constexpr int kCurrentFormatVersion = 3;
+inline constexpr int kCurrentFormatVersion = 4;
 inline constexpr const char* kProjectFile = "project.json";
 inline constexpr const char* kScreensFolder = "screens";
 inline constexpr const char* kAssetsFolder = "assets";

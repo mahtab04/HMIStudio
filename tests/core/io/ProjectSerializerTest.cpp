@@ -404,17 +404,20 @@ private Q_SLOTS:
         QCOMPARE(filesIn(second.path()), filesIn(first.path()));
     }
 
-    void runtimeOperationsAndVersionTwoMigration()
+    void eventsRoundTripAndVersionThreeMigration()
     {
         Project project(u"Training"_s);
         QVERIFY(project.setSimulationProfile(u"filling-station"_s));
         auto screen = ScreenBuilder(u"Controls"_s)
                           .add(Button::kTypeId, {10, 10, 100, 60})
-                          .with(Prop::Action, EnumValue{int(TagAction::Set)})
-                          .with(Prop::ActionTag, TagRef{u"Run"_s})
-                          .with(Prop::ActionValue, u"true"_s)
+                          .add(Button::kTypeId, {150, 10, 100, 60})
                           .build();
         const ObjectId button = screen->objects()[0]->id();
+        const ObjectId hold = screen->objects()[1]->id();
+        const ActionList click{
+            {.kind = Action::Kind::SetTag, .tag = u"Run"_s, .value = u"true"_s, .screen = {}},
+            {.kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = u"Details"_s}};
+        screen->object(button)->setActions(EventKind::Click, click);
         QVERIFY(project.insertScreen(std::move(screen)));
         QTemporaryDir dir;
         QVERIFY(ProjectSerializer::save(project, dir.path()));
@@ -422,32 +425,52 @@ private Q_SLOTS:
         QVERIFY(loaded);
         QCOMPARE((*loaded)->simulationProfile(), u"filling-station"_s);
         const auto* control = (*loaded)->screens()[0]->object(button);
-        QCOMPARE(control->value<TagRef>(Prop::ActionTag).tagName, u"Run"_s);
-        QCOMPARE(control->value<EnumValue>(Prop::Action).value, int(TagAction::Set));
+        QVERIFY(control->events().actions(EventKind::Click) == click);
+        QVERIFY(control->events().actions(EventKind::Press).empty());
         Project replacement;
         replacement.replaceContents(std::move(**loaded));
         QCOMPARE(replacement.simulationProfile(), u"filling-station"_s);
+
+        // A format 3 file: single tag operations become event actions.
         QJsonObject manifest = readJson(dir.filePath(u"project.json"_s));
         const QString path = manifest.value(u"screens").toArray()[0].toString();
         QVERIFY(!path.isEmpty());
-        manifest.insert(u"formatVersion"_s, 2);
-        manifest.remove(u"simulationProfile"_s);
+        manifest.insert(u"formatVersion"_s, 3);
         writeJson(dir.filePath(u"project.json"_s), manifest);
         QJsonObject legacy = readJson(dir.filePath(path));
-        legacy.insert(u"formatVersion"_s, 2);
-        QJsonObject object = legacy.value(u"objects").toArray()[0].toObject();
-        QJsonObject props = object.value(u"props").toObject();
-        props.remove(u"action"_s);
-        props.remove(u"actionTag"_s);
-        props.remove(u"actionValue"_s);
-        object.insert(u"props"_s, props);
-        legacy.insert(u"objects"_s, QJsonArray{object});
+        legacy.insert(u"formatVersion"_s, 3);
+        QJsonArray objects = legacy.value(u"objects").toArray();
+        const auto operation =
+            [&objects](int index, const QString& action, const QString& tag, const QString& value)
+        {
+            QJsonObject object = objects[index].toObject();
+            object.remove(u"events"_s);
+            QJsonObject props = object.value(u"props").toObject();
+            props.insert(u"action"_s, action);
+            props.insert(u"actionTag"_s, tag);
+            props.insert(u"actionValue"_s, value);
+            object.insert(u"props"_s, props);
+            objects[index] = object;
+        };
+        operation(0, u"increment"_s, u"Speed"_s, u"-5"_s);
+        operation(1, u"momentary"_s, u"Jog"_s, u"1"_s);
+        legacy.insert(u"objects"_s, objects);
         writeJson(dir.filePath(path), legacy);
         auto old = ProjectSerializer::load(dir.path());
-        QVERIFY(old);
-        QVERIFY((*old)->simulationProfile().isEmpty());
-        QCOMPARE((*old)->screens()[0]->object(button)->value<EnumValue>(Prop::Action).value,
-                 int(TagAction::None));
+        QVERIFY2(old, old ? "" : qPrintable(old.error().message));
+        const auto* stepper = (*old)->screens()[0]->object(button);
+        QCOMPARE(stepper->events().actions(EventKind::Click).size(), std::size_t(1));
+        const Action& step = stepper->events().actions(EventKind::Click).front();
+        QCOMPARE(int(step.kind), int(Action::Kind::IncrementTag));
+        QCOMPARE(step.tag, u"Speed"_s);
+        QCOMPARE(step.value, u"-5"_s);
+        const auto* holder = (*old)->screens()[0]->object(hold);
+        QVERIFY(holder->events().actions(EventKind::Click).empty());
+        QCOMPARE(holder->events().actions(EventKind::Press).front().value, u"true"_s);
+        QCOMPARE(holder->events().actions(EventKind::Release).front().value, u"false"_s);
+        QCOMPARE(holder->events().actions(EventKind::Release).front().tag, u"Jog"_s);
+        // The old properties are gone, not kept as unknown data.
+        QVERIFY(!holder->preservedJson().value(u"props"_s).toObject().contains(u"action"_s));
     }
 
     void connectionAndTagMetadataRoundTrip()

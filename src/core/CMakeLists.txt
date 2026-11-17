@@ -21,6 +21,8 @@ add_library(hmi_core_impl STATIC
     model/ElementObject.h
     model/GroupObject.cpp
     model/GroupObject.h
+    model/Events.cpp
+    model/Events.h
     model/HmiObject.cpp
     model/HmiObject.h
     model/HmiStyle.cpp

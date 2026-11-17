@@ -22,6 +22,17 @@ void collect(const HmiObject& object, ScreenId screen, ObjectId topLevel, const 
             object.value<TagRef>(descriptor.id).tagName.compare(tag, Qt::CaseInsensitive) == 0)
             uses.push_back({screen, topLevel, descriptor.id});
     }
+    for (const EventKind event : kEventKinds)
+    {
+        for (const Action& action : object.events().actions(event))
+        {
+            if (action.usesTag() && action.tag.compare(tag, Qt::CaseInsensitive) == 0)
+            {
+                uses.push_back({screen, topLevel, {}, event});
+                break; // one use per event
+            }
+        }
+    }
     for (const auto& child : object.children())
         collect(*child, screen, topLevel, tag, uses);
 }

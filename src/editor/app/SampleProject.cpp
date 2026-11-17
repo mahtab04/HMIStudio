@@ -53,6 +53,27 @@ QFont fontOf(int size, bool bold = false)
     f.setBold(bold);
     return f;
 }
+// Event actions to set once a screen is built.
+struct EventLink
+{
+    ObjectId object;
+    EventKind event;
+    ActionList actions;
+};
+
+Action setTag(const QString& tag, const QString& value)
+{
+    return {.kind = Action::Kind::SetTag, .tag = tag, .value = value, .screen = {}};
+}
+Action incrementTag(const QString& tag, const QString& step)
+{
+    return {.kind = Action::Kind::IncrementTag, .tag = tag, .value = step, .screen = {}};
+}
+Action openScreen(const QString& screen)
+{
+    return {.kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = screen};
+}
+
 struct Link
 {
     ObjectId object;
@@ -77,8 +98,10 @@ void panel(ScreenBuilder& b, const QRectF& rect)
         .with(Prop::LineColor, kOutline)
         .with(Prop::CornerRadius, 8.0);
 }
-void button(ScreenBuilder& b, const QRectF& rect, const QString& text, const QString& name,
-            TagAction action, const QString& tag, const QString& value, const QColor& color)
+// A button whose Click runs `click`; `press` and `release` for hold buttons.
+void button(ScreenBuilder& b, std::vector<EventLink>& events, const QRectF& rect,
+            const QString& text, const QString& name, const QColor& color, ActionList click,
+            ActionList press = {}, ActionList release = {})
 {
     // Button painting scales its font with the control. Store a base font
     // that yields the same readable label size on each sample button.
@@ -88,13 +111,50 @@ void button(ScreenBuilder& b, const QRectF& rect, const QString& text, const QSt
     b.add(Button::kTypeId, rect)
         .with(Prop::Text, text)
         .with(Prop::Name, name)
-        .with(Prop::Action, EnumValue{int(action)})
-        .with(Prop::ActionTag, TagRef{tag})
-        .with(Prop::ActionValue, value)
         .with(Prop::FillColor, color)
         .with(Prop::LineColor, color.darker(115))
         .with(Prop::TextColor, QColor(Qt::white))
         .with(Prop::Font, font);
+    const ObjectId id = b.lastId();
+    if (!click.empty())
+        events.push_back({id, EventKind::Click, std::move(click)});
+    if (!press.empty())
+        events.push_back({id, EventKind::Press, std::move(press)});
+    if (!release.empty())
+        events.push_back({id, EventKind::Release, std::move(release)});
+}
+
+// Applies bindings and event actions to a screen once it is in the project.
+void wire(Screen& screen, const std::vector<Link>& links, const std::vector<EventLink>& events)
+{
+    for (const Link& link : links)
+    {
+        auto transform = TransformRegistry::instance().create(link.kind, link.parameters);
+        Q_ASSERT(transform);
+        [[maybe_unused]] const auto bound =
+            screen.object(link.object)->setBinding({link.property, link.tag, *transform});
+        Q_ASSERT(bound);
+    }
+    for (const EventLink& event : events)
+        screen.object(event.object)->setActions(event.event, event.actions);
+}
+
+// Header band shared by the screens; `next` opens the other screen.
+void header(ScreenBuilder& b, std::vector<EventLink>& events, const QString& title,
+            const QString& subtitle, const QString& nextLabel, const QString& next)
+{
+    b.size(Screen::kDefaultSize).background(QColor(0xEB, 0xEF, 0xF3));
+    b.add(Rectangle::kTypeId, at(0, 0, 1280, 80))
+        .with(Prop::FillColor, QColor(0x1C, 0x30, 0x43))
+        .with(Prop::LineWidth, 0.0)
+        .with(Prop::Name, QCoreApplication::translate("hmi::SampleProject", "Header"));
+    label(b, at(24, 12, 760, 36), title, 24, QColor(Qt::white), true);
+    label(b, at(24, 48, 760, 26), subtitle, 16, QColor(0xC8, 0xD6, 0xE3));
+    button(b, events, at(800, 18, 180, 44), nextLabel, nextLabel, QColor(0x3A, 0x55, 0x6E),
+           {openScreen(next)});
+    label(b, at(1000, 22, 250, 40),
+          QCoreApplication::translate("hmi::SampleProject", "TRAINING SIMULATION"), 16,
+          QColor(0xEE, 0xCA, 0x7A), true);
 }
 QJsonObject ranges(double limit, const QJsonValue& low, const QJsonValue& high)
 {
@@ -137,16 +197,12 @@ std::unique_ptr<Project> makeSampleProject()
         project->setSimulationProfile(QStringLiteral("filling-station"));
     Q_ASSERT(profile);
     std::vector<Link> links;
-    ScreenBuilder b(tr("02 Filling"));
-    b.size(Screen::kDefaultSize).background(QColor(0xEB, 0xEF, 0xF3));
-    b.add(Rectangle::kTypeId, at(0, 0, 1280, 80))
-        .with(Prop::FillColor, QColor(0x1C, 0x30, 0x43))
-        .with(Prop::LineWidth, 0.0)
-        .with(Prop::Name, tr("Header"));
-    label(b, at(24, 12, 800, 36), tr("LINE 03  /  BUFFER FILLING"), 24, QColor(Qt::white), true);
-    label(b, at(24, 48, 1000, 26), tr("P-101 transfer pump   /   T-101 buffer tank"), 16,
-          QColor(0xC8, 0xD6, 0xE3));
-    label(b, at(1000, 22, 250, 40), tr("TRAINING SIMULATION"), 16, QColor(0xEE, 0xCA, 0x7A), true);
+    std::vector<EventLink> events;
+    const QString filling = tr("02 Filling");
+    const QString overview = tr("01 Overview");
+    ScreenBuilder b(filling);
+    header(b, events, tr("LINE 03  /  BUFFER FILLING"),
+           tr("P-101 transfer pump   /   T-101 buffer tank"), tr("< OVERVIEW"), overview);
 
     panel(b, at(24, 96, 1232, 48));
     label(b, at(40, 104, 620, 32), tr("STOPPED - press Start to transfer product"), 18, kInk, true);
@@ -195,15 +251,16 @@ std::unique_ptr<Project> makeSampleProject()
 
     panel(b, at(808, 164, 448, 450));
     label(b, at(832, 180, 400, 32), tr("OPERATOR CONTROLS"), 18, kInk, true);
-    button(b, at(832, 232, 188, 64), tr("START"), tr("Start transfer"), TagAction::Set,
-           QStringLiteral("RunCommand"), QStringLiteral("true"), kGreen);
-    button(b, at(1044, 232, 188, 64), tr("STOP"), tr("Stop transfer"), TagAction::Set,
-           QStringLiteral("RunCommand"), QStringLiteral("false"), kRed);
+    button(b, events, at(832, 232, 188, 64), tr("START"), tr("Start transfer"), kGreen,
+           {setTag(QStringLiteral("RunCommand"), QStringLiteral("true"))});
+    button(b, events, at(1044, 232, 188, 64), tr("STOP"), tr("Stop transfer"), kRed,
+           {setTag(QStringLiteral("RunCommand"), QStringLiteral("false"))});
     b.add(Switch::kTypeId, at(832, 326, 188, 52)).with(Prop::Name, tr("Automatic filling"));
     links.push_back({b.lastId(), Prop::Checked, QStringLiteral("AutoMode")});
     label(b, at(1044, 322, 188, 66), tr("AUTO fills 30-80%\nOFF: manual transfer"), 16, kMuted);
-    button(b, at(832, 414, 188, 60), tr("HOLD TO JOG"), tr("Jog pump"), TagAction::Momentary,
-           QStringLiteral("Jog"), QStringLiteral("true"), kBlue);
+    button(b, events, at(832, 414, 188, 60), tr("HOLD TO JOG"), tr("Jog pump"), kBlue, {},
+           {setTag(QStringLiteral("Jog"), QStringLiteral("true"))},
+           {setTag(QStringLiteral("Jog"), QStringLiteral("false"))});
     label(b, at(1044, 408, 188, 76), tr("Hold: pump runs\nRelease: jog stops"), 16, kMuted);
     label(b, at(832, 502, 400, 38), tr("Stop clears the run command. Auto pauses at 80%."), 16,
           kMuted);
@@ -219,12 +276,12 @@ std::unique_ptr<Project> makeSampleProject()
     links.push_back({b.lastId(), Prop::Value, QStringLiteral("FlowSetpoint")});
     b.add(Slider::kTypeId, at(272, 690, 450, 64)).with(Prop::Name, tr("Adjust flow setpoint"));
     links.push_back({b.lastId(), Prop::Value, QStringLiteral("FlowSetpoint")});
-    button(b, at(752, 690, 64, 60), tr("-5"), tr("Decrease flow"), TagAction::Increment,
-           QStringLiteral("FlowSetpoint"), QStringLiteral("-5"), kBlue);
-    button(b, at(832, 690, 64, 60), tr("+5"), tr("Increase flow"), TagAction::Increment,
-           QStringLiteral("FlowSetpoint"), QStringLiteral("5"), kBlue);
-    button(b, at(912, 690, 120, 60), tr("50 L/min"), tr("Preset flow"), TagAction::Set,
-           QStringLiteral("FlowSetpoint"), QStringLiteral("50"), kBlue);
+    button(b, events, at(752, 690, 64, 60), tr("-5"), tr("Decrease flow"), kBlue,
+           {incrementTag(QStringLiteral("FlowSetpoint"), QStringLiteral("-5"))});
+    button(b, events, at(832, 690, 64, 60), tr("+5"), tr("Increase flow"), kBlue,
+           {incrementTag(QStringLiteral("FlowSetpoint"), QStringLiteral("5"))});
+    button(b, events, at(912, 690, 120, 60), tr("50 L/min"), tr("Preset flow"), kBlue,
+           {setTag(QStringLiteral("FlowSetpoint"), QStringLiteral("50"))});
     b.add(Gauge::kTypeId, at(1080, 646, 136, 120)).with(Prop::Name, tr("Flow setpoint gauge"));
     links.push_back({b.lastId(), Prop::Value, QStringLiteral("FlowSetpoint")});
     label(b, at(24, 778, 1232, 22),
@@ -234,14 +291,30 @@ std::unique_ptr<Project> makeSampleProject()
 
     auto inserted = project->insertScreen(b.build());
     Q_ASSERT(inserted);
-    for (const Link& link : links)
-    {
-        auto transform = TransformRegistry::instance().create(link.kind, link.parameters);
-        Q_ASSERT(transform);
-        [[maybe_unused]] const auto bound =
-            (*inserted)->object(link.object)->setBinding({link.property, link.tag, *transform});
-        Q_ASSERT(bound);
-    }
+    wire(**inserted, links, events);
+
+    // A second screen to navigate to: the key values at a glance.
+    links.clear();
+    events.clear();
+    ScreenBuilder o(overview);
+    header(o, events, tr("LINE 03  /  OVERVIEW"), tr("Key values of the buffer filling station"),
+           tr("FILLING >"), filling);
+    panel(o, at(24, 120, 1232, 520));
+    label(o, at(48, 140, 700, 32), tr("BUFFER FILLING STATION"), 18, kInk, true);
+    o.add(Tank::kTypeId, at(80, 200, 160, 260)).with(Prop::Name, tr("T-101 overview"));
+    links.push_back({o.lastId(), Prop::Value, QStringLiteral("Level")});
+    o.add(Pump::kTypeId, at(320, 300, 100, 100)).with(Prop::Name, tr("P-101 overview"));
+    links.push_back({o.lastId(), Prop::Running, QStringLiteral("PumpRunning")});
+    readout(o, links, 480, tr("T-101 level"), QStringLiteral("Level"), QStringLiteral("%"), 1);
+    readout(o, links, 720, tr("Actual flow"), QStringLiteral("Flow"), QStringLiteral("L/min"), 1);
+    readout(o, links, 960, tr("Line pressure"), QStringLiteral("Pressure"), QStringLiteral("bar"),
+            2);
+    label(o, at(480, 200, 700, 80),
+          tr("Operate the pump on the Filling screen.\nThe values here follow the same tags."), 18,
+          kMuted);
+    auto second = project->insertScreen(o.build());
+    Q_ASSERT(second);
+    wire(**second, links, events);
     const Tag tags[] = {
         tag(QStringLiteral("RunCommand"), Tag::Type::Bool, 0, 1, false, tr("Commands"),
             tr("Start/Stop request")),

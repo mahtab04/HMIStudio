@@ -240,33 +240,4 @@ QStringList splitItems(const QString& items)
     return list;
 }
 
-PropertyDescriptor tagAction()
-{
-    static constexpr EnumOption options[] = {
-        {0, "none", QT_TRANSLATE_NOOP("hmi::Property", "None")},
-        {1, "set", QT_TRANSLATE_NOOP("hmi::Property", "Set value")},
-        {2, "toggle", QT_TRANSLATE_NOOP("hmi::Property", "Toggle Boolean")},
-        {3, "increment", QT_TRANSLATE_NOOP("hmi::Property", "Increment (negative to decrease)")},
-        {4, "momentary", QT_TRANSLATE_NOOP("hmi::Property", "Momentary Boolean (hold)")},
-    };
-    return choice(Prop::Action, "action", QT_TRANSLATE_NOOP("hmi::Property", "Tag operation"),
-                  "Operation", 0, options);
-}
-
-PropertyDescriptor actionTag()
-{
-    return {.id = Prop::ActionTag,
-            .key = "actionTag",
-            .displayName = QT_TRANSLATE_NOOP("hmi::Property", "Target tag"),
-            .category = "Operation",
-            .defaultValue = TagRef{}};
-}
-
-PropertyDescriptor actionValue()
-{
-    return string(Prop::ActionValue, "actionValue",
-                  QT_TRANSLATE_NOOP("hmi::Property", "Value / step"), "Operation",
-                  QStringLiteral("1"));
-}
-
 } // namespace hmi::Describe

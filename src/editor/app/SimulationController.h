@@ -32,8 +32,8 @@ class SimulationController : public QObject
     Q_PROPERTY(hmi::RuntimeInputHandler* input READ input CONSTANT)
     Q_PROPERTY(bool monitoring READ isMonitoring NOTIFY runningChanged)
     Q_PROPERTY(bool running READ isRunning NOTIFY runningChanged)
-    Q_PROPERTY(QString screenTitle READ screenTitle NOTIFY runningChanged)
-    Q_PROPERTY(QSizeF screenSize READ screenSize NOTIFY runningChanged)
+    Q_PROPERTY(QString screenTitle READ screenTitle NOTIFY screenChanged)
+    Q_PROPERTY(QSizeF screenSize READ screenSize NOTIFY screenChanged)
     Q_PROPERTY(QStringList problems READ problems NOTIFY problemsChanged)
 
 public:
@@ -54,6 +54,10 @@ public:
     Q_INVOKABLE void restart();
     // The simulator window's view; it shows the play copy until stop().
     Q_INVOKABLE void attachView(hmi::RuntimeView* view);
+    // Shows another screen of the project (an Open screen action); tags keep
+    // their values. Returns false, with a problem reported, for a screen the
+    // project does not have.
+    bool openScreen(const QString& name);
 
     [[nodiscard]] RuntimeInputHandler* input() const noexcept { return m_input.get(); }
     // Where PLC monitoring reads the native libraries the user trusts.
@@ -69,10 +73,14 @@ public:
 
 Q_SIGNALS:
     void runningChanged();
+    // Another screen is shown (start, restart, Open screen).
+    void screenChanged();
     void problemsChanged();
 
 private:
     bool begin();
+    // Shows `screen` in play: the evaluator's copy, the input and the view.
+    void show(const Screen& screen);
     void end();
     void showOnView();
 

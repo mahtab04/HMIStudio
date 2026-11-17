@@ -46,6 +46,8 @@ public:
     // Bindings that could not be applied the last time, as "object:
     // reason" texts, for the output panel.
     [[nodiscard]] const QStringList& problems() const noexcept { return m_problems; }
+    // Adds a problem found elsewhere in play mode (an action that failed).
+    void report(const QString& problem);
 
 Q_SIGNALS:
     void problemsChanged();

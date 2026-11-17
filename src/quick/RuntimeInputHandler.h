@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/model/Events.h"
 #include "core/model/Ids.h"
 #include "core/property/PropertyValue.h"
 #include "quick/input/PointerGesture.h"
@@ -54,6 +55,8 @@ public:
 Q_SIGNALS:
     void inputChanged();
     void focusChanged();
+    // An Open screen action: the controller shows that screen.
+    void screenRequested(const QString& screen);
 
 private:
     struct Hit
@@ -66,8 +69,12 @@ private:
     void activate(const Hit& hit, QPointF scene);
     void beginInput(const HmiObject& object);
     bool writeProperty(const HmiObject& object, PropertyId property, const PropertyValue& value);
-    bool action(const HmiObject& object, bool pressed);
-    void releaseMomentary();
+    // Runs an event's actions in order; a failing action is reported and the
+    // others still run.
+    void runActions(ActionList actions);
+    bool runAction(const Action& action);
+    void press(const HmiObject& object);
+    void releaseHeld();
     void slider(const Hit& hit, QPointF scene);
     bool reject(const QString& message);
     [[nodiscard]] PropertyValue currentValue(const HmiObject& object, PropertyId property) const;
@@ -83,7 +90,7 @@ private:
     QStringList m_choices;
     int m_selected = -1;
     QString m_error;
-    QString m_momentary;
+    const HmiObject* m_held = nullptr; // pressed: its Release actions are due
     bool m_keyboardActive = false;
     bool m_replaceInput = false;
 };

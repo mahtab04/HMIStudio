@@ -23,6 +23,7 @@ HmiObject::HmiObject(const HmiObject& other)
     , m_values(other.m_values)
     , m_preserved(other.m_preserved)
     , m_bindings(other.m_bindings)
+    , m_events(other.m_events)
     , m_id(other.m_id)
 {
 }
@@ -129,7 +130,8 @@ Result<void> HmiObject::setProperty(PropertyId id, const PropertyValue& value)
 
 bool HmiObject::hasSameProperties(const HmiObject& other) const
 {
-    if (typeId() != other.typeId() || m_values != other.m_values || m_bindings != other.m_bindings)
+    if (typeId() != other.typeId() || m_values != other.m_values ||
+        m_bindings != other.m_bindings || m_events != other.m_events)
         return false;
     const auto mine = children();
     const auto theirs = other.children();
@@ -169,6 +171,15 @@ Result<void> HmiObject::setBinding(Binding binding)
     if (m_notifier)
         Q_EMIT m_notifier->bindingChanged(m_id, property);
     return {};
+}
+
+void HmiObject::setActions(EventKind event, ActionList actions)
+{
+    if (m_events.actions(event) == actions)
+        return;
+    m_events.setActions(event, std::move(actions));
+    if (m_notifier)
+        Q_EMIT m_notifier->eventsChanged(m_id);
 }
 
 bool HmiObject::removeBinding(PropertyId property)

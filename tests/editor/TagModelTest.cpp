@@ -109,37 +109,29 @@ private Q_SLOTS:
         QVERIFY(tank()->binding(Prop::Value));
     }
 
-    void buttonTargetPickerAndRenameUndo()
+    void eventActionsFollowTagRenames()
     {
+        // Start and Stop set RunCommand on Click: two uses, renamed with the
+        // tag in one undo step.
         auto* screen = project().screens()[0].get();
-        const auto button = std::ranges::find_if(
-            screen->objects(),
-            [](const auto& object)
-            {
-                const auto target = object->property(Prop::ActionTag);
-                return target && std::get<TagRef>(*target).tagName == u"RunCommand";
-            });
+        const auto clickTag = [](const HmiObject& object)
+        {
+            const ActionList& actions = object.events().actions(EventKind::Click);
+            return actions.empty() ? QString() : actions.front().tag;
+        };
+        const auto button = std::ranges::find_if(screen->objects(), [&](const auto& object)
+                                                 { return clickTag(*object) == u"RunCommand"; });
         QVERIFY(button != screen->objects().end());
-        m_app->selection().selectOnly((*button)->id());
-        const int row = propertyRow(u"actionTag"_s);
-        QVERIFY(row >= 0);
-        QCOMPARE(
-            m_app->properties().data(m_app->properties().index(row), PropertyModel::EditorRole),
-            QVariant(u"tagReference"_s));
-        QCOMPARE(m_app->properties()
-                     .data(m_app->properties().index(row), PropertyModel::OptionsRole)
-                     .toStringList()
-                     .size(),
-                 10);
         QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
+        QVERIFY(tags().whereUsed(tagRow(u"RunCommand"_s)).front().endsWith(u"Click event"_s));
         QVERIFY(tags().setCell(tagRow(u"RunCommand"_s), TagModel::NameColumn, u"RequestRun"_s));
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
+        QCOMPARE(clickTag(**button), u"RequestRun"_s);
         QCOMPARE(uses(u"RequestRun"_s), std::size_t(2));
         m_app->undoStack().undo();
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RunCommand"_s);
+        QCOMPARE(clickTag(**button), u"RunCommand"_s);
         QCOMPARE(uses(u"RunCommand"_s), std::size_t(2));
         m_app->undoStack().redo();
-        QCOMPARE((*button)->value<TagRef>(Prop::ActionTag).tagName, u"RequestRun"_s);
+        QCOMPARE(clickTag(**button), u"RequestRun"_s);
     }
 
     void tableAndFilter()
@@ -421,6 +413,34 @@ private Q_SLOTS:
         const QString chosen = m_dir.filePath(u"chosen.dll"_s);
         m_app->tags().connections()->setLibraryFile(QUrl::fromLocalFile(chosen));
         QVERIFY(m_app->settings().trustedLibraries().contains(QDir::cleanPath(chosen)));
+    }
+
+    void openScreenNavigates()
+    {
+        SimulationController& simulation = m_app->simulation();
+        TagEngine& engine = m_app->tagEngine();
+        simulation.start();
+        QVERIFY(engine.writeChecked(u"FlowSetpoint"_s, 70.0));
+        QSignalSpy screens(&simulation, &SimulationController::screenChanged);
+
+        // Another screen: shown, tags keep running and keep their values.
+        QVERIFY(simulation.openScreen(u"01 overview"_s)); // names match case-insensitively
+        QCOMPARE(simulation.screenTitle(), u"01 Overview"_s);
+        QCOMPARE(screens.count(), 1);
+        QVERIFY(engine.isRunning());
+        QCOMPARE(engine.value(u"FlowSetpoint"_s), TagValue(70.0));
+        QVERIFY(simulation.evaluator().playScreen()->name() == u"01 Overview"_s);
+
+        // An unknown screen changes nothing and says why.
+        QVERIFY(!simulation.openScreen(u"Nowhere"_s));
+        QCOMPARE(simulation.screenTitle(), u"01 Overview"_s);
+        QVERIFY(simulation.problems().join(u' ').contains(u"Nowhere"));
+
+        // The header button of the Overview opens Filling again, queued.
+        Q_EMIT simulation.input()->screenRequested(u"02 Filling"_s);
+        QTRY_COMPARE(simulation.screenTitle(), u"02 Filling"_s);
+        simulation.stop();
+        QVERIFY(!simulation.openScreen(u"01 Overview"_s)); // not running
     }
 
     void simulating()

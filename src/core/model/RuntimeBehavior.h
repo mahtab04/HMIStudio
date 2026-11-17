@@ -17,19 +17,11 @@ struct RuntimeBehavior
         Toggle,
         Choice,
         RowChoice,
+        // Operated only through its events (buttons, touch areas).
         Action
     };
     Kind kind = Kind::None;
     PropertyId property;
-};
-
-enum class TagAction
-{
-    None,
-    Set,
-    Toggle,
-    Increment,
-    Momentary
 };
 
 } // namespace hmi

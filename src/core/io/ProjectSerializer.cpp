@@ -80,10 +80,84 @@ void migrateV1ToV2(QJsonObject& /*file*/) {}
 // profile. Missing operations default to None; old projects keep tag simulation.
 void migrateV2ToV3(QJsonObject& /*file*/) {}
 
+// Version 4 replaces the single tag operation of buttons and touch areas
+// (props action, actionTag, actionValue) with event action lists: Set,
+// Toggle and Increment become Click actions; Momentary becomes "set true"
+// on Press and "set false" on Release.
+void migrateObjectV3ToV4(QJsonObject& object)
+{
+    QJsonObject props = object.value(QStringLiteral("props")).toObject();
+    if (props.contains(QStringLiteral("action")))
+    {
+        const QString operation = props.value(QStringLiteral("action")).toString();
+        const QString tag = props.value(QStringLiteral("actionTag")).toString();
+        const QString value =
+            props.value(QStringLiteral("actionValue")).toString(QStringLiteral("1"));
+        for (const char* key : {"action", "actionTag", "actionValue"})
+            props.remove(QLatin1StringView(key));
+        object.insert(QStringLiteral("props"), props);
+
+        QJsonObject events = object.value(QStringLiteral("events")).toObject();
+        const auto append = [&events](const char* event, QJsonObject action)
+        {
+            QJsonArray list = events.value(QLatin1StringView(event)).toArray();
+            list.append(action);
+            events.insert(QLatin1StringView(event), list);
+        };
+        const auto tagAction = [&tag](const char* kind, const QString& actionValue)
+        {
+            QJsonObject action{{QStringLiteral("action"), QLatin1StringView(kind)},
+                               {QStringLiteral("tag"), tag}};
+            if (!actionValue.isNull())
+                action.insert(QStringLiteral("value"), actionValue);
+            return action;
+        };
+        if (operation == u"set")
+            append("click", tagAction("setTag", value));
+        else if (operation == u"toggle")
+            append("click", tagAction("toggleTag", QString()));
+        else if (operation == u"increment")
+            append("click", tagAction("incrementTag", value));
+        else if (operation == u"momentary")
+        {
+            append("press", tagAction("setTag", QStringLiteral("true")));
+            append("release", tagAction("setTag", QStringLiteral("false")));
+        }
+        if (!events.isEmpty())
+            object.insert(QStringLiteral("events"), events);
+    }
+    if (object.contains(QStringLiteral("children")))
+    {
+        QJsonArray children = object.value(QStringLiteral("children")).toArray();
+        for (QJsonValueRef child : children)
+        {
+            QJsonObject entry = child.toObject();
+            migrateObjectV3ToV4(entry);
+            child = entry;
+        }
+        object.insert(QStringLiteral("children"), children);
+    }
+}
+
+void migrateV3ToV4(QJsonObject& file)
+{
+    if (!file.contains(kObjects))
+        return; // project.json and tags.json have nothing to change
+    QJsonArray objects = file.value(kObjects).toArray();
+    for (QJsonValueRef entry : objects)
+    {
+        QJsonObject object = entry.toObject();
+        migrateObjectV3ToV4(object);
+        entry = object;
+    }
+    file.insert(kObjects, objects);
+}
+
 constexpr Migration kMigrations[] = {
     {0, &migrateV0ToV1},
     {1, &migrateV1ToV2},
     {2, &migrateV2ToV3},
+    {3, &migrateV3ToV4},
 };
 static_assert(std::size(kMigrations) == kCurrentFormatVersion,
               "every version needs a migration from the one before");

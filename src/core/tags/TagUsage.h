@@ -1,9 +1,11 @@
 #pragma once
 
+#include "core/model/Events.h"
 #include "core/model/Ids.h"
 
 #include <QString>
 
+#include <optional>
 #include <vector>
 
 namespace hmi
@@ -11,13 +13,15 @@ namespace hmi
 
 class Project;
 
-// One place a tag is used: a bound property of an object on a screen
-// (inside a group, `object` is the top-level group).
+// One place a tag is used: a bound property of an object on a screen, or an
+// action of one of its events (inside a group, `object` is the top-level
+// group).
 struct TagUse
 {
     ScreenId screen;
     ObjectId object;
-    PropertyId property;
+    PropertyId property;              // a binding or tag property
+    std::optional<EventKind> event{}; // or an event's action
     friend bool operator==(const TagUse&, const TagUse&) = default;
 };
 

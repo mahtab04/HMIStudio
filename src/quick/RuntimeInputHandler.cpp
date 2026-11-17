@@ -52,7 +52,7 @@ RuntimeInputHandler::RuntimeInputHandler(TagEngine& engine, QObject* parent)
 
 RuntimeInputHandler::~RuntimeInputHandler()
 {
-    releaseMomentary();
+    releaseHeld();
 }
 
 void RuntimeInputHandler::setScreen(const Screen* screen)
@@ -120,29 +120,32 @@ PropertyValue RuntimeInputHandler::currentValue(const HmiObject& object, Propert
     return *object.property(property);
 }
 
-bool RuntimeInputHandler::action(const HmiObject& object, bool pressed)
+bool RuntimeInputHandler::runAction(const Action& action)
 {
-    const TagAction operation = static_cast<TagAction>(object.value<EnumValue>(Prop::Action).value);
-    if (operation == TagAction::None)
-        return pressed ? false : reject(tr("Choose a tag operation and target tag in Properties."));
-    if ((operation == TagAction::Momentary) != pressed)
-        return false;
-    const QString name = object.value<TagRef>(Prop::ActionTag).tagName;
+    if (action.kind == Action::Kind::OpenScreen)
+    {
+        if (action.screen.isEmpty())
+            return reject(tr("Choose the screen to open in the object's events."));
+        Q_EMIT screenRequested(action.screen);
+        return true;
+    }
+    const QString& name = action.tag;
     const Tag* tag = m_engine.definition(name);
     if (!tag)
-        return reject(tr("Target tag '%1' is missing.").arg(name));
-    TagValue value = object.value<QString>(Prop::ActionValue);
-    if (operation == TagAction::Toggle || operation == TagAction::Momentary)
+        return reject(name.isEmpty() ? tr("Choose the tag of the event's action.")
+                                     : tr("Target tag '%1' is missing.").arg(name));
+    TagValue value = action.value;
+    if (action.kind == Action::Kind::ToggleTag)
     {
         if (tag->type != Tag::Type::Bool)
-            return reject(tr("Toggle and momentary operations need a Boolean tag."));
-        value = operation == TagAction::Momentary || !TagValues::toBool(m_engine.value(name));
+            return reject(tr("Toggle tag needs a Boolean tag."));
+        value = !TagValues::toBool(m_engine.value(name));
     }
-    if (operation == TagAction::Increment)
+    if (action.kind == Action::Kind::IncrementTag)
     {
         if (tag->type != Tag::Type::Int && tag->type != Tag::Type::Real)
-            return reject(tr("Increment needs an integer or real tag."));
-        const QString stepText = object.value<QString>(Prop::ActionValue).trimmed();
+            return reject(tr("Increment tag needs an integer or real tag."));
+        const QString stepText = action.value.trimmed();
         if (tag->type == Tag::Type::Int)
         {
             bool ok = false;
@@ -168,26 +171,41 @@ bool RuntimeInputHandler::action(const HmiObject& object, bool pressed)
     const auto result = m_engine.writeChecked(name, value);
     if (!result)
         return reject(result.error().message);
-    if (operation == TagAction::Momentary)
-        m_momentary = name;
-    m_error.clear();
-    Q_EMIT inputChanged();
     return true;
 }
 
-void RuntimeInputHandler::releaseMomentary()
+void RuntimeInputHandler::runActions(ActionList actions)
 {
-    if (m_momentary.isEmpty())
+    // A copy: an Open screen action replaces the screen these came from.
+    bool ok = true;
+    for (const Action& action : actions)
+        ok = runAction(action) && ok;
+    if (ok && !actions.empty())
+    {
+        m_error.clear();
+        Q_EMIT inputChanged();
+    }
+}
+
+void RuntimeInputHandler::press(const HmiObject& object)
+{
+    m_held = &object;
+    runActions(object.events().actions(EventKind::Press));
+}
+
+void RuntimeInputHandler::releaseHeld()
+{
+    // The Release actions run once per press, also when the press ends
+    // outside the object or is cancelled, so a "hold" button never sticks.
+    const HmiObject* held = std::exchange(m_held, nullptr);
+    if (!held || !m_engine.isRunning())
         return;
-    const QString tag = std::exchange(m_momentary, {});
-    const auto result = m_engine.writeChecked(tag, false);
-    if (!result && m_engine.isRunning())
-        reject(result.error().message);
+    runActions(held->events().actions(EventKind::Release));
 }
 
 void RuntimeInputHandler::cancel()
 {
-    releaseMomentary();
+    releaseHeld();
     m_pressed = {};
     m_drag = {};
     m_keyboardActive = false;
@@ -213,11 +231,11 @@ void RuntimeInputHandler::handleGesture(const PointerGesture& gesture)
         m_pressed = hit(gesture.scenePos);
         m_focus = m_pressed;
         Q_EMIT focusChanged();
-        if (m_pressed.object && m_pressed.object->runtimeBehavior().kind == Kind::Action)
-            action(*m_pressed.object, true);
+        if (m_pressed.object)
+            press(*m_pressed.object);
         break;
     case G::Release:
-        releaseMomentary();
+        releaseHeld();
         break;
     case G::Tap:
     case G::DoubleTap:
@@ -275,11 +293,10 @@ void RuntimeInputHandler::activate(const Hit& target, QPointF scene)
         slider(target, scene);
         break;
     case Kind::Action:
-        action(object, false);
-        break;
     case Kind::None:
         break;
     }
+    runActions(object.events().actions(EventKind::Click));
 }
 
 void RuntimeInputHandler::beginInput(const HmiObject& object)
@@ -401,8 +418,12 @@ void RuntimeInputHandler::keyInput(int key, Qt::KeyboardModifiers modifiers, boo
         cancel();
         std::vector<Located> objects;
         locate(m_screen->objects(), {}, objects);
-        std::erase_if(objects, [](const Located& item)
-                      { return item.object->runtimeBehavior().kind == Kind::None; });
+        std::erase_if(objects,
+                      [](const Located& item)
+                      {
+                          return item.object->runtimeBehavior().kind == Kind::None &&
+                                 item.object->events().isEmpty();
+                      });
         if (objects.empty())
             return;
         auto it = std::ranges::find_if(objects, [this](const Located& item)
@@ -423,15 +444,14 @@ void RuntimeInputHandler::keyInput(int key, Qt::KeyboardModifiers modifiers, boo
     const auto behavior = m_focus.object->runtimeBehavior();
     if (key == Qt::Key_Space || key == Qt::Key_Return || key == Qt::Key_Enter)
     {
-        if (!released)
+        if (!released && !m_keyboardActive)
         {
             m_keyboardActive = true;
-            if (behavior.kind == Kind::Action)
-                action(*m_focus.object, true);
+            press(*m_focus.object);
         }
         if (released && std::exchange(m_keyboardActive, false))
         {
-            releaseMomentary();
+            releaseHeld();
             activate(m_focus, m_focus.bounds.center());
         }
     }

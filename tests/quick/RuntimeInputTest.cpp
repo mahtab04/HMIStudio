@@ -9,6 +9,7 @@
 #include "core/objects/IoField.h"
 #include "core/objects/ListBox.h"
 #include "core/objects/RadioGroup.h"
+#include "core/objects/Rectangle.h"
 #include "core/objects/Slider.h"
 #include "core/objects/Switch.h"
 #include "core/objects/SymbolicIoField.h"
@@ -82,25 +83,49 @@ private Q_SLOTS:
         const auto radio = b.lastId();
         b.add(SymbolicIoField::kTypeId, {400, 230, 150, 50}).with(Prop::Items, u"A;B;C"_s);
         m_choice = b.lastId();
-        b.add(Button::kTypeId, {10, 400, 110, 60})
-            .with(Prop::Action, EnumValue{int(TagAction::Set)})
-            .with(Prop::ActionTag, TagRef{u"Setpoint"_s})
-            .with(Prop::ActionValue, u"20"_s);
-        b.add(Button::kTypeId, {140, 400, 110, 60})
-            .with(Prop::Action, EnumValue{int(TagAction::Toggle)})
-            .with(Prop::ActionTag, TagRef{u"Flag"_s});
-        b.add(Button::kTypeId, {270, 400, 110, 60})
-            .with(Prop::Action, EnumValue{int(TagAction::Increment)})
-            .with(Prop::ActionTag, TagRef{u"Setpoint"_s})
-            .with(Prop::ActionValue, u"5"_s);
-        b.add(Button::kTypeId, {400, 400, 110, 60})
-            .with(Prop::Action, EnumValue{int(TagAction::Momentary)})
-            .with(Prop::ActionTag, TagRef{u"Flag"_s});
-        b.add(TouchArea::kTypeId, {530, 400, 110, 60})
-            .with(Prop::Action, EnumValue{int(TagAction::Set)})
-            .with(Prop::ActionTag, TagRef{u"Setpoint"_s})
-            .with(Prop::ActionValue, u"80"_s);
+        // Buttons and a touch area operate tags through their events.
+        b.add(Button::kTypeId, {10, 400, 110, 60});
+        const auto setButton = b.lastId();
+        b.add(Button::kTypeId, {140, 400, 110, 60});
+        const auto toggleButton = b.lastId();
+        b.add(Button::kTypeId, {270, 400, 110, 60});
+        const auto incrementButton = b.lastId();
+        b.add(Button::kTypeId, {400, 400, 110, 60});
+        const auto holdButton = b.lastId();
+        b.add(TouchArea::kTypeId, {530, 400, 110, 60});
+        const auto touchArea = b.lastId();
+        b.add(Button::kTypeId, {660, 400, 110, 60});
+        const auto navigate = b.lastId();
+        b.add(Rectangle::kTypeId, {10, 480, 100, 40});
+        const auto plainShape = b.lastId();
         m_document = b.build();
+        const auto tagAction = [](Action::Kind kind, const QString& tag, const QString& value = {})
+        {
+            return Action{.kind = kind, .tag = tag, .value = value, .screen = {}};
+        };
+        m_document->object(setButton)->setActions(
+            EventKind::Click, {tagAction(Action::Kind::SetTag, u"Setpoint"_s, u"20"_s)});
+        m_document->object(toggleButton)
+            ->setActions(EventKind::Click, {tagAction(Action::Kind::ToggleTag, u"Flag"_s)});
+        m_document->object(incrementButton)
+            ->setActions(EventKind::Click,
+                         {tagAction(Action::Kind::IncrementTag, u"Setpoint"_s, u"5"_s)});
+        m_document->object(holdButton)
+            ->setActions(EventKind::Press, {tagAction(Action::Kind::SetTag, u"Flag"_s, u"true"_s)});
+        m_document->object(holdButton)
+            ->setActions(EventKind::Release,
+                         {tagAction(Action::Kind::SetTag, u"Flag"_s, u"false"_s)});
+        m_document->object(touchArea)->setActions(
+            EventKind::Click, {tagAction(Action::Kind::SetTag, u"Setpoint"_s, u"80"_s)});
+        // Several actions, in order: a tag, then another screen.
+        m_document->object(navigate)->setActions(
+            EventKind::Click,
+            {tagAction(Action::Kind::SetTag, u"Setpoint"_s, u"33"_s),
+             Action{
+                 .kind = Action::Kind::OpenScreen, .tag = {}, .value = {}, .screen = u"Next"_s}});
+        // Any object can have events, not only buttons.
+        m_document->object(plainShape)
+            ->setActions(EventKind::Click, {tagAction(Action::Kind::ToggleTag, u"Flag"_s)});
         for (const auto id : {m_io, m_slider, m_gauge})
             QVERIFY(m_document->object(id)->setBinding(
                 {Prop::Value, u"Setpoint"_s, Binding::direct()}));
@@ -215,6 +240,20 @@ private Q_SLOTS:
         QCOMPARE(m_engine.value(u"Flag"_s), TagValue(true));
         tap({560, 430}, touch);
         QCOMPARE(m_engine.value(u"Setpoint"_s), TagValue(qint64(80)));
+    }
+    void eventActionsRunInOrder_data() { devices(); }
+    void eventActionsRunInOrder()
+    {
+        QFETCH(bool, touch);
+        QSignalSpy requested(&m_input, &RuntimeInputHandler::screenRequested);
+        tap({715, 430}, touch);
+        QCOMPARE(m_engine.value(u"Setpoint"_s), TagValue(qint64(33)));
+        QCOMPARE(requested.count(), 1);
+        QCOMPARE(requested.front().front().toString(), u"Next"_s);
+
+        const TagValue before = m_engine.value(u"Flag"_s);
+        tap({60, 500}, touch); // the rectangle
+        QVERIFY(m_engine.value(u"Flag"_s) != before);
     }
     void momentaryReleaseAndCancellation_data() { devices(); }
     void momentaryReleaseAndCancellation()

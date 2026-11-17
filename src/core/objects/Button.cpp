@@ -30,9 +30,6 @@ std::span<const PropertyDescriptor> Button::staticDescriptors()
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
         {120.0, 40.0},
         {
-            Describe::tagAction(),
-            Describe::actionTag(),
-            Describe::actionValue(),
             Describe::text(QStringLiteral("Button")),
             Describe::fillColor(QColor(0xC9, 0xCE, 0xD6)),
             Describe::styled(Describe::lineColor(QColor(0x7C, 0x85, 0x90)), StyleRole::Line),
