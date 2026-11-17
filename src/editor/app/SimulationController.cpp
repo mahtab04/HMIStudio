@@ -42,7 +42,8 @@ bool SimulationController::begin()
     {
         const auto connections = m_context.project().connections();
         driver = std::make_unique<PlcDriver>(
-            std::vector<Connection>(connections.begin(), connections.end()));
+            std::vector<Connection>(connections.begin(), connections.end()),
+            m_trustedLibraries ? m_trustedLibraries() : QStringList());
     }
     else if (m_context.project().simulationProfile() == u"filling-station")
         driver = std::make_unique<FillingStationDriver>();

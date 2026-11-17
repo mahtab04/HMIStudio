@@ -3,10 +3,12 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFileInfo>
 #include <QLibrary>
 #include <QRegularExpression>
 #include <QtEndian>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -61,8 +63,9 @@ Result<S7Address> s7Address(const Tag& tag)
 class NativeConnection
 {
 public:
-    explicit NativeConnection(Connection settings)
+    NativeConnection(Connection settings, bool libraryTrusted)
         : config(std::move(settings))
+        , trusted(libraryTrusted)
     {
     }
     ~NativeConnection()
@@ -92,6 +95,12 @@ public:
                                       QStringLiteral("The driver library has an incompatible API"));
         const QString base =
             config.driver == u"s7" ? QStringLiteral("snap7") : QStringLiteral("plctag");
+        if (!config.library.isEmpty() && !trusted)
+            return makeError(ErrorCode::InvalidArgument,
+                             QStringLiteral("The project names the native library %1. For your "
+                                            "safety it is loaded only after you choose it with "
+                                            "Browse in Connections on this computer.")
+                                 .arg(QDir::toNativeSeparators(config.library)));
         library.setFileName(config.library.isEmpty()
                                 ? QDir(QCoreApplication::applicationDirPath()).filePath(base)
                                 : config.library);
@@ -207,6 +216,7 @@ public:
     }
 
     Connection config;
+    bool trusted = false;
     QLibrary library;
     bool loaded = false;
     bool connected = false;
@@ -235,6 +245,7 @@ public:
     {
         Tag tag;
         NativeConnection* connection = nullptr;
+        bool addressValid = false; // checked once, at start
         double nextPoll = 0;
         QString error;
         TagValue value;
@@ -244,10 +255,29 @@ public:
     QString lastPolled;
 };
 
-PlcDriver::PlcDriver(std::vector<Connection> connections)
+PlcDriver::PlcDriver(std::vector<Connection> connections, QStringList trustedLibraries)
     : m_state(std::make_unique<State>())
     , m_connections(std::move(connections))
+    , m_trustedLibraries(std::move(trustedLibraries))
 {
+}
+
+bool PlcDriver::isTrustedLibrary(const QString& path, const QStringList& trusted)
+{
+    if (path.isEmpty())
+        return false;
+    const auto normal = [](const QString& file)
+    {
+        return QDir::cleanPath(QFileInfo(file).absoluteFilePath());
+    };
+#ifdef Q_OS_WIN
+    constexpr Qt::CaseSensitivity kCase = Qt::CaseInsensitive;
+#else
+    constexpr Qt::CaseSensitivity kCase = Qt::CaseSensitive;
+#endif
+    const QString wanted = normal(path);
+    return std::ranges::any_of(trusted, [&](const QString& entry)
+                               { return normal(entry).compare(wanted, kCase) == 0; });
 }
 PlcDriver::~PlcDriver() = default;
 
@@ -308,7 +338,10 @@ Result<void> PlcDriver::start(std::span<const Tag> tags)
 {
     stop();
     for (const Connection& connection : m_connections)
-        m_state->connections.emplace(connection.id, std::make_unique<NativeConnection>(connection));
+        m_state->connections.emplace(
+            connection.id,
+            std::make_unique<NativeConnection>(
+                connection, isTrustedLibrary(connection.library, m_trustedLibraries)));
     for (const Tag& tag : tags)
     {
         State::Target target{
@@ -321,6 +354,8 @@ Result<void> PlcDriver::start(std::span<const Tag> tags)
             target.connection = it->second.get();
             if (auto valid = validateAddress(target.connection->config, tag); !valid)
                 target.error = valid.error().message;
+            else
+                target.addressValid = true;
         }
         else
             target.error = QStringLiteral("The configured PLC connection is missing");
@@ -363,14 +398,11 @@ void PlcDriver::poll(double seconds, const Publish& publish)
         target.nextPoll = seconds + double(target.tag.acquisitionMs) / 1000.0;
         if (target.tag.connection.isEmpty())
             publish(target.tag.name, target.value);
-        else if (target.connection)
+        else if (target.connection && target.addressValid)
         {
-            if (auto valid = validateAddress(target.connection->config, target.tag); valid)
-            {
-                const auto value = target.connection->read(target.tag);
-                target.error = value ? QString() : value.error().message;
-                publish(target.tag.name, value ? *value : TagValue());
-            }
+            const auto value = target.connection->read(target.tag);
+            target.error = value ? QString() : value.error().message;
+            publish(target.tag.name, value ? *value : TagValue());
         }
         if (budget.elapsed() >= kTimeoutMs)
             break;

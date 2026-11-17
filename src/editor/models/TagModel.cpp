@@ -65,11 +65,21 @@ TagModel::TagModel(ToolContext& context, TagEngine& engine, QObject* parent)
                 Q_EMIT tableFilterChanged();
                 rebuild();
             });
+    // Live values: only the Value and Quality cells of the tags that changed.
     connect(&m_engine, &TagEngine::valuesChanged, this,
-            [this]
+            [this](const QStringList& names)
             {
-                if (!m_rows.empty())
-                    Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, ColumnCount - 1));
+                for (const QString& name : names)
+                {
+                    const auto it = std::ranges::find_if(
+                        m_rows, [&name](const QString& row)
+                        { return row.compare(name, Qt::CaseInsensitive) == 0; });
+                    if (it == m_rows.end())
+                        continue;
+                    const int row = int(it - m_rows.begin());
+                    Q_EMIT dataChanged(index(row, ValueColumn), index(row, ValueColumn));
+                    Q_EMIT dataChanged(index(row, QualityColumn), index(row, QualityColumn));
+                }
             });
     connect(&m_engine, &TagEngine::runningChanged, this,
             [this]

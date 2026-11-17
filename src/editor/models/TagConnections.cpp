@@ -52,8 +52,10 @@ void TagConnections::setDraftField(const QString& field, const QVariant& value)
 
 void TagConnections::setLibraryFile(const QUrl& file)
 {
-    if (file.isLocalFile())
-        setDraftField(QStringLiteral("library"), file.toLocalFile());
+    if (!file.isLocalFile())
+        return;
+    setDraftField(QStringLiteral("library"), file.toLocalFile());
+    Q_EMIT libraryChosen(file.toLocalFile());
 }
 
 void TagConnections::saveDraft()

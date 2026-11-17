@@ -11,13 +11,16 @@
 #include "core/property/Prop.h"
 #include "core/tags/TagUsage.h"
 #include "editor/app/AppContext.h"
+#include "editor/app/AppSettings.h"
 #include "editor/app/EditorController.h"
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
 #include "editor/models/PropertyModel.h"
 #include "editor/models/SelectionModel.h"
+#include "editor/models/TagConnections.h"
 
 #include <QAbstractItemModelTester>
+#include <QDir>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -406,6 +409,18 @@ private Q_SLOTS:
         QSignalSpy rejected(&model, &PropertyModel::editRejected);
         QVERIFY(model.rangesParameters(u"0-50 = red"_s).isEmpty());
         QCOMPARE(rejected.count(), 1);
+    }
+
+    void chosenLibrariesAreTrusted()
+    {
+        // A native library picked with Browse may be loaded on this computer;
+        // a path typed into the project is not trusted by that.
+        const QString typed = m_dir.filePath(u"typed.dll"_s);
+        m_app->tags().connections()->setDraftField(u"library"_s, typed);
+        QVERIFY(!m_app->settings().trustedLibraries().contains(QDir::cleanPath(typed)));
+        const QString chosen = m_dir.filePath(u"chosen.dll"_s);
+        m_app->tags().connections()->setLibraryFile(QUrl::fromLocalFile(chosen));
+        QVERIFY(m_app->settings().trustedLibraries().contains(QDir::cleanPath(chosen)));
     }
 
     void simulating()

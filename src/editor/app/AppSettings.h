@@ -68,6 +68,11 @@ public:
 
     [[nodiscard]] int autosaveSeconds() const;
 
+    // Native PLC libraries the user chose on this computer; only these are
+    // loaded when a project names a library (see PlcDriver).
+    [[nodiscard]] QStringList trustedLibraries() const;
+    void trustLibrary(const QString& path);
+
 Q_SIGNALS:
     void panelsChanged();
     void recentProjectsChanged();

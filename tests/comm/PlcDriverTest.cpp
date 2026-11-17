@@ -2,6 +2,7 @@
 
 #include "comm/TagEngine.h"
 
+#include <QFileInfo>
 #include <QHash>
 #include <QTest>
 
@@ -19,6 +20,12 @@ Connection connection(const QString& driver)
     result.host = u"fixture.invalid"_s;
     result.library = QString::fromUtf8(HMI_FAKE_PLC_LIBRARY);
     return result;
+}
+
+// The fixture library, as if the user had chosen it in Connections.
+QStringList trusted()
+{
+    return {QString::fromUtf8(HMI_FAKE_PLC_LIBRARY)};
 }
 
 Tag tag(const QString& name, Tag::Type type, const QString& source, const QString& address)
@@ -74,7 +81,7 @@ private Q_SLOTS:
                               tag(u"Mb"_s, Tag::Type::Int, u"modbus-tcp"_s, u"hr0"_s),
                               tag(u"Local"_s, Tag::Type::Real, {}, {})};
         tags.back().initial = 5.0;
-        PlcDriver driver(connections);
+        PlcDriver driver(connections, trusted());
         QVERIFY(driver.start(tags));
         QHash<QString, TagValue> values;
         const auto collect = [&](const QString& name, const TagValue& value)
@@ -108,7 +115,8 @@ private Q_SLOTS:
         const std::vector<Tag> tags{
             tag(u"Unavailable"_s, Tag::Type::Int, missing.id, u"Counter"_s)};
         TagEngine engine;
-        engine.start(tags, std::make_unique<PlcDriver>(std::vector{missing}));
+        engine.start(
+            tags, std::make_unique<PlcDriver>(std::vector{missing}, QStringList{missing.library}));
         QVERIFY(!engine.isSimulating());
         QTRY_COMPARE(engine.quality(u"Unavailable"_s), u"Bad"_s);
         QVERIFY(engine.problem(u"Unavailable"_s).contains(u"Cannot load"));
@@ -119,17 +127,39 @@ private Q_SLOTS:
         QCOMPARE(engine.quality(u"Unavailable"_s), u"Offline"_s);
 
         const std::vector<Tag> bad{tag(u"BadRead"_s, Tag::Type::Int, u"s7"_s, u"DB999.DBD0"_s)};
-        engine.start(bad, std::make_unique<PlcDriver>(std::vector{connection(u"s7"_s)}));
+        engine.start(bad, std::make_unique<PlcDriver>(std::vector{connection(u"s7"_s)}, trusted()));
         QTRY_COMPARE(engine.quality(u"BadRead"_s), u"Bad"_s);
         QVERIFY(engine.problem(u"BadRead"_s).contains(u"1234"));
         engine.stop();
+    }
+
+    void projectLibrariesNeedTrust()
+    {
+        // A library named by the project is not loaded until the user chose
+        // it on this computer.
+        const Connection ab = connection(u"ab-eip"_s);
+        const std::vector<Tag> tags{tag(u"Counter"_s, Tag::Type::Int, ab.id, u"Counter"_s)};
+        TagEngine engine;
+        engine.start(tags, std::make_unique<PlcDriver>(std::vector{ab}));
+        QTRY_COMPARE(engine.quality(u"Counter"_s), u"Bad"_s);
+        QVERIFY(engine.problem(u"Counter"_s).contains(u"Browse"));
+        engine.stop();
+
+        QVERIFY(PlcDriver::isTrustedLibrary(ab.library, trusted()));
+        // Paths are compared clean and absolute.
+        const QFileInfo file(ab.library);
+        QVERIFY(PlcDriver::isTrustedLibrary(
+            ab.library, QStringList{file.absolutePath() + u"/x/../"_s + file.fileName()}));
+        QVERIFY(!PlcDriver::isTrustedLibrary(u"//server/share/evil.dll"_s, trusted()));
+        QVERIFY(!PlcDriver::isTrustedLibrary(QString(), trusted()));
     }
 
     void queuedValuesStayInTheirRun()
     {
         TagEngine engine;
         const std::vector<Tag> external{tag(u"Value"_s, Tag::Type::Int, u"ab-eip"_s, u"Counter"_s)};
-        engine.start(external, std::make_unique<PlcDriver>(std::vector{connection(u"ab-eip"_s)}));
+        engine.start(external,
+                     std::make_unique<PlcDriver>(std::vector{connection(u"ab-eip"_s)}, trusted()));
         // Leave the native value queued while the GUI thread sleeps.
         QTest::qSleep(120);
         engine.stop();

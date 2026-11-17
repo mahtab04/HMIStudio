@@ -9,6 +9,7 @@
 #include <QStringList>
 #include <qqmlintegration.h>
 
+#include <functional>
 #include <memory>
 
 namespace hmi
@@ -55,6 +56,11 @@ public:
     Q_INVOKABLE void attachView(hmi::RuntimeView* view);
 
     [[nodiscard]] RuntimeInputHandler* input() const noexcept { return m_input.get(); }
+    // Where PLC monitoring reads the native libraries the user trusts.
+    void setTrustedLibraries(std::function<QStringList()> trusted)
+    {
+        m_trustedLibraries = std::move(trusted);
+    }
     [[nodiscard]] bool isRunning() const noexcept { return m_running; }
     [[nodiscard]] QString screenTitle() const;
     [[nodiscard]] QSizeF screenSize() const;
@@ -75,6 +81,7 @@ private:
     std::unique_ptr<BindingEvaluator> m_evaluator;
     std::unique_ptr<RuntimeInputHandler> m_input;
     QPointer<RuntimeView> m_view;
+    std::function<QStringList()> m_trustedLibraries;
     bool m_monitoring = false;
     bool m_running = false;
 };

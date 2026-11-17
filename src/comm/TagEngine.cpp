@@ -49,14 +49,23 @@ private:
         m_driver->poll(double(m_clock.elapsed()) / 1000.0,
                        [&batch](const QString& tag, const TagValue& value)
                        { batch.insert(tag, value); });
-        // TagEngine queues the batch into the GUI thread.
-        if (ready)
+        // Only errors that changed since the last tick travel, and nothing
+        // is queued when nothing changed: with many tags a full table every
+        // 50 ms would keep the GUI thread busy.
+        QHash<QString, QString> errors;
+        for (const Tag& tag : m_tags)
         {
-            QHash<QString, QString> errors;
-            for (const Tag& tag : m_tags)
-                errors.insert(tag.name.toLower(), m_driver->problem(tag.name));
-            ready(batch, errors);
+            const QString key = tag.name.toLower();
+            QString error = m_driver->problem(tag.name);
+            if (m_errors.value(key) != error)
+            {
+                m_errors.insert(key, error);
+                errors.insert(key, std::move(error));
+            }
         }
+        // TagEngine queues the batch into the GUI thread.
+        if (ready && (!batch.isEmpty() || !errors.isEmpty()))
+            ready(batch, errors);
     }
 
 public:
@@ -66,6 +75,7 @@ public:
 private:
     std::unique_ptr<IDriver> m_driver;
     std::vector<Tag> m_tags;
+    QHash<QString, QString> m_errors; // last reported, by lower-case name
     QElapsedTimer m_clock;
     QTimer* m_tick = nullptr;
 };

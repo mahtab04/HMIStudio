@@ -50,6 +50,9 @@ Q_SIGNALS:
     void draftChanged();
     void messageChanged();
     void saved();
+    // The user picked a native library with the file dialog: it may be
+    // loaded on this computer from now on.
+    void libraryChosen(const QString& path);
     void problem(const QString& message);
 
 private:
