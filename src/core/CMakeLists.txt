@@ -28,6 +28,7 @@ add_library(hmi_core_impl STATIC
     model/HmiStyle.cpp
     model/HmiStyle.h
     model/Ids.h
+    model/IScreenSource.h
     model/ObjectVisitor.h
     model/PaintContext.h
     model/RuntimeBehavior.h

@@ -10,6 +10,7 @@ namespace hmi
 
 class DocumentNotifier;
 class IGraphicProvider;
+class IScreenSource;
 class ObjectItem;
 class Screen;
 
@@ -42,6 +43,7 @@ public:
     // deep zoom does not hold full-resolution textures for the whole screen.
     void setRenderScale(double scale, const QRectF& sharpArea);
     void setGraphics(const IGraphicProvider* graphics);
+    void setScreens(const IScreenSource* screens);
     void setEditing(bool editing);
 
     void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
@@ -68,6 +70,7 @@ private:
     double m_renderScale = 1.0;
     QRectF m_sharpArea;
     const IGraphicProvider* m_graphics = nullptr;
+    const IScreenSource* m_screens = nullptr;
 };
 
 } // namespace hmi

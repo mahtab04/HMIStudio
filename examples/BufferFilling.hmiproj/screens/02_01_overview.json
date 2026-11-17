@@ -1,11 +1,11 @@
 {
     "background": "#ffebeff3",
     "formatVersion": 4,
-    "id": "74984882-2cb4-4b75-8963-ec335ed6f438",
+    "id": "b4cfc1e5-0b7c-4925-a367-64fa3366a583",
     "name": "01 Overview",
     "objects": [
         {
-            "id": "4668236a-1042-4e2e-83ad-ef7a053116d5",
+            "id": "b6305e5f-ba8d-4741-9179-ec9e86e06ea6",
             "props": {
                 "cornerRadius": 0,
                 "fillColor": "#ff1c3043",
@@ -23,7 +23,7 @@
             "type": "rectangle"
         },
         {
-            "id": "8605870e-7fa9-4b14-8e53-54e16dd55bdd",
+            "id": "71870222-4bfa-4cb3-a67e-01c527a25f41",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,32,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -44,7 +44,7 @@
             "type": "textBox"
         },
         {
-            "id": "141e94b5-c1b6-4a77-ae85-eb4f887f4b43",
+            "id": "4d3196d9-a047-44a9-af95-e7058490c6ae",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -73,7 +73,7 @@
                     }
                 ]
             },
-            "id": "b006ced0-9e50-4345-b5b6-13f3c114c8e7",
+            "id": "f67b020e-92ca-4111-8d83-5c4a2a5d517a",
             "props": {
                 "fillColor": "#ff3a556e",
                 "font": "Sans Serif,-1,16,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -92,7 +92,7 @@
             "type": "button"
         },
         {
-            "id": "3211ec47-a0d2-413d-819b-b6bec534c76a",
+            "id": "ba3840e1-da80-4a36-bd71-30d80c5de098",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -113,7 +113,7 @@
             "type": "textBox"
         },
         {
-            "id": "eda15d86-2110-4596-9857-712a8095a44c",
+            "id": "c06abc01-4b5e-484a-bd49-56daa7b43b5d",
             "props": {
                 "cornerRadius": 8,
                 "fillColor": "#ffffffff",
@@ -131,7 +131,7 @@
             "type": "rectangle"
         },
         {
-            "id": "70c3c774-8f69-49be-902c-50883f49e436",
+            "id": "47176c61-627b-4497-a483-89950db52a6c",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,700,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -158,7 +158,7 @@
                     "tag": "Level"
                 }
             ],
-            "id": "a32589d6-8074-49de-8a49-8d313b6aa400",
+            "id": "887a9fe6-8fa4-4fe1-81f1-8b7477893f5a",
             "props": {
                 "backgroundColor": "#ffeef0f2",
                 "fillColor": "#ff3b82f6",
@@ -186,7 +186,7 @@
                     "tag": "PumpRunning"
                 }
             ],
-            "id": "4de033ff-9e61-42d0-93e5-b707446950f7",
+            "id": "9bf89f83-f6eb-49ef-acea-8910c04ac489",
             "props": {
                 "height": 135,
                 "lineColor": "#ff3a4048",
@@ -206,7 +206,7 @@
             "type": "pump"
         },
         {
-            "id": "c4ce3ac7-0473-46d0-bccd-c48dbb4887d2",
+            "id": "f2d98450-9ed7-4ca9-882e-12687e878337",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -233,7 +233,7 @@
                     "tag": "Level"
                 }
             ],
-            "id": "7c28f2b1-491b-4fad-b4d7-865d59f08250",
+            "id": "f3b1c768-067c-4e96-bd31-6ebeb6acc5b1",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -255,7 +255,7 @@
             "type": "ioField"
         },
         {
-            "id": "cec0c8a5-34d6-4b59-bb6a-d56e72cc373d",
+            "id": "78fc58a0-6530-4d73-811e-dfaee3d49260",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -282,7 +282,7 @@
                     "tag": "Flow"
                 }
             ],
-            "id": "28d0e3c6-4034-4534-af7b-97dfef13c548",
+            "id": "7f026f08-bae1-4eb5-874d-6b40b6609344",
             "props": {
                 "decimals": 1,
                 "fillColor": "#ffffffff",
@@ -304,7 +304,7 @@
             "type": "ioField"
         },
         {
-            "id": "e8c4b001-7a5c-4f52-821c-439688a71bad",
+            "id": "db260c15-6b94-48b6-b1fa-fde10f95faf6",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,22,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -331,7 +331,7 @@
                     "tag": "Pressure"
                 }
             ],
-            "id": "d10dbd90-cf2b-4673-8261-4777a613193e",
+            "id": "01754984-679e-4675-8d41-3bf8932fb649",
             "props": {
                 "decimals": 2,
                 "fillColor": "#ffffffff",
@@ -353,7 +353,23 @@
             "type": "ioField"
         },
         {
-            "id": "8a01d912-906e-477d-a468-d8c478d11c54",
+            "id": "65515805-6f57-4b94-bb8d-0f5dfce21e0d",
+            "props": {
+                "fillColor": "#fff4f5f7",
+                "height": 405,
+                "locked": false,
+                "name": "P-101 details window",
+                "rotation": 0,
+                "screenName": "P-101 details",
+                "visible": true,
+                "width": 486.00000000000006,
+                "x": 1284,
+                "y": 270
+            },
+            "type": "screenWindow"
+        },
+        {
+            "id": "d4ba1329-4693-4389-acfd-62ade5e00c55",
             "props": {
                 "fillColor": "#00000000",
                 "font": "Sans Serif,-1,24,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0",
@@ -366,7 +382,7 @@
                 "textColor": "#ff536576",
                 "verticalAlignment": "middle",
                 "visible": true,
-                "width": 945.0000000000001,
+                "width": 513,
                 "wordWrap": true,
                 "x": 744,
                 "y": 270

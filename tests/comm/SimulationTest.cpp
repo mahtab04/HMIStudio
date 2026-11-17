@@ -5,9 +5,11 @@
 #include "comm/BindingEvaluator.h"
 #include "comm/SimulatorDriver.h"
 #include "comm/TagEngine.h"
+#include "core/model/GroupObject.h"
 #include "core/model/Project.h"
 #include "core/model/ScreenBuilder.h"
 #include "core/objects/Pump.h"
+#include "core/objects/ScreenWindow.h"
 #include "core/objects/Tank.h"
 #include "core/property/Prop.h"
 
@@ -100,12 +102,15 @@ private Q_SLOTS:
 
         // The ramp moves; updates come at most every kPublishMs.
         QTRY_VERIFY_WITH_TIMEOUT(number(engine.value(u"Level"_s)) > 0.0, 2000);
+        // Measured against the time that really passed, so a busy machine
+        // (tests run in parallel) cannot fail it: updates keep coming, and
+        // never more often than every kPublishMs.
+        changed.clear();
         QElapsedTimer timer;
         timer.start();
-        changed.clear();
-        QTest::qWait(600);
-        QVERIFY(changed.count() >= 3);
-        QVERIFY(changed.count() <= 600 / TagEngine::kPublishMs + 2);
+        QTRY_VERIFY_WITH_TIMEOUT(changed.count() >= 3, 3000);
+        QTest::qWait(300);
+        QVERIFY(changed.count() <= timer.elapsed() / TagEngine::kPublishMs + 2);
         for (const QList<QVariant>& call : std::as_const(changed))
             QCOMPARE(call.front().toStringList(), QStringList{u"Level"_s});
 
@@ -123,6 +128,57 @@ private Q_SLOTS:
         QVERIFY(!engine.isReadOnly());
         engine.write(u"Setpoint"_s, TagValue(17.0));
         QCOMPARE(engine.value(u"Setpoint"_s), TagValue(17.0));
+        engine.stop();
+    }
+
+    void screenWindowsShowALiveScreen()
+    {
+        // "Main" has a window showing "Detail"; Detail has a tank bound to
+        // Level and a window showing Main again (a loop, cut by depth).
+        Project project;
+        ScreenBuilder detail(u"Detail"_s);
+        detail.size({200, 100}).add(Tank::kTypeId, {10, 10, 40, 80});
+        const ObjectId tankId = detail.lastId();
+        detail.add(ScreenWindow::kTypeId, {100, 10, 80, 60}).with(Prop::ScreenName, u"Main"_s);
+        Screen* detailScreen = *project.insertScreen(detail.build());
+        QVERIFY(detailScreen->object(tankId)->setBinding({Prop::Value, u"Level"_s, nullptr}));
+        ScreenBuilder main(u"Main"_s);
+        main.add(ScreenWindow::kTypeId, {100, 50, 400, 300})
+            .with(Prop::ScreenName, u"detail"_s); // any case
+        const ObjectId windowId = main.lastId();
+        Screen* mainScreen = *project.insertScreen(main.build());
+
+        Tag level = makeTag(u"Level"_s, Tag::Simulation::None);
+        level.initial = TagValue(42.0);
+        TagEngine engine;
+        engine.start(std::vector<Tag>{level});
+        BindingEvaluator evaluator(engine);
+        evaluator.show(*mainScreen, &project);
+
+        // The window became a group: the 200 x 100 screen fitted into
+        // 400 x 300, centred, keeping its proportions.
+        const HmiObject* group = evaluator.playScreen()->object(windowId);
+        QVERIFY(group);
+        QCOMPARE(group->typeId(), GroupObject::kTypeId);
+        QCOMPARE(group->geometry(), QRectF(100, 100, 400, 200));
+        // Background, tank and the nested window (itself expanded).
+        QCOMPARE(group->children().size(), std::size_t(3));
+        const auto tank = std::ranges::find_if(group->children(), [](const auto& child)
+                                               { return child->typeId() == Tank::kTypeId; });
+        QVERIFY(tank != group->children().end());
+        QCOMPARE((*tank)->value<double>(Prop::Value), 42.0); // driven by the tag
+        engine.write(u"Level"_s, TagValue(64.0));
+        QTRY_COMPARE((*tank)->value<double>(Prop::Value), 64.0);
+
+        // The document keeps its window.
+        QCOMPARE(mainScreen->object(windowId)->typeId(), ScreenWindow::kTypeId);
+        // Without the project's screens, windows stay as they are.
+        evaluator.show(*mainScreen);
+        QCOMPARE(evaluator.playScreen()->object(windowId)->typeId(), ScreenWindow::kTypeId);
+        // A window naming no screen, or an unknown one, stays too.
+        QVERIFY(mainScreen->object(windowId)->setProperty(Prop::ScreenName, u"Nowhere"_s));
+        evaluator.show(*mainScreen, &project);
+        QCOMPARE(evaluator.playScreen()->object(windowId)->typeId(), ScreenWindow::kTypeId);
         engine.stop();
     }
 

@@ -85,6 +85,14 @@ Result<void> Project::setConnections(std::vector<Connection> connections)
     return {};
 }
 
+const Screen* Project::screenNamed(const QString& name) const
+{
+    const auto it =
+        std::ranges::find_if(m_screens, [&name](const auto& screen)
+                             { return screen->name().compare(name, Qt::CaseInsensitive) == 0; });
+    return it == m_screens.end() ? nullptr : it->get();
+}
+
 Screen* Project::screen(ScreenId id) const noexcept
 {
     const auto index = indexOf(id);

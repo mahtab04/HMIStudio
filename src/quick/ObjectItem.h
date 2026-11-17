@@ -7,6 +7,7 @@ namespace hmi
 
 class HmiObject;
 class IGraphicProvider;
+class IScreenSource;
 
 // Hosts one HmiObject on the canvas. Holds only a non-owning pointer: the
 // geometry, rotation and look come from the object every time
@@ -41,6 +42,8 @@ public:
 
     // Where imported graphics come from; must outlive the item.
     void setGraphics(const IGraphicProvider* graphics);
+    // The project's screens, for screen window previews.
+    void setScreens(const IScreenSource* screens);
 
     void setEditing(bool editing);
     void paint(QPainter* painter) override;
@@ -52,6 +55,7 @@ private:
     bool m_editing = true;
     double m_renderScale = 1.0;
     const IGraphicProvider* m_graphics = nullptr;
+    const IScreenSource* m_screens = nullptr;
 };
 
 } // namespace hmi

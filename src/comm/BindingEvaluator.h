@@ -14,6 +14,7 @@ namespace hmi
 {
 
 class HmiObject;
+class IScreenSource;
 class Project;
 class Screen;
 class TagEngine;
@@ -37,7 +38,9 @@ public:
 
     // Makes a play copy of `screen` and applies every binding with the
     // current tag values.
-    void show(const Screen& screen);
+    // `screens` finds the screens that screen windows show; without it they
+    // stay placeholders.
+    void show(const Screen& screen, const IScreenSource* screens = nullptr);
     void clear();
 
     [[nodiscard]] const Screen* playScreen() const;

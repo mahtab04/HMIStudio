@@ -78,7 +78,7 @@ void SimulationController::show(const Screen& screen)
     m_input->setScreen(nullptr);
     if (m_view)
         m_view->setScreen(nullptr, nullptr);
-    m_evaluator->show(screen);
+    m_evaluator->show(screen, &m_context.project());
     m_input->setScreen(m_evaluator->playScreen());
     showOnView();
     Q_EMIT screenChanged();
@@ -112,7 +112,7 @@ bool SimulationController::openPopup(const QString& name)
         m_popupInput->setScreen(nullptr);
         if (m_popupView)
             m_popupView->setScreen(nullptr, nullptr);
-        m_popupEvaluator->show(*screen);
+        m_popupEvaluator->show(*screen, &m_context.project());
         m_popupInput->setScreen(m_popupEvaluator->playScreen());
         // While the popup is open the screen behind does not take input.
         m_input->cancel();

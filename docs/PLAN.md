@@ -362,8 +362,12 @@ The sample has a second screen, 01 Overview, reached from header buttons.
 Popups implemented on `feat/popups`: Show popup and Close popup actions; the
 simulator shows the popup screen in a frame over the dimmed screen, with its
 own play copy and input; the sample's "P-101 DETAILS" button opens one.
-Still open in phase 7: live screen windows, alarms, trends and the
-validation pass.
+Live screen windows implemented on `feat/screen-windows`: the editor draws a
+preview of the chosen screen inside a screen window; in the simulator the
+window is replaced by a live copy of that screen (fitted, proportions kept),
+whose values, buttons and inputs work, nested up to three levels. The
+sample's Overview shows the P-101 details screen in a window.
+Still open in phase 7: alarms, trends and the validation pass.
 
 ## Phase 8 — Real connections
 
