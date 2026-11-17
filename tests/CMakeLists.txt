@@ -49,6 +49,7 @@ hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
 
 # Tags at runtime
 hmi_add_test(SimulationTest SOURCES comm/SimulationTest.cpp LIBS hmi_comm)
+hmi_add_test(AlarmEngineTest SOURCES comm/AlarmEngineTest.cpp LIBS hmi_comm)
 # Native ABI fixture exercises the optional adapters without PLC hardware.
 add_library(FakePlcLibrary SHARED comm/FakePlcLibrary.cpp)
 hmi_set_project_options(FakePlcLibrary)
