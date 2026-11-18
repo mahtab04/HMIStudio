@@ -12,6 +12,7 @@ namespace hmi
 
 class AppSettings;
 class DocumentController;
+class AlarmModel;
 class EditActions;
 class EventModel;
 class LayerModel;
@@ -66,6 +67,7 @@ public:
     [[nodiscard]] DocumentController& document() const noexcept { return *m_document; }
     [[nodiscard]] PropertyModel& properties() const noexcept { return *m_properties; }
     [[nodiscard]] EventModel& events() const noexcept { return *m_events; }
+    [[nodiscard]] AlarmModel& alarms() const noexcept { return *m_alarms; }
     [[nodiscard]] LayerModel& layers() const noexcept { return *m_layers; }
     [[nodiscard]] ScreenListModel& screens() const noexcept { return *m_screens; }
     [[nodiscard]] TagEngine& tagEngine() const noexcept { return *m_tagEngine; }
@@ -89,6 +91,7 @@ private:
     std::unique_ptr<DocumentController> m_document;
     std::unique_ptr<PropertyModel> m_properties;
     std::unique_ptr<EventModel> m_events;
+    std::unique_ptr<AlarmModel> m_alarms;
     std::unique_ptr<LayerModel> m_layers;
     std::unique_ptr<ScreenListModel> m_screens;
     std::unique_ptr<TagModel> m_tags;

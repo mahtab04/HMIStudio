@@ -3,6 +3,7 @@
 #include "quick/RuntimeInputHandler.h"
 #include "quick/RuntimeView.h"
 
+#include <QColor>
 #include <QObject>
 #include <QPointer>
 #include <QSizeF>
@@ -15,7 +16,9 @@
 namespace hmi
 {
 
+class AlarmEngine;
 class BindingEvaluator;
+class RuntimeAlarms;
 class TagEngine;
 class ToolContext;
 
@@ -40,6 +43,12 @@ class SimulationController : public QObject
     Q_PROPERTY(bool popupOpen READ popupOpen NOTIFY popupChanged)
     Q_PROPERTY(QString popupTitle READ popupTitle NOTIFY popupChanged)
     Q_PROPERTY(QSizeF popupSize READ popupSize NOTIFY popupChanged)
+    // The alarm line of the simulator: the newest alarm still to
+    // acknowledge, in its class colours, and how many there are.
+    Q_PROPERTY(int unacknowledgedAlarms READ unacknowledgedAlarms NOTIFY alarmsChanged)
+    Q_PROPERTY(QString newestAlarmText READ newestAlarmText NOTIFY alarmsChanged)
+    Q_PROPERTY(QColor newestAlarmColor READ newestAlarmColor NOTIFY alarmsChanged)
+    Q_PROPERTY(QColor newestAlarmTextColor READ newestAlarmTextColor NOTIFY alarmsChanged)
 
 public:
     SimulationController(ToolContext& context, TagEngine& engine, QObject* parent = nullptr);
@@ -79,6 +88,14 @@ public:
     }
 
     [[nodiscard]] RuntimeInputHandler* input() const noexcept { return m_input.get(); }
+    [[nodiscard]] AlarmEngine& alarmEngine() const noexcept { return *m_alarmEngine; }
+    [[nodiscard]] RuntimeAlarms& runtimeAlarms() const noexcept { return *m_alarms; }
+    [[nodiscard]] int unacknowledgedAlarms() const;
+    [[nodiscard]] QString newestAlarmText() const;
+    [[nodiscard]] QColor newestAlarmColor() const;
+    [[nodiscard]] QColor newestAlarmTextColor() const;
+    // Acknowledges the alarm the alarm line shows.
+    Q_INVOKABLE void acknowledgeNewestAlarm();
     // Where PLC monitoring reads the native libraries the user trusts.
     void setTrustedLibraries(std::function<QStringList()> trusted)
     {
@@ -96,6 +113,8 @@ Q_SIGNALS:
     void screenChanged();
     // A popup opened, closed or was replaced.
     void popupChanged();
+    // Pending alarms changed (or flash).
+    void alarmsChanged();
     void problemsChanged();
 
 private:
@@ -105,9 +124,14 @@ private:
     void end();
     void showOnView();
     void showOnPopupView();
+    // Redraws the alarm controls of the screen and the popup.
+    void refreshAlarmControls();
+    [[nodiscard]] const struct PendingAlarm* newestUnacknowledged() const;
 
     ToolContext& m_context;
     TagEngine& m_engine;
+    std::unique_ptr<AlarmEngine> m_alarmEngine;
+    std::unique_ptr<RuntimeAlarms> m_alarms;
     std::unique_ptr<BindingEvaluator> m_evaluator;
     std::unique_ptr<RuntimeInputHandler> m_input;
     std::unique_ptr<BindingEvaluator> m_popupEvaluator;

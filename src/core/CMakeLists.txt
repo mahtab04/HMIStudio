@@ -128,6 +128,9 @@ add_library(hmi_core_impl STATIC
     property/PropertyValue.cpp
     property/PropertyValue.h
 
+    alarms/Alarm.cpp
+    alarms/Alarm.h
+    alarms/IAlarmSource.h
     tags/Connection.cpp
     tags/Connection.h
     tags/Binding.cpp

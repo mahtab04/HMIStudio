@@ -56,7 +56,8 @@ The implemented distinction follows Siemens' [overview of operable elements](htt
 | Pump, Motor, Conveyor, Valve, Pipe | Display running/open/flowing Boolean state | Process > Tag |
 | Sensor, Exchanger, Clock | Display their available bindable properties; no operator tag writes | Property link buttons where offered |
 | Rectangle, Ellipse, Circle, Line, Polyline, Polygon, Text box, Graphic view | Display tag-driven appearance/text through bindable properties; no operator tag writes | Property link buttons |
-| Alarm view, Trend view, f(x) trend, Recipe view, Diagnostics view, Screen window, Browser, Media player | Existing display placeholders; no new tag input behavior | Their full runtime services remain future work |
+| Alarm view | Lists the alarms raised by tag values; acknowledgment and confirmation by touch | See `docs/ALARMS.md` |
+| Trend view, f(x) trend, Recipe view, Diagnostics view, Screen window, Browser, Media player | Existing display placeholders; no new tag input behavior | Their full runtime services remain future work |
 
 ### Events and actions
 
@@ -93,4 +94,4 @@ The built-in sample and `examples/BufferFilling.hmiproj` are an operable transfe
 
 The saved `simulationProfile: "filling-station"` explicitly selects `FillingStationDriver`; an empty profile uses the normal independent per-tag generators. The profile's tag names form its fixed demo interface. Keep those names when customizing this sample, or remove the profile to use ordinary tags. Saved profile behavior survives closing and reopening the project. PLC monitoring always selects the configured native adapters instead.
 
-This is a deterministic training model of a pump and buffer tank, with bounded time steps and reset state on restart. It is not a PLC program, an alarm service or a safety function. No physical outputs are written.
+This is a deterministic training model of a pump and buffer tank, with bounded time steps and reset state on restart. It is not a PLC program or a safety function; its HMI alarms (`docs/ALARMS.md`) are operator information only. No physical outputs are written.

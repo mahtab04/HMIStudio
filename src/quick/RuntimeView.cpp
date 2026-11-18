@@ -125,6 +125,11 @@ void RuntimeView::focusOutEvent(QFocusEvent* event)
     QQuickItem::focusOutEvent(event);
 }
 
+void RuntimeView::setAlarms(const IAlarmSource* alarms)
+{
+    m_screenItem->setAlarms(alarms);
+}
+
 void RuntimeView::setGraphics(const IGraphicProvider* graphics)
 {
     m_screenItem->setGraphics(graphics);

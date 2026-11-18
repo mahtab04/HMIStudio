@@ -1,10 +1,14 @@
 #include "editor/app/SimulationController.h"
 
+#include "comm/AlarmEngine.h"
 #include "comm/BindingEvaluator.h"
 #include "comm/PlcDriver.h"
+#include "comm/RuntimeAlarms.h"
 #include "comm/TagEngine.h"
+#include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/model/Screen.h"
+#include "core/property/Prop.h"
 #include "editor/app/FillingStationDriver.h"
 #include "editor/tools/ToolContext.h"
 #include "quick/RuntimeInputHandler.h"
@@ -17,6 +21,8 @@ SimulationController::SimulationController(ToolContext& context, TagEngine& engi
     : QObject(parent)
     , m_context(context)
     , m_engine(engine)
+    , m_alarmEngine(std::make_unique<AlarmEngine>(engine))
+    , m_alarms(std::make_unique<RuntimeAlarms>(*m_alarmEngine))
     , m_evaluator(std::make_unique<BindingEvaluator>(engine))
     , m_input(std::make_unique<RuntimeInputHandler>(engine))
     , m_popupEvaluator(std::make_unique<BindingEvaluator>(engine))
@@ -24,6 +30,15 @@ SimulationController::SimulationController(ToolContext& context, TagEngine& engi
 {
     connect(m_popupEvaluator.get(), &BindingEvaluator::problemsChanged, this,
             &SimulationController::problemsChanged);
+    // Alarm controls on the screen and in the popup operate the alarms.
+    m_input->setAlarms(m_alarms.get());
+    m_popupInput->setAlarms(m_alarms.get());
+    connect(m_alarms.get(), &RuntimeAlarms::changed, this,
+            [this]
+            {
+                refreshAlarmControls();
+                Q_EMIT alarmsChanged();
+            });
     // Screen and popup actions, from the screen and from the popup, are
     // queued: the action list that asked runs to its end first.
     for (RuntimeInputHandler* input : {m_input.get(), m_popupInput.get()})
@@ -66,6 +81,8 @@ bool SimulationController::begin()
     else if (m_context.project().simulationProfile() == u"filling-station")
         driver = std::make_unique<FillingStationDriver>();
     m_engine.start(m_context.project().tags().tags(), std::move(driver));
+    m_alarms->reset();
+    m_alarmEngine->start(m_context.project().alarms());
     show(*screen);
     return true;
 }
@@ -176,6 +193,7 @@ void SimulationController::showOnPopupView()
     if (!m_popupView)
         return;
     m_popupView->setGraphics(m_context.graphics());
+    m_popupView->setAlarms(m_alarms.get());
     const Screen* screen = m_popupEvaluator->playScreen();
     m_popupView->setScreen(screen, screen ? &m_popupEvaluator->playProject().notifier() : nullptr);
 }
@@ -192,11 +210,93 @@ void SimulationController::end()
     m_engine.stop();
 }
 
+void SimulationController::refreshAlarmControls()
+{
+    // An alarm control is redrawn through its play copy's notifier, like a
+    // driven property; inside a group or window its top-level object is.
+    const auto refresh = [](const BindingEvaluator& evaluator)
+    {
+        const Screen* screen = evaluator.playScreen();
+        if (!screen)
+            return;
+        const std::function<bool(const HmiObject&)> drawsAlarms = [&](const HmiObject& object)
+        {
+            return object.usesAlarms() || std::ranges::any_of(object.children(), [&](const auto& c)
+                                                              { return drawsAlarms(*c); });
+        };
+        for (const auto& object : screen->objects())
+        {
+            if (drawsAlarms(*object))
+                Q_EMIT evaluator.playProject().notifier().propertyChanged(object->id(),
+                                                                          Prop::Columns);
+        }
+    };
+    refresh(*m_evaluator);
+    refresh(*m_popupEvaluator);
+}
+
+const PendingAlarm* SimulationController::newestUnacknowledged() const
+{
+    if (!m_running)
+        return nullptr;
+    for (const PendingAlarm& alarm : m_alarmEngine->pending())
+    {
+        const AlarmClass* c = m_alarmEngine->alarmClass(alarm.alarmClass);
+        const bool needsAcknowledgment =
+            c && c->stateMachine != AlarmStateMachine::WithoutAcknowledgment;
+        if (needsAcknowledgment && (alarm.status == AlarmStatus::Incoming ||
+                                    alarm.status == AlarmStatus::IncomingOutgoing))
+            return &alarm;
+    }
+    return nullptr;
+}
+
+int SimulationController::unacknowledgedAlarms() const
+{
+    return m_running ? m_alarmEngine->unacknowledgedCount() : 0;
+}
+
+QString SimulationController::newestAlarmText() const
+{
+    const PendingAlarm* alarm = newestUnacknowledged();
+    return alarm ? QStringLiteral("%1  %2  %3")
+                       .arg(alarm->raised.time().toString(QStringLiteral("HH:mm:ss")),
+                            alarm->alarmClass, alarm->text)
+                 : QString();
+}
+
+QColor SimulationController::newestAlarmColor() const
+{
+    const PendingAlarm* alarm = newestUnacknowledged();
+    const AlarmClass* c = alarm ? m_alarmEngine->alarmClass(alarm->alarmClass) : nullptr;
+    if (!c)
+        return {};
+    const AlarmColors& colors = c->colorsFor(alarm->status);
+    return colors.flashing && !m_alarms->flashOn() ? QColor(Qt::white) : colors.background;
+}
+
+QColor SimulationController::newestAlarmTextColor() const
+{
+    const PendingAlarm* alarm = newestUnacknowledged();
+    const AlarmClass* c = alarm ? m_alarmEngine->alarmClass(alarm->alarmClass) : nullptr;
+    if (!c)
+        return {};
+    const AlarmColors& colors = c->colorsFor(alarm->status);
+    return colors.flashing && !m_alarms->flashOn() ? QColor(0x1F, 0x23, 0x28) : colors.text;
+}
+
+void SimulationController::acknowledgeNewestAlarm()
+{
+    if (const PendingAlarm* alarm = newestUnacknowledged())
+        m_alarmEngine->acknowledge(alarm->id);
+}
+
 void SimulationController::showOnView()
 {
     if (!m_view)
         return;
     m_view->setGraphics(m_context.graphics());
+    m_view->setAlarms(m_alarms.get());
     m_view->setScreen(m_evaluator->playScreen(),
                       m_evaluator->playScreen() ? &m_evaluator->playProject().notifier() : nullptr);
 }

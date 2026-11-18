@@ -4,6 +4,7 @@ namespace hmi
 {
 
 class IGraphicProvider;
+class IAlarmSource;
 class IScreenSource;
 
 // Information an object needs while painting that is not part of the object:
@@ -25,6 +26,8 @@ struct PaintContext
     // How many screen windows deep this drawing is (a window showing a
     // screen with a window ...); stops endless nesting.
     int depth = 0;
+    // The running alarms, for alarm controls; null in the editor.
+    const IAlarmSource* alarms = nullptr;
 
     [[nodiscard]] constexpr bool lowDetail() const noexcept { return zoom < kLowDetailZoom; }
 };

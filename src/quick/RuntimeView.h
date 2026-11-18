@@ -9,6 +9,7 @@ namespace hmi
 {
 
 class DocumentNotifier;
+class IAlarmSource;
 class IGraphicProvider;
 class Screen;
 class ScreenItem;
@@ -34,6 +35,8 @@ public:
     // Shows `screen` (nullptr clears). The notifier must outlive the binding.
     void setScreen(const Screen* screen, DocumentNotifier* notifier);
     void setGraphics(const IGraphicProvider* graphics);
+    // The running alarms, for alarm controls.
+    void setAlarms(const IAlarmSource* alarms);
     [[nodiscard]] ScreenItem* screenItem() const noexcept { return m_screenItem; }
     [[nodiscard]] double zoom() const noexcept { return m_zoom; }
 

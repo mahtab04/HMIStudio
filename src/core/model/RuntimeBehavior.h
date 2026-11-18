@@ -18,7 +18,9 @@ struct RuntimeBehavior
         Choice,
         RowChoice,
         // Operated only through its events (buttons, touch areas).
-        Action
+        Action,
+        // Operates its own parts (an alarm control's toolbar and lines).
+        Control
     };
     Kind kind = Kind::None;
     PropertyId property;

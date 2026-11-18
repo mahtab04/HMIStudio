@@ -36,6 +36,7 @@ const auto kFile = QStringLiteral("file");
 const auto kStyle = QStringLiteral("style");
 const auto kTags = QStringLiteral("tags");
 const auto kTagsFile = QStringLiteral("tags.json");
+const auto kAlarmsFile = QStringLiteral("alarms.json");
 
 QString assetPath(const Asset& asset)
 {
@@ -353,6 +354,15 @@ std::vector<File> toFiles(const Project& project)
         tags.append(tag.toJson());
     files.emplace_back(kTagsFile,
                        QJsonObject{{kFormatVersion, kCurrentFormatVersion}, {kTags, tags}});
+    QJsonArray alarmClasses;
+    for (const AlarmClass& alarmClass : project.alarms().classes)
+        alarmClasses.append(alarmClass.toJson());
+    QJsonArray alarms;
+    for (const Alarm& alarm : project.alarms().alarms)
+        alarms.append(alarm.toJson());
+    files.emplace_back(kAlarmsFile, QJsonObject{{kFormatVersion, kCurrentFormatVersion},
+                                                {QStringLiteral("classes"), alarmClasses},
+                                                {QStringLiteral("alarms"), alarms}});
     files.insert(files.end(), std::make_move_iterator(screens.begin()),
                  std::make_move_iterator(screens.end()));
     return files;
@@ -433,6 +443,47 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
     else if (tagsRaw.error().code != ErrorCode::Io)
     {
         return tl::unexpected(tagsRaw.error());
+    }
+
+    // Alarms: a project without alarms.json has none, and the predefined
+    // alarm classes.
+    if (auto alarmsRaw = read(kAlarmsFile))
+    {
+        auto alarmsJson = migrate(std::move(*alarmsRaw), kAlarmsFile);
+        if (!alarmsJson)
+            return tl::unexpected(alarmsJson.error());
+        AlarmConfiguration alarms;
+        alarms.classes.clear();
+        for (const QJsonValue& entry : alarmsJson->value(QStringLiteral("classes")).toArray())
+        {
+            auto alarmClass = AlarmClass::fromJson(entry.toObject());
+            if (!alarmClass)
+                return makeError(
+                    ErrorCode::BadFormat,
+                    QStringLiteral("%1: %2").arg(kAlarmsFile, alarmClass.error().message));
+            alarms.classes.push_back(std::move(*alarmClass));
+        }
+        // Predefined classes a file leaves out (an older or hand-made one).
+        for (AlarmClass& fixed : AlarmClass::predefinedClasses())
+        {
+            if (!alarms.findClass(fixed.name))
+                alarms.classes.push_back(std::move(fixed));
+        }
+        for (const QJsonValue& entry : alarmsJson->value(QStringLiteral("alarms")).toArray())
+        {
+            auto alarm = Alarm::fromJson(entry.toObject());
+            if (!alarm)
+                return makeError(ErrorCode::BadFormat,
+                                 QStringLiteral("%1: %2").arg(kAlarmsFile, alarm.error().message));
+            alarms.alarms.push_back(std::move(*alarm));
+        }
+        if (auto set = project->setAlarms(std::move(alarms)); !set)
+            return makeError(ErrorCode::BadFormat,
+                             QStringLiteral("%1: %2").arg(kAlarmsFile, set.error().message));
+    }
+    else if (alarmsRaw.error().code != ErrorCode::Io)
+    {
+        return tl::unexpected(alarmsRaw.error());
     }
 
     if (readAsset)

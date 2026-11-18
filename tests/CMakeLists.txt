@@ -49,6 +49,7 @@ hmi_add_test(GraphicsTest SOURCES render/GraphicsTest.cpp LIBS hmi_render)
 
 # Tags at runtime
 hmi_add_test(SimulationTest SOURCES comm/SimulationTest.cpp LIBS hmi_comm)
+hmi_add_test(AlarmEngineTest SOURCES comm/AlarmEngineTest.cpp LIBS hmi_comm)
 # Native ABI fixture exercises the optional adapters without PLC hardware.
 add_library(FakePlcLibrary SHARED comm/FakePlcLibrary.cpp)
 hmi_set_project_options(FakePlcLibrary)
@@ -80,6 +81,7 @@ hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEdit
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(TagModelTest SOURCES editor/TagModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(AlarmModelTest SOURCES editor/AlarmModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(SampleProjectTest SOURCES editor/SampleProjectTest.cpp LIBS hmi_editor_lib)
 target_compile_definitions(SampleProjectTest PRIVATE
     HMI_EXAMPLE_PROJECT="${PROJECT_SOURCE_DIR}/examples/BufferFilling.hmiproj")

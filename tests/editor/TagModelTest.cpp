@@ -3,7 +3,9 @@
 
 #include "editor/models/TagModel.h"
 
+#include "comm/AlarmEngine.h"
 #include "comm/BindingEvaluator.h"
+#include "comm/RuntimeAlarms.h"
 #include "comm/TagEngine.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
@@ -463,6 +465,49 @@ private Q_SLOTS:
         m_app->selection().set({button.id(), tank()->id()});
         QVERIFY(!events.available());
         QCOMPARE(events.rowCount(), 0);
+    }
+
+    void alarmsWhileSimulating()
+    {
+        // Plain tag simulation, so written values stay (the training model
+        // would drive the level itself).
+        QVERIFY(project().setSimulationProfile(QString()));
+        SimulationController& simulation = m_app->simulation();
+        simulation.start();
+        QCOMPARE(simulation.unacknowledgedAlarms(), 0);
+        QVERIFY(simulation.newestAlarmText().isEmpty());
+
+        // Level 95 %: the high (Warning) and critical (Alarm) alarms come.
+        QVERIFY(m_app->tagEngine().writeChecked(u"Level"_s, 95.0));
+        QTRY_COMPARE(simulation.alarmEngine().pending().size(), std::size_t(2));
+        QCOMPARE(simulation.unacknowledgedAlarms(), 2);
+        QVERIFY(simulation.newestAlarmText().contains(u"T-101 level"));
+        QVERIFY(simulation.newestAlarmColor().isValid());
+        const auto rows = simulation.runtimeAlarms().rows(false);
+        QCOMPARE(rows.size(), std::size_t(2));
+        QVERIFY(rows.front().text.contains(QLocale().toString(95.0, 'f', 1)));
+
+        // The alarm line's ACK acknowledges the newest; the level falls back.
+        simulation.acknowledgeNewestAlarm();
+        QCOMPARE(simulation.unacknowledgedAlarms(), 1);
+        QVERIFY(m_app->tagEngine().writeChecked(u"Level"_s, 40.0));
+        QTRY_COMPARE(simulation.alarmEngine().pending().size(), std::size_t(1));
+        QCOMPARE(simulation.alarmEngine().pending().front().status, AlarmStatus::IncomingOutgoing);
+
+        // The interlock (with reset): acknowledged, then confirmed.
+        QVERIFY(m_app->tagEngine().writeChecked(u"HighLevel"_s, true));
+        QTRY_VERIFY(simulation.alarmEngine().find(3));
+        QVERIFY(m_app->tagEngine().writeChecked(u"HighLevel"_s, false));
+        QTRY_COMPARE(simulation.alarmEngine().find(3)->status, AlarmStatus::IncomingOutgoing);
+        QVERIFY(simulation.alarmEngine().acknowledge(3));
+        QCOMPARE(simulation.alarmEngine().find(3)->status,
+                 AlarmStatus::IncomingOutgoingAcknowledged);
+        QVERIFY(simulation.alarmEngine().confirm(3));
+        QVERIFY(!simulation.alarmEngine().find(3));
+
+        simulation.stop();
+        QVERIFY(simulation.alarmEngine().pending().empty());
+        QCOMPARE(simulation.unacknowledgedAlarms(), 0);
     }
 
     void popupsOpenOverTheScreen()

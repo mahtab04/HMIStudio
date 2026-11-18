@@ -45,6 +45,7 @@ void Project::replaceContents(Project&& other)
         screen->setNotifier(nullptr);
 
     m_connections = std::move(other.m_connections);
+    m_alarms = std::move(other.m_alarms);
     m_name = std::move(other.m_name);
     m_simulationProfile = std::move(other.m_simulationProfile);
     m_preserved = std::move(other.m_preserved);
@@ -91,6 +92,17 @@ const Screen* Project::screenNamed(const QString& name) const
         std::ranges::find_if(m_screens, [&name](const auto& screen)
                              { return screen->name().compare(name, Qt::CaseInsensitive) == 0; });
     return it == m_screens.end() ? nullptr : it->get();
+}
+
+Result<void> Project::setAlarms(AlarmConfiguration alarms)
+{
+    if (auto valid = alarms.validate(); !valid)
+        return valid;
+    if (alarms == m_alarms)
+        return {};
+    m_alarms = std::move(alarms);
+    Q_EMIT m_notifier->alarmsChanged();
+    return {};
 }
 
 Screen* Project::screen(ScreenId id) const noexcept

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Result.h"
+#include "core/alarms/Alarm.h"
 #include "core/graphics/AssetStore.h"
 #include "core/model/DocumentNotifier.h"
 #include "core/model/HmiStyle.h"
@@ -65,6 +66,11 @@ public:
     [[nodiscard]] const Connection* connection(const QString& id) const;
     Result<void> setConnections(std::vector<Connection> connections);
 
+    // Alarms and alarm classes (HMI alarms). Rejected when not valid
+    // (AlarmConfiguration::validate); announced by alarmsChanged.
+    [[nodiscard]] const AlarmConfiguration& alarms() const noexcept { return m_alarms; }
+    Result<void> setAlarms(AlarmConfiguration alarms);
+
     // Imported images and SVG files used by graphic objects.
     [[nodiscard]] AssetStore& assets() const noexcept { return *m_assets; }
 
@@ -87,6 +93,7 @@ public:
 
 private:
     std::vector<Connection> m_connections;
+    AlarmConfiguration m_alarms;
     QString m_name;
     QString m_simulationProfile;
     QJsonObject m_preserved;

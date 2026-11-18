@@ -11,6 +11,7 @@
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/AlarmModel.h"
 #include "editor/models/EventModel.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
@@ -82,6 +83,7 @@ private Q_SLOTS:
             {QStringLiteral("settings"), QVariant::fromValue(&context.settings())},
             {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
             {QStringLiteral("events"), QVariant::fromValue(&context.events())},
+            {QStringLiteral("alarms"), QVariant::fromValue(&context.alarms())},
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
             {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},
@@ -353,6 +355,29 @@ private Q_SLOTS:
             context.simulation().stop();
             QTRY_VERIFY(simulatorWindow(engine) == nullptr);
             context.editor().setCurrentScreen(0);
+        }
+
+        // Alarms: the simulator's alarm line and the Overview's alarm
+        // control, with plain tag simulation so a written level stays.
+        if (const QString path = qEnvironmentVariable("HMI_ALARMS_SCREENSHOT"); !path.isEmpty())
+        {
+            QMetaObject::invokeMethod(menu, "close");
+            QVERIFY(context.project().setSimulationProfile(QString()));
+            context.editor().setCurrentScreen(1);
+            context.simulation().start();
+            QQuickWindow* live = nullptr;
+            QTRY_VERIFY((live = simulatorWindow(engine)) != nullptr);
+            QVERIFY(QTest::qWaitForWindowExposed(live));
+            QVERIFY(context.tagEngine().writeChecked(QStringLiteral("Level"), 95.0));
+            QVERIFY(context.tagEngine().writeChecked(QStringLiteral("Pressure"), 3.8));
+            QVERIFY(context.tagEngine().writeChecked(QStringLiteral("HighLevel"), true));
+            QTRY_VERIFY(live->findChild<QQuickItem*>(QStringLiteral("alarmLine"))->isVisible());
+            QTest::qWait(1200);
+            QVERIFY(live->grabWindow().save(path));
+            context.simulation().stop();
+            QTRY_VERIFY(simulatorWindow(engine) == nullptr);
+            context.editor().setCurrentScreen(0);
+            QVERIFY(context.project().setSimulationProfile(QStringLiteral("filling-station")));
         }
 
         // The runtime simulation opens a window of its own showing a play

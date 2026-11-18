@@ -3,9 +3,13 @@
 # worker thread, and the BindingEvaluator that drives a screen from tag
 # values. Depends on hmi_core only (ARCHITECTURE.md section 8).
 add_library(hmi_comm STATIC
+    AlarmEngine.cpp
+    AlarmEngine.h
     BindingEvaluator.cpp
     BindingEvaluator.h
     IDriver.h
+    RuntimeAlarms.cpp
+    RuntimeAlarms.h
     PlcDriver.cpp
     PlcDriver.h
     SimulatorDriver.cpp
