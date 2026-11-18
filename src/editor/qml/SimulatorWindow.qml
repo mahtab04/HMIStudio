@@ -32,7 +32,11 @@ Window {
     RuntimeView {
         id: runtime
         objectName: "runtimeView"
-        anchors.fill: parent
+        // Below the alarm line while it shows, so it covers nothing.
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.top: alarmLine.visible ? alarmLine.bottom : parent.top
         Component.onCompleted: window.simulation.attachView(this)
         focus: true
 
@@ -132,6 +136,8 @@ Window {
 
     // The alarm line: the newest alarm to acknowledge, in its class colours.
     Rectangle {
+        id: alarmLine
+
         objectName: "alarmLine"
         anchors.left: parent.left
         anchors.right: parent.right

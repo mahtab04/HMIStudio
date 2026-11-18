@@ -553,6 +553,17 @@ stops the simulation. From phase 7, input in play mode
 goes to `RuntimeInputHandler`, which maps taps and drags to object events
 (button press, slider drag).
 
+Alarms: `AlarmConfiguration` (core, in `Project`) holds the alarm classes
+and alarms. `AlarmEngine` (comm) watches `TagEngine::valuesChanged`,
+evaluates each alarm's condition and moves it through its class's state
+machine; it keeps the pending alarms and a log. `RuntimeAlarms` adapts it
+to `IAlarmSource` (core), which `PaintContext::alarms` hands to objects:
+`AlarmView` paints the live rows and, as a `RuntimeBehavior::Control`,
+handles toolbar and line taps through `HmiObject::operateAt`, so neither
+the input handler nor the items know the alarm control's type. Per-control
+view state (active or logged, selection) lives in `RuntimeAlarms`, never in
+the play copy.
+
 The runtime executable is the same `RuntimeView`, `ScreenItem` and
 `ObjectItem` inside a minimal QML window, with no editor code linked.
 
@@ -631,6 +642,7 @@ A project is a folder, which works well with Git:
 MyLine.hmiproj/
 ├─ project.json        # name, target device, format version
 ├─ tags.json
+├─ alarms.json         # alarm classes and alarms
 ├─ connections.json
 ├─ screens/
 │  ├─ 01_overview.json

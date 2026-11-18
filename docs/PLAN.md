@@ -367,7 +367,18 @@ preview of the chosen screen inside a screen window; in the simulator the
 window is replaced by a live copy of that screen (fitted, proportions kept),
 whose values, buttons and inputs work, nested up to three levels. The
 sample's Overview shows the P-101 details screen in a window.
-Still open in phase 7: alarms, trends and the validation pass.
+Alarms implemented on `feat/alarms`, following WinCC Unified: discrete
+alarms (trigger tag, bit, rising or falling edge) and analog alarms (Less,
+Greater, Equal, Not equal, Less or equal, Greater or equal a limit), alarm
+classes with state machine, priority and colours per status (the five
+predefined classes and user classes), edited in an HMI alarms tab with undo
+and saved in `alarms.json`. `AlarmEngine` derives the statuses (Incoming,
+Incoming/Outgoing, Incoming/Acknowledged, ... and Normal) and keeps a log;
+the alarm control lists them live, with WinCC Unified's toolbar (active or
+logged alarms, line navigation, single and group acknowledgment, single
+confirm, show current); the simulator shows an alarm line with ACK. The
+sample raises level, interlock and pressure alarms. See `docs/ALARMS.md`.
+Still open in phase 7: trends and the validation pass.
 
 ## Phase 8 — Real connections
 

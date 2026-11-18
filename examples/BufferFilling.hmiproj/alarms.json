@@ -1,0 +1,202 @@
+{
+    "alarms": [
+        {
+            "class": "Warning",
+            "id": 1,
+            "infoText": "Auto mode pauses filling at 80 %. Check the downstream demand.",
+            "kind": "analog",
+            "limit": 85,
+            "mode": "greaterOrEqual",
+            "name": "LevelHigh",
+            "origin": "Line 3 / T-101",
+            "tag": "Level",
+            "text": "T-101 level high: {Level} %"
+        },
+        {
+            "class": "Alarm",
+            "id": 2,
+            "infoText": "The high-level interlock stops the pump. Stop the transfer.",
+            "kind": "analog",
+            "limit": 90,
+            "mode": "greaterOrEqual",
+            "name": "LevelCritical",
+            "origin": "Line 3 / T-101",
+            "tag": "Level",
+            "text": "T-101 level critical: {Level} %"
+        },
+        {
+            "bit": 0,
+            "class": "AlarmWithReset",
+            "fallingEdge": false,
+            "id": 3,
+            "infoText": "Acknowledge, and confirm once the level is back below 90 %.",
+            "kind": "discrete",
+            "name": "Interlock",
+            "origin": "Line 3 / P-101",
+            "tag": "HighLevel",
+            "text": "High-level interlock tripped, P-101 stopped"
+        },
+        {
+            "class": "Warning",
+            "id": 4,
+            "infoText": "Reduce the flow setpoint.",
+            "kind": "analog",
+            "limit": 3.5,
+            "mode": "greater",
+            "name": "PressureHigh",
+            "origin": "Line 3 / T-101",
+            "tag": "Pressure",
+            "text": "Line pressure high: {Pressure} bar"
+        },
+        {
+            "bit": 0,
+            "class": "Notification",
+            "fallingEdge": false,
+            "id": 5,
+            "infoText": "",
+            "kind": "discrete",
+            "name": "PumpRunning",
+            "origin": "Line 3 / P-101",
+            "tag": "PumpRunning",
+            "text": "P-101 transfer pump running"
+        }
+    ],
+    "classes": [
+        {
+            "colors": {
+                "incoming": {
+                    "background": "#d64541",
+                    "flashing": true,
+                    "text": "#ffffff"
+                },
+                "incomingAcknowledged": {
+                    "background": "#8f2e2b",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingOutgoing": {
+                    "background": "#ffa7a5",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingOutgoingAcknowledged": {
+                    "background": "#d9dce1",
+                    "flashing": false,
+                    "text": "#1f2328"
+                }
+            },
+            "name": "Alarm",
+            "priority": 12,
+            "stateMachine": "simpleAcknowledgment"
+        },
+        {
+            "colors": {
+                "incoming": {
+                    "background": "#f2c230",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingAcknowledged": {
+                    "background": "#a18120",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingOutgoing": {
+                    "background": "#ffedb7",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingOutgoingAcknowledged": {
+                    "background": "#d9dce1",
+                    "flashing": false,
+                    "text": "#1f2328"
+                }
+            },
+            "name": "Warning",
+            "priority": 8,
+            "stateMachine": "simpleAcknowledgment"
+        },
+        {
+            "colors": {
+                "incoming": {
+                    "background": "#5b8dc9",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingAcknowledged": {
+                    "background": "#3d5e86",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingOutgoing": {
+                    "background": "#b6d7ff",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingOutgoingAcknowledged": {
+                    "background": "#d9dce1",
+                    "flashing": false,
+                    "text": "#1f2328"
+                }
+            },
+            "name": "Notification",
+            "priority": 4,
+            "stateMachine": "withoutAcknowledgment"
+        },
+        {
+            "colors": {
+                "incoming": {
+                    "background": "#d64541",
+                    "flashing": true,
+                    "text": "#ffffff"
+                },
+                "incomingAcknowledged": {
+                    "background": "#8f2e2b",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingOutgoing": {
+                    "background": "#ffa7a5",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingOutgoingAcknowledged": {
+                    "background": "#d9dce1",
+                    "flashing": false,
+                    "text": "#1f2328"
+                }
+            },
+            "name": "AlarmWithReset",
+            "priority": 12,
+            "stateMachine": "acknowledgmentAndConfirmation"
+        },
+        {
+            "colors": {
+                "incoming": {
+                    "background": "#f2c230",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingAcknowledged": {
+                    "background": "#a18120",
+                    "flashing": false,
+                    "text": "#ffffff"
+                },
+                "incomingOutgoing": {
+                    "background": "#ffedb7",
+                    "flashing": false,
+                    "text": "#1f2328"
+                },
+                "incomingOutgoingAcknowledged": {
+                    "background": "#d9dce1",
+                    "flashing": false,
+                    "text": "#1f2328"
+                }
+            },
+            "name": "WarningWithReset",
+            "priority": 8,
+            "stateMachine": "acknowledgmentAndConfirmation"
+        }
+    ],
+    "formatVersion": 4
+}

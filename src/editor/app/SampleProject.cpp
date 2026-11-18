@@ -1,6 +1,7 @@
 #include "editor/app/SampleProject.h"
 
 #include "core/model/ScreenBuilder.h"
+#include "core/objects/AlarmView.h"
 #include "core/objects/Bar.h"
 #include "core/objects/Button.h"
 #include "core/objects/CheckBox.h"
@@ -328,6 +329,13 @@ std::unique_ptr<Project> makeSampleProject()
     label(o, at(480, 200, 380, 80),
           tr("Operate the pump on the Filling screen.\nThe values here follow the same tags."), 18,
           kMuted);
+    // The alarm control: the active alarms, newest first.
+    QFont alarmFont;
+    alarmFont.setPixelSize(20);
+    o.add(AlarmView::kTypeId, at(24, 652, 1232, 140))
+        .with(Prop::Name, tr("Alarms"))
+        .with(Prop::Font, alarmFont)
+        .with(Prop::Columns, tr("Alarm number;Time;Alarm class;Alarm text;Status;Origin"));
     auto second = project->insertScreen(o.build());
     Q_ASSERT(second);
     wire(**second, links, events);
@@ -397,6 +405,58 @@ std::unique_ptr<Project> makeSampleProject()
         [[maybe_unused]] const auto added = project->tags().insert(t);
         Q_ASSERT(added);
     }
+    // Alarms, as WinCC Unified's analog and discrete alarms.
+    AlarmConfiguration alarms;
+    const auto analogAlarm = [](int id, const QString& name, const QString& text,
+                                const QString& alarmClass, const QString& tagName, Alarm::Mode mode,
+                                double limit, const QString& info)
+    {
+        Alarm a;
+        a.id = id;
+        a.kind = Alarm::Kind::Analog;
+        a.name = name;
+        a.text = text;
+        a.alarmClass = alarmClass;
+        a.tag = tagName;
+        a.mode = mode;
+        a.limit = limit;
+        a.infoText = info;
+        a.origin = QStringLiteral("Line 3 / T-101");
+        return a;
+    };
+    const auto discreteAlarm = [](int id, const QString& name, const QString& text,
+                                  const QString& alarmClass, const QString& tagName,
+                                  const QString& info)
+    {
+        Alarm a;
+        a.id = id;
+        a.name = name;
+        a.text = text;
+        a.alarmClass = alarmClass;
+        a.tag = tagName;
+        a.infoText = info;
+        a.origin = QStringLiteral("Line 3 / P-101");
+        return a;
+    };
+    alarms.alarms = {
+        analogAlarm(1, QStringLiteral("LevelHigh"), tr("T-101 level high: {Level} %"),
+                    QStringLiteral("Warning"), QStringLiteral("Level"), Alarm::Mode::GreaterOrEqual,
+                    85, tr("Auto mode pauses filling at 80 %. Check the downstream demand.")),
+        analogAlarm(2, QStringLiteral("LevelCritical"), tr("T-101 level critical: {Level} %"),
+                    QStringLiteral("Alarm"), QStringLiteral("Level"), Alarm::Mode::GreaterOrEqual,
+                    90, tr("The high-level interlock stops the pump. Stop the transfer.")),
+        discreteAlarm(3, QStringLiteral("Interlock"),
+                      tr("High-level interlock tripped, P-101 stopped"),
+                      QStringLiteral("AlarmWithReset"), QStringLiteral("HighLevel"),
+                      tr("Acknowledge, and confirm once the level is back below 90 %.")),
+        analogAlarm(4, QStringLiteral("PressureHigh"), tr("Line pressure high: {Pressure} bar"),
+                    QStringLiteral("Warning"), QStringLiteral("Pressure"), Alarm::Mode::Greater,
+                    3.5, tr("Reduce the flow setpoint.")),
+        discreteAlarm(5, QStringLiteral("PumpRunning"), tr("P-101 transfer pump running"),
+                      QStringLiteral("Notification"), QStringLiteral("PumpRunning"), {}),
+    };
+    [[maybe_unused]] const auto alarmsSet = project->setAlarms(std::move(alarms));
+    Q_ASSERT(alarmsSet);
     return project;
 }
 } // namespace hmi
