@@ -47,12 +47,16 @@ qt_add_qml_module(hmi_editor_lib
         commands/ScreenCommands.h
         commands/SetPropertyCommand.cpp
         commands/SetPropertyCommand.h
+        commands/AlarmCommands.cpp
+        commands/AlarmCommands.h
         commands/EventCommands.cpp
         commands/EventCommands.h
         commands/TagCommands.cpp
         commands/TagCommands.h
         commands/UngroupCommand.cpp
         commands/UngroupCommand.h
+        models/AlarmModel.cpp
+        models/AlarmModel.h
         models/EventModel.cpp
         models/EventModel.h
         models/LayerModel.cpp
@@ -94,6 +98,7 @@ qt_add_qml_module(hmi_editor_lib
         qml/controls/IconButton.qml
         qml/panels/BottomPanel.qml
         qml/panels/CanvasContextMenu.qml
+        qml/panels/AlarmsPanel.qml
         qml/panels/CanvasPanel.qml
         qml/panels/EventsPanel.qml
         qml/panels/LayerRow.qml

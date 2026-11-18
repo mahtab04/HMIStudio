@@ -14,10 +14,14 @@ ColumnLayout {
     required property Theme theme
     required property ScreenListModel screens
     required property TagModel tags
+    required property AlarmModel alarms
     required property SimulationController simulation
 
     // The tag table is open instead of a screen.
     property bool showingTags: false
+    // The HMI alarms editor is open instead of a screen.
+    property bool showingAlarms: false
+    readonly property bool showingTable: panel.showingTags || panel.showingAlarms
 
     spacing: 0
 
@@ -49,7 +53,21 @@ ColumnLayout {
                         checked: panel.showingTags
                         implicitHeight: panel.theme.controlHeight
                         focusPolicy: Qt.NoFocus
-                        onClicked: panel.showingTags = true
+                        onClicked: {
+                            panel.showingAlarms = false
+                            panel.showingTags = true
+                        }
+                    }
+                    ToolButton {
+                        objectName: "alarmsTab"
+                        text: panel.alarms.alarmCount > 0 ? qsTr("HMI alarms (%1)").arg(panel.alarms.alarmCount) : qsTr("HMI alarms")
+                        checked: panel.showingAlarms
+                        implicitHeight: panel.theme.controlHeight
+                        focusPolicy: Qt.NoFocus
+                        onClicked: {
+                            panel.showingTags = false
+                            panel.showingAlarms = true
+                        }
                     }
                     ToolSeparator {
                         implicitHeight: panel.theme.controlHeight
@@ -66,11 +84,12 @@ ColumnLayout {
                             required property bool current
 
                             text: tab.name
-                            checked: tab.current && !panel.showingTags
+                            checked: tab.current && !panel.showingTable
                             implicitHeight: panel.theme.controlHeight
                             focusPolicy: Qt.NoFocus
                             onClicked: {
                                 panel.showingTags = false
+                                panel.showingAlarms = false
                                 panel.editor.setCurrentScreen(tab.index)
                             }
                             onPressAndHold: {
@@ -94,12 +113,21 @@ ColumnLayout {
                         icon.source: "qrc:/icons/plus.svg"
                         onClicked: {
                             panel.showingTags = false
+                            panel.showingAlarms = false
                             panel.editor.addScreen()
                         }
                     }
                 }
             }
         }
+    }
+
+    AlarmsPanel {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        visible: panel.showingAlarms
+        theme: panel.theme
+        alarms: panel.alarms
     }
 
     TagsPanel {
@@ -116,7 +144,7 @@ ColumnLayout {
     ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        visible: !panel.showingTags
+        visible: !panel.showingTable
         spacing: 0
 
         Rectangle {

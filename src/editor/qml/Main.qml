@@ -14,6 +14,7 @@ ApplicationWindow {
     required property AppSettings settings
     required property PropertyModel properties
     required property EventModel events
+    required property AlarmModel alarms
     required property LayerModel layers
     required property ScreenListModel screens
     required property TagModel tags
@@ -91,7 +92,7 @@ ApplicationWindow {
 
         ToolboxPanel {
             objectName: "toolboxPanel"
-            visible: root.settings.toolboxPanelVisible && !workArea.showingTags
+            visible: root.settings.toolboxPanelVisible && !workArea.showingTable
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
             SplitView.maximumWidth: root.sidePanelMaximum
@@ -119,6 +120,7 @@ ApplicationWindow {
                 theme: root.theme
                 screens: root.screens
                 tags: root.tags
+                alarms: root.alarms
                 simulation: root.simulation
             }
 
@@ -133,7 +135,7 @@ ApplicationWindow {
 
         PropertiesPanel {
             objectName: "propertiesPanel"
-            visible: root.settings.propertiesPanelVisible && !workArea.showingTags
+            visible: root.settings.propertiesPanelVisible && !workArea.showingTable
             SplitView.preferredWidth: root.theme.sidePanelWidth
             SplitView.minimumWidth: root.theme.toolboxTile * 2
             SplitView.maximumWidth: root.sidePanelMaximum

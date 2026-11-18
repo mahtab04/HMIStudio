@@ -11,6 +11,7 @@
 #include "editor/app/SampleProject.h"
 #include "editor/app/SimulationController.h"
 #include "editor/app/Theme.h"
+#include "editor/models/AlarmModel.h"
 #include "editor/models/EventModel.h"
 #include "editor/models/LayerModel.h"
 #include "editor/models/PropertyModel.h"
@@ -82,6 +83,7 @@ private Q_SLOTS:
             {QStringLiteral("settings"), QVariant::fromValue(&context.settings())},
             {QStringLiteral("properties"), QVariant::fromValue(&context.properties())},
             {QStringLiteral("events"), QVariant::fromValue(&context.events())},
+            {QStringLiteral("alarms"), QVariant::fromValue(&context.alarms())},
             {QStringLiteral("layers"), QVariant::fromValue(&context.layers())},
             {QStringLiteral("screens"), QVariant::fromValue(&context.screens())},
             {QStringLiteral("tags"), QVariant::fromValue(&context.tags())},

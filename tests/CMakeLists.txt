@@ -81,6 +81,7 @@ hmi_add_test(ToolControllerTest SOURCES editor/ToolControllerTest.cpp ${_hmiEdit
 hmi_add_test(ToolboxTest SOURCES editor/ToolboxTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(PropertyModelTest SOURCES editor/PropertyModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(TagModelTest SOURCES editor/TagModelTest.cpp LIBS hmi_editor_lib)
+hmi_add_test(AlarmModelTest SOURCES editor/AlarmModelTest.cpp LIBS hmi_editor_lib)
 hmi_add_test(SampleProjectTest SOURCES editor/SampleProjectTest.cpp LIBS hmi_editor_lib)
 target_compile_definitions(SampleProjectTest PRIVATE
     HMI_EXAMPLE_PROJECT="${PROJECT_SOURCE_DIR}/examples/BufferFilling.hmiproj")
