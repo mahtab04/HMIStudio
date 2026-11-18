@@ -63,25 +63,33 @@ private Q_SLOTS:
         QVERIFY(model().setCell(row, AlarmModel::BitColumn, u"3"_s));
         QVERIFY(model().setCell(row, AlarmModel::EdgeColumn, 1));
         QVERIFY(model().setCell(row, AlarmModel::TextColumn, u"Level {Level} %"_s));
+        // Alarm parameters: tags, any case, at most ten.
+        QVERIFY(model().setCell(row, AlarmModel::ParametersColumn, u"level; highlevel"_s));
         const Alarm& edited = alarms().alarms.back();
         QCOMPARE(edited.alarmClass, u"Warning"_s);
         QCOMPARE(edited.tag, u"HighLevel"_s);
         QCOMPARE(edited.bit, 3);
         QVERIFY(edited.fallingEdge);
+        QCOMPARE(edited.parameters, (QStringList{u"Level"_s, u"HighLevel"_s}));
+        QCOMPARE(cell(row, AlarmModel::ParametersColumn).toString(), u"Level; HighLevel"_s);
         QCOMPARE(cell(row, AlarmModel::EdgeColumn).toString(), u"On falling edge"_s);
 
         // Refused, with a reason: a bit past 63, a used number.
         QSignalSpy problems(&model(), &AlarmModel::problem);
         QVERIFY(!model().setCell(row, AlarmModel::BitColumn, u"64"_s));
+        QVERIFY(!model().setCell(row, AlarmModel::ParametersColumn, u"NoSuchTag"_s));
+        QVERIFY(!model().setCell(row, AlarmModel::ParametersColumn,
+                                 QStringList(11, u"Level"_s).join(u';')));
+        QCOMPARE(problems.count(), 3);
         if (alarmsBefore > 0)
         {
             QVERIFY(!model().setCell(row, AlarmModel::IdColumn,
                                      QString::number(alarms().alarms.front().id)));
-            QCOMPARE(problems.count(), 2);
+            QCOMPARE(problems.count(), 4);
         }
         // Each edit was one step.
-        QCOMPARE(m_app->undoStack().index(), index + 6);
-        for (int i = 0; i < 6; ++i)
+        QCOMPARE(m_app->undoStack().index(), index + 7);
+        for (int i = 0; i < 7; ++i)
             m_app->undoStack().undo();
         QCOMPARE(int(alarms().alarms.size()), alarmsBefore);
         QCOMPARE(model().rowCount(), before);
@@ -147,6 +155,33 @@ private Q_SLOTS:
         // A predefined class cannot be renamed.
         QVERIFY(!model().setCell(0, AlarmModel::ClassNameColumn, u"Alarms"_s));
         QVERIFY(alarms().findClass(u"Alarm"_s));
+    }
+
+    void runtimeSettings()
+    {
+        model().setPage(AlarmModel::SettingsPage);
+        QCOMPARE(model().rowCount(), kAlarmStatusCount + 1);
+        QCOMPARE(model().columnCount(), int(AlarmModel::SettingsColumnCount));
+        const int incoming = int(AlarmStatus::Incoming);
+        QCOMPARE(cell(incoming, AlarmModel::SettingValueColumn).toString(), u"Incoming"_s);
+        QCOMPARE(cell(incoming, AlarmModel::SettingColumn, AlarmModel::EditorRole).toString(),
+                 u"readonly"_s);
+        QCOMPARE(model().addRow(), -1);
+        // A status text; the default text (or none) is the default again.
+        QVERIFY(model().setCell(incoming, AlarmModel::SettingValueColumn, u"Came"_s));
+        QCOMPARE(alarms().settings.statusText(AlarmStatus::Incoming), u"Came"_s);
+        QVERIFY(model().setCell(incoming, AlarmModel::SettingValueColumn, u"Incoming"_s));
+        QVERIFY(alarms().settings.statusTexts[std::size_t(incoming)].isEmpty());
+        // The shelving timeout, in seconds.
+        const int timeout = AlarmModel::kShelvingTimeoutRow;
+        QCOMPARE(cell(timeout, AlarmModel::SettingValueColumn).toInt(), 3600);
+        QVERIFY(model().setCell(timeout, AlarmModel::SettingValueColumn, u"600"_s));
+        QCOMPARE(alarms().settings.shelvingTimeout, 600);
+        QSignalSpy problems(&model(), &AlarmModel::problem);
+        QVERIFY(!model().setCell(timeout, AlarmModel::SettingValueColumn, u"-1"_s));
+        QCOMPARE(problems.count(), 1);
+        m_app->undoStack().undo();
+        QCOMPARE(alarms().settings.shelvingTimeout, 3600);
     }
 };
 

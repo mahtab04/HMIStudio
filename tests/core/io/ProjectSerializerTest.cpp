@@ -506,7 +506,11 @@ private Q_SLOTS:
         level.tag = u"Level"_s;
         level.mode = Alarm::Mode::GreaterOrEqual;
         level.limit = 90.5;
+        level.parameters = {u"Level"_s, u"Pressure"_s};
         alarms.alarms = {pump, level};
+        // Runtime settings: a status text and the shelving timeout.
+        alarms.settings.statusTexts[std::size_t(AlarmStatus::IncomingOutgoing)] = u"IO"_s;
+        alarms.settings.shelvingTimeout = 120;
         QVERIFY(project->setAlarms(alarms));
 
         QTemporaryDir dir;

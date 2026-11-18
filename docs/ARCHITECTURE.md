@@ -561,8 +561,10 @@ to `IAlarmSource` (core), which `PaintContext::alarms` hands to objects:
 `AlarmView` paints the live rows and, as a `RuntimeBehavior::Control`,
 handles toolbar and line taps through `HmiObject::operateAt`, so neither
 the input handler nor the items know the alarm control's type. Per-control
-view state (active or logged, selection) lives in `RuntimeAlarms`, never in
-the play copy.
+view state (the list shown, the selection) lives in `RuntimeAlarms`, never
+in the play copy. Shelving and disabling are operator state of the engine
+and end with the run; the log is written to a file per project
+(`SimulationController::alarmLogFile`) and read back at the next start.
 
 The runtime executable is the same `RuntimeView`, `ScreenItem` and
 `ObjectItem` inside a minimal QML window, with no editor code linked.

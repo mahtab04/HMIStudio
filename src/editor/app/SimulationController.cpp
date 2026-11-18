@@ -14,6 +14,11 @@
 #include "quick/RuntimeInputHandler.h"
 #include "quick/RuntimeView.h"
 
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFileInfo>
+#include <QRegularExpression>
+
 namespace hmi
 {
 
@@ -38,6 +43,15 @@ SimulationController::SimulationController(ToolContext& context, TagEngine& engi
             {
                 refreshAlarmControls();
                 Q_EMIT alarmsChanged();
+            });
+    connect(m_alarms.get(), &RuntimeAlarms::exported, this,
+            [this](const QString& path)
+            {
+                m_alarmExportMessage =
+                    path.isEmpty()
+                        ? tr("The alarms could not be exported.")
+                        : tr("Alarms exported to %1").arg(QDir::toNativeSeparators(path));
+                Q_EMIT alarmExportChanged();
             });
     // Screen and popup actions, from the screen and from the popup, are
     // queued: the action list that asked runs to its end first.
@@ -82,7 +96,13 @@ bool SimulationController::begin()
         driver = std::make_unique<FillingStationDriver>();
     m_engine.start(m_context.project().tags().tags(), std::move(driver));
     m_alarms->reset();
+    m_alarmEngine->setLogFile(alarmLogFile());
     m_alarmEngine->start(m_context.project().alarms());
+    if (!m_alarmExportMessage.isEmpty())
+    {
+        m_alarmExportMessage.clear();
+        Q_EMIT alarmExportChanged();
+    }
     show(*screen);
     return true;
 }
@@ -241,14 +261,39 @@ const PendingAlarm* SimulationController::newestUnacknowledged() const
         return nullptr;
     for (const PendingAlarm& alarm : m_alarmEngine->pending())
     {
-        const AlarmClass* c = m_alarmEngine->alarmClass(alarm.alarmClass);
-        const bool needsAcknowledgment =
-            c && c->stateMachine != AlarmStateMachine::WithoutAcknowledgment;
-        if (needsAcknowledgment && (alarm.status == AlarmStatus::Incoming ||
-                                    alarm.status == AlarmStatus::IncomingOutgoing))
+        // Shelved alarms stay off the alarm line.
+        if (m_alarmEngine->needsAcknowledgment(alarm))
             return &alarm;
     }
     return nullptr;
+}
+
+void SimulationController::setRuntimeFolder(const QString& folder)
+{
+    m_runtimeFolder = folder;
+    m_alarms->setExportFolder(folder.isEmpty() ? QString()
+                                               : QDir(folder).filePath(QStringLiteral("exports")));
+}
+
+QString SimulationController::alarmLogFile() const
+{
+    if (m_runtimeFolder.isEmpty())
+        return {};
+    // One log per project: its name, and its file so that two projects of
+    // the same name keep apart.
+    QString name = m_context.project().name();
+    name.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_-]+")), QStringLiteral("_"));
+    if (name.isEmpty())
+        name = QStringLiteral("project");
+    const QString path = m_documentPath ? m_documentPath() : QString();
+    const QString key =
+        path.isEmpty() ? QStringLiteral("unsaved")
+                       : QString::fromLatin1(
+                             QCryptographicHash::hash(QFileInfo(path).absoluteFilePath().toUtf8(),
+                                                      QCryptographicHash::Sha1)
+                                 .toHex()
+                                 .left(10));
+    return QDir(m_runtimeFolder).filePath(QStringLiteral("alarm-logs/%1_%2.json").arg(name, key));
 }
 
 int SimulationController::unacknowledgedAlarms() const

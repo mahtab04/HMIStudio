@@ -49,6 +49,8 @@ class SimulationController : public QObject
     Q_PROPERTY(QString newestAlarmText READ newestAlarmText NOTIFY alarmsChanged)
     Q_PROPERTY(QColor newestAlarmColor READ newestAlarmColor NOTIFY alarmsChanged)
     Q_PROPERTY(QColor newestAlarmTextColor READ newestAlarmTextColor NOTIFY alarmsChanged)
+    // Where an alarm control's Export wrote its file, or why it could not.
+    Q_PROPERTY(QString alarmExportMessage READ alarmExportMessage NOTIFY alarmExportChanged)
 
 public:
     SimulationController(ToolContext& context, TagEngine& engine, QObject* parent = nullptr);
@@ -96,6 +98,15 @@ public:
     [[nodiscard]] QColor newestAlarmTextColor() const;
     // Acknowledges the alarm the alarm line shows.
     Q_INVOKABLE void acknowledgeNewestAlarm();
+    [[nodiscard]] QString alarmExportMessage() const { return m_alarmExportMessage; }
+    // Where alarm logs (kept across runs, per project) and alarm exports go;
+    // empty keeps logs for one run and exports to the working folder.
+    void setRuntimeFolder(const QString& folder);
+    [[nodiscard]] const QString& runtimeFolder() const noexcept { return m_runtimeFolder; }
+    // The saved project's file, which names its alarm log.
+    void setDocumentPath(std::function<QString()> path) { m_documentPath = std::move(path); }
+    // The alarm log file of the project, or empty.
+    [[nodiscard]] QString alarmLogFile() const;
     // Where PLC monitoring reads the native libraries the user trusts.
     void setTrustedLibraries(std::function<QStringList()> trusted)
     {
@@ -115,6 +126,7 @@ Q_SIGNALS:
     void popupChanged();
     // Pending alarms changed (or flash).
     void alarmsChanged();
+    void alarmExportChanged();
     void problemsChanged();
 
 private:
@@ -138,6 +150,9 @@ private:
     std::unique_ptr<RuntimeInputHandler> m_popupInput;
     QPointer<RuntimeView> m_popupView;
     QPointer<RuntimeView> m_view;
+    QString m_runtimeFolder;
+    std::function<QString()> m_documentPath;
+    QString m_alarmExportMessage;
     std::function<QStringList()> m_trustedLibraries;
     bool m_monitoring = false;
     bool m_running = false;

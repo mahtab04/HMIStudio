@@ -196,6 +196,42 @@ Window {
         }
     }
 
+    // Where an alarm control's Export wrote its file, for a few seconds.
+    Label {
+        id: exportMessage
+
+        objectName: "alarmExportMessage"
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: window.theme.padding * 3
+        width: Math.min(implicitWidth, window.width - 2 * window.theme.padding)
+        padding: window.theme.padding
+        visible: false
+        text: window.simulation.alarmExportMessage
+        color: window.theme.text
+        wrapMode: Text.WrapAnywhere
+        background: Rectangle {
+            color: window.theme.panelRaised
+            border.color: window.theme.border
+            radius: 4
+        }
+
+        Timer {
+            id: exportMessageTimer
+
+            interval: 6000
+            onTriggered: exportMessage.visible = false
+        }
+        Connections {
+            target: window.simulation
+
+            function onAlarmExportChanged() {
+                exportMessage.visible = window.simulation.alarmExportMessage.length > 0
+                exportMessageTimer.restart()
+            }
+        }
+    }
+
     Shortcut {
         sequence: "F5"
         onActivated: window.simulation.restart()

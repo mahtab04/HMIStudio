@@ -483,7 +483,7 @@ private Q_SLOTS:
         QCOMPARE(simulation.unacknowledgedAlarms(), 2);
         QVERIFY(simulation.newestAlarmText().contains(u"T-101 level"));
         QVERIFY(simulation.newestAlarmColor().isValid());
-        const auto rows = simulation.runtimeAlarms().rows(false);
+        const auto rows = simulation.runtimeAlarms().rows(AlarmList::Active);
         QCOMPARE(rows.size(), std::size_t(2));
         QVERIFY(rows.front().text.contains(QLocale().toString(95.0, 'f', 1)));
 

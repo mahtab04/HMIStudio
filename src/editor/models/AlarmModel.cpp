@@ -5,6 +5,7 @@
 #include "editor/tools/ToolContext.h"
 
 #include <QCoreApplication>
+#include <QRegularExpression>
 #include <QUndoStack>
 
 #include <algorithm>
@@ -57,14 +58,14 @@ std::vector<std::size_t> AlarmModel::alarmRows() const
 void AlarmModel::rebuild()
 {
     beginResetModel();
-    m_rows = m_page == ClassesPage ? std::vector<std::size_t>{} : alarmRows();
+    m_rows = m_page >= ClassesPage ? std::vector<std::size_t>{} : alarmRows();
     endResetModel();
     Q_EMIT namesChanged();
 }
 
 void AlarmModel::setPage(int page)
 {
-    if (page < DiscretePage || page > ClassesPage || page == int(m_page))
+    if (page < DiscretePage || page > SettingsPage || page == int(m_page))
         return;
     m_page = Page(page);
     rebuild();
@@ -73,11 +74,14 @@ void AlarmModel::setPage(int page)
 
 QStringList AlarmModel::pageNames() const
 {
-    return {tr("Discrete alarms"), tr("Analog alarms"), tr("Alarm classes")};
+    return {tr("Discrete alarms"), tr("Analog alarms"), tr("Alarm classes"),
+            tr("Runtime settings")};
 }
 
 QStringList AlarmModel::columnTitles() const
 {
+    if (m_page == SettingsPage)
+        return {tr("Setting"), tr("Value"), tr("Default")};
     if (m_page == ClassesPage)
     {
         QStringList titles{tr("Name"), tr("State machine"), tr("Priority")};
@@ -89,9 +93,9 @@ QStringList AlarmModel::columnTitles() const
         }
         return titles;
     }
-    return {tr("ID"),          tr("Name"),        tr("Alarm text"),   tr("Alarm class"),
-            tr("Trigger tag"), tr("Trigger bit"), tr("Trigger mode"), tr("Mode"),
-            tr("Limit"),       tr("Origin"),      tr("Info text")};
+    return {tr("ID"),          tr("Name"),        tr("Alarm text"),  tr("Alarm parameters"),
+            tr("Alarm class"), tr("Trigger tag"), tr("Trigger bit"), tr("Trigger mode"),
+            tr("Mode"),        tr("Limit"),       tr("Origin"),      tr("Info text")};
 }
 
 QStringList AlarmModel::classNames() const
@@ -129,6 +133,8 @@ int AlarmModel::rowCount(const QModelIndex& parent) const
 {
     if (parent.isValid())
         return 0;
+    if (m_page == SettingsPage)
+        return kShelvingTimeoutRow + 1;
     return m_page == ClassesPage ? int(configuration().classes.size()) : int(m_rows.size());
 }
 
@@ -136,13 +142,17 @@ int AlarmModel::columnCount(const QModelIndex& parent) const
 {
     if (parent.isValid())
         return 0;
+    if (m_page == SettingsPage)
+        return SettingsColumnCount;
     return m_page == ClassesPage ? int(ClassColumnCount) : int(AlarmColumnCount);
 }
 
 double AlarmModel::columnWidth(int column, double width, double minimum) const
 {
     std::vector<std::pair<int, double>> columns; // column, weight
-    if (m_page == ClassesPage)
+    if (m_page == SettingsPage)
+        columns = {{SettingColumn, 2.0}, {SettingValueColumn, 2.5}, {SettingDefaultColumn, 2.0}};
+    else if (m_page == ClassesPage)
     {
         columns = {{ClassNameColumn, 1.6}, {StateMachineColumn, 2.2}, {PriorityColumn, 0.7}};
         for (int c = ClassColorColumn; c < ClassColumnCount; ++c)
@@ -150,12 +160,13 @@ double AlarmModel::columnWidth(int column, double width, double minimum) const
     }
     else
     {
-        columns = {{IdColumn, 0.5},  {NameColumn, 1.2},   {TextColumn, 2.4}, {ClassColumn, 1.1},
-                   {TagColumn, 1.2}, {OriginColumn, 1.0}, {InfoColumn, 1.6}};
+        columns = {{IdColumn, 0.5},         {NameColumn, 1.1},  {TextColumn, 2.4},
+                   {ParametersColumn, 1.3}, {ClassColumn, 1.1}, {TagColumn, 1.1},
+                   {OriginColumn, 1.0},     {InfoColumn, 1.4}};
         if (m_page == DiscretePage)
-            columns.insert(columns.begin() + 5, {{BitColumn, 0.7}, {EdgeColumn, 1.2}});
+            columns.insert(columns.begin() + 6, {{BitColumn, 0.7}, {EdgeColumn, 1.2}});
         else
-            columns.insert(columns.begin() + 5, {{ModeColumn, 1.2}, {LimitColumn, 0.8}});
+            columns.insert(columns.begin() + 6, {{ModeColumn, 1.2}, {LimitColumn, 0.8}});
     }
     const auto it = std::ranges::find(columns, column, &std::pair<int, double>::first);
     if (it == columns.end())
@@ -239,6 +250,8 @@ QVariant AlarmModel::alarmData(const Alarm& alarm, int column, int role) const
         return alarm.name;
     case TextColumn:
         return alarm.text;
+    case ParametersColumn:
+        return alarm.parameters.join(QStringLiteral("; "));
     case ClassColumn:
         return alarm.alarmClass;
     case TagColumn:
@@ -308,10 +321,68 @@ QVariant AlarmModel::classData(const AlarmClass& alarmClass, int column, int rol
     return color.isValid() ? color.name().toUpper() : QString();
 }
 
+QVariant AlarmModel::settingData(int row, int column, int role) const
+{
+    const AlarmSettings& settings = configuration().settings;
+    const bool timeout = row == kShelvingTimeoutRow;
+    if (role == EditorRole)
+    {
+        if (column != SettingValueColumn)
+            return QStringLiteral("readonly");
+        return timeout ? QStringLiteral("number") : QStringLiteral("text");
+    }
+    if (role == ChoiceRole)
+        return -1;
+    if (role != Qt::DisplayRole && role != Qt::EditRole)
+        return {};
+    switch (column)
+    {
+    case SettingColumn:
+        return timeout ? tr("Shelving timeout (s, 0: none)")
+                       : tr("Status text: %1").arg(Alarms::statusName(AlarmStatus(row)));
+    case SettingValueColumn:
+        return timeout ? QVariant(settings.shelvingTimeout)
+                       : QVariant(settings.statusText(AlarmStatus(row)));
+    case SettingDefaultColumn:
+        return timeout ? QVariant(AlarmSettings{}.shelvingTimeout)
+                       : QVariant(Alarms::statusName(AlarmStatus(row)));
+    default:
+        return {};
+    }
+}
+
+bool AlarmModel::setSetting(int row, const QVariant& value)
+{
+    AlarmConfiguration after = configuration();
+    if (row == kShelvingTimeoutRow)
+    {
+        bool ok = false;
+        const double seconds = value.toString().trimmed().toDouble(&ok);
+        if (!ok || !std::isfinite(seconds) || seconds < 0 || seconds > 7 * 24 * 3600)
+        {
+            Q_EMIT problem(tr("The shelving timeout is a number of seconds from 0 to 604800."));
+            rebuild();
+            return false;
+        }
+        after.settings.shelvingTimeout = int(std::lround(seconds));
+        return change(std::move(after), tr("Change the shelving timeout"));
+    }
+    if (row < 0 || row >= kAlarmStatusCount)
+        return false;
+    // The default text, or nothing, goes back to the default.
+    QString text = value.toString().trimmed();
+    if (text == Alarms::statusName(AlarmStatus(row)))
+        text.clear();
+    after.settings.statusTexts[std::size_t(row)] = text;
+    return change(std::move(after), tr("Change a status text"));
+}
+
 QVariant AlarmModel::data(const QModelIndex& index, int role) const
 {
     if (!checkIndex(index, CheckIndexOption::IndexIsValid | CheckIndexOption::ParentIsInvalid))
         return {};
+    if (m_page == SettingsPage)
+        return settingData(index.row(), index.column(), role);
     if (m_page == ClassesPage)
         return classData(configuration().classes[std::size_t(index.row())], index.column(), role);
     return alarmData(configuration().alarms[m_rows[std::size_t(index.row())]], index.column(),
@@ -335,6 +406,8 @@ bool AlarmModel::change(AlarmConfiguration after, const QString& text)
 
 bool AlarmModel::setCell(int row, int column, const QVariant& value)
 {
+    if (m_page == SettingsPage)
+        return column == SettingValueColumn && setSetting(row, value);
     AlarmConfiguration after = configuration();
     const auto number = [&value](bool* ok)
     {
@@ -412,6 +485,38 @@ bool AlarmModel::setCell(int row, int column, const QVariant& value)
     case TextColumn:
         alarm.text = value.toString();
         break;
+    case ParametersColumn:
+    {
+        // Tags, by name, separated by ; or ,
+        QStringList parameters;
+        const QStringList tags = tagNames();
+        for (const QString& part :
+             value.toString().split(QRegularExpression(QStringLiteral("[;,]")), Qt::SkipEmptyParts))
+        {
+            const QString name = part.trimmed();
+            if (name.isEmpty())
+                continue;
+            const auto known =
+                std::ranges::find_if(tags, [&name](const QString& t)
+                                     { return t.compare(name, Qt::CaseInsensitive) == 0; });
+            if (known == tags.end())
+            {
+                Q_EMIT problem(tr("There is no tag “%1”; alarm parameters are tags.").arg(name));
+                rebuild();
+                return false;
+            }
+            parameters << *known;
+        }
+        if (parameters.size() > Alarm::kMaxParameters)
+        {
+            Q_EMIT problem(
+                tr("An alarm has at most %1 alarm parameters.").arg(Alarm::kMaxParameters));
+            rebuild();
+            return false;
+        }
+        alarm.parameters = parameters;
+        break;
+    }
     case ClassColumn:
     {
         const QStringList names = classNames();
@@ -463,6 +568,8 @@ bool AlarmModel::setCell(int row, int column, const QVariant& value)
 
 int AlarmModel::addRow()
 {
+    if (m_page == SettingsPage)
+        return -1;
     AlarmConfiguration after = configuration();
     if (m_page == ClassesPage)
     {
@@ -498,6 +605,8 @@ int AlarmModel::addRow()
 
 void AlarmModel::removeRow(int row)
 {
+    if (m_page == SettingsPage)
+        return;
     AlarmConfiguration after = configuration();
     if (m_page == ClassesPage)
     {

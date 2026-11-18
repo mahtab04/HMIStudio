@@ -360,9 +360,11 @@ std::vector<File> toFiles(const Project& project)
     QJsonArray alarms;
     for (const Alarm& alarm : project.alarms().alarms)
         alarms.append(alarm.toJson());
-    files.emplace_back(kAlarmsFile, QJsonObject{{kFormatVersion, kCurrentFormatVersion},
-                                                {QStringLiteral("classes"), alarmClasses},
-                                                {QStringLiteral("alarms"), alarms}});
+    files.emplace_back(
+        kAlarmsFile, QJsonObject{{kFormatVersion, kCurrentFormatVersion},
+                                 {QStringLiteral("classes"), alarmClasses},
+                                 {QStringLiteral("alarms"), alarms},
+                                 {QStringLiteral("settings"), project.alarms().settings.toJson()}});
     files.insert(files.end(), std::make_move_iterator(screens.begin()),
                  std::make_move_iterator(screens.end()));
     return files;
@@ -477,6 +479,8 @@ Result<std::unique_ptr<Project>> fromFiles(const Reader& read, const BinaryReade
                                  QStringLiteral("%1: %2").arg(kAlarmsFile, alarm.error().message));
             alarms.alarms.push_back(std::move(*alarm));
         }
+        alarms.settings =
+            AlarmSettings::fromJson(alarmsJson->value(QStringLiteral("settings")).toObject());
         if (auto set = project->setAlarms(std::move(alarms)); !set)
             return makeError(ErrorCode::BadFormat,
                              QStringLiteral("%1: %2").arg(kAlarmsFile, set.error().message));
