@@ -9,11 +9,13 @@
 #include "core/registry/ObjectRegistry.h"
 
 #include <QCoreApplication>
+#include <QFontMetricsF>
 #include <QPainter>
 #include <QPainterPath>
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 
 namespace hmi
 {
@@ -126,8 +128,11 @@ void drawButton(QPainter& painter, const QRectF& rect, int button, bool checked,
     QColor ink = enabled ? QColor(0x2B, 0x2F, 0x36) : QColor(0xA8, 0xAE, 0xB6);
     if (button == ShowActive)
         ink = enabled ? QColor(0xC2, 0x3B, 0x37) : ink;
-    if (button == Acknowledge || button == AcknowledgeVisible || button == Confirm)
+    if (button == Acknowledge || button == AcknowledgeVisible || button == Confirm ||
+        button == Enable)
         ink = enabled ? QColor(0x1E, 0x7D, 0x4A) : ink;
+    if (button == Disable)
+        ink = enabled ? QColor(0xC2, 0x3B, 0x37) : ink;
     QPen pen(ink, std::max(1.2, rect.height() * 0.09), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
@@ -199,6 +204,69 @@ void drawButton(QPainter& painter, const QRectF& rect, int button, bool checked,
             r.adjusted(-r.width() * 0.1, -r.height() * 0.1, r.width() * 0.1, r.height() * 0.1));
         check(r.topLeft() + QPointF(r.width() * 0.15, r.height() * 0.1), r.width() * 0.7);
         break;
+    case ShowStatistics: // bars
+        for (int i = 0; i < 3; ++i)
+        {
+            const double h = r.height() * (0.45 + 0.27 * ((i * 2) % 3));
+            const double x = r.left() + r.width() * (0.12 + 0.36 * i);
+            painter.drawLine(QPointF(x, r.bottom()), QPointF(x, r.bottom() - h));
+        }
+        painter.drawLine(QPointF(r.left() - r.width() * 0.1, r.bottom()),
+                         QPointF(r.right() + r.width() * 0.1, r.bottom()));
+        break;
+    case ShowDefined: // a list with boxes
+        for (int i = 0; i < 3; ++i)
+        {
+            const double y = r.top() + r.height() * (0.15 + 0.35 * i);
+            const double s = r.height() * 0.18;
+            painter.drawRect(QRectF(r.left() - s / 2, y - s / 2, s, s));
+            painter.drawLine(QPointF(r.left() + r.width() * 0.3, y), QPointF(r.right(), y));
+        }
+        break;
+    case Shelve:
+    case Unshelve:
+    {
+        // A tray, and an arrow into it or out of it.
+        QPainterPath tray;
+        tray.moveTo(r.left(), r.top() + r.height() * 0.6);
+        tray.lineTo(r.left(), r.bottom());
+        tray.lineTo(r.right(), r.bottom());
+        tray.lineTo(r.right(), r.top() + r.height() * 0.6);
+        painter.drawPath(tray);
+        const double top = r.top() - r.height() * 0.05;
+        const double bottom = r.top() + r.height() * 0.7;
+        painter.drawLine(QPointF(c.x(), top), QPointF(c.x(), bottom));
+        const double tip = button == Shelve ? bottom : top;
+        const double back = button == Shelve ? -r.height() * 0.25 : r.height() * 0.25;
+        painter.drawLine(QPointF(c.x(), tip), QPointF(c.x() - r.width() * 0.22, tip + back));
+        painter.drawLine(QPointF(c.x(), tip), QPointF(c.x() + r.width() * 0.22, tip + back));
+        break;
+    }
+    case Disable: // a circle crossed out
+        painter.drawEllipse(r);
+        painter.drawLine(QPointF(r.left() + r.width() * 0.15, r.top() + r.height() * 0.15),
+                         QPointF(r.right() - r.width() * 0.15, r.bottom() - r.height() * 0.15));
+        break;
+    case Enable: // a power symbol
+        painter.drawArc(r, 120 * 16, -240 * 16);
+        painter.drawLine(QPointF(c.x(), r.top() - r.height() * 0.1), QPointF(c.x(), c.y()));
+        break;
+    case Export: // an arrow out of a box
+    {
+        QPainterPath box;
+        box.moveTo(r.left() + r.width() * 0.55, r.top());
+        box.lineTo(r.left(), r.top());
+        box.lineTo(r.left(), r.bottom());
+        box.lineTo(r.left() + r.width() * 0.55, r.bottom());
+        painter.drawPath(box);
+        painter.drawLine(QPointF(r.left() + r.width() * 0.3, c.y()),
+                         QPointF(r.right() + r.width() * 0.1, c.y()));
+        painter.drawLine(QPointF(r.right() + r.width() * 0.1, c.y()),
+                         QPointF(r.right() - r.width() * 0.15, c.y() - r.height() * 0.25));
+        painter.drawLine(QPointF(r.right() + r.width() * 0.1, c.y()),
+                         QPointF(r.right() - r.width() * 0.15, c.y() + r.height() * 0.25));
+        break;
+    }
     case ShowCurrent:
     {
         QPainterPath p;
@@ -227,7 +295,7 @@ std::span<const PropertyDescriptor> AlarmView::staticDescriptors()
 {
     using namespace PropertyCategory;
     static const std::vector<PropertyDescriptor> table = withCommonDescriptors(
-        {560.0, 260.0},
+        {640.0, 260.0},
         {
             // The columns, in order; names as in WinCC Unified: Alarm number,
             // Date, Time, Alarm class, Alarm text, Status, Info text,
@@ -278,8 +346,10 @@ ControlLayout layoutOf(const HmiObject& view)
         double x = l.toolbar.left() + 3 * k;
         for (int b = 0; b < ButtonCount; ++b)
         {
-            // Gaps group the buttons: views, navigation, acknowledgment.
-            if (b == FirstLine || b == Acknowledge || b == ShowCurrent)
+            // Gaps group the buttons: lists, navigation, acknowledgment,
+            // shelving and disabling, export.
+            if (b == FirstLine || b == Acknowledge || b == Shelve || b == Export ||
+                b == ShowCurrent)
                 x += side * 0.4;
             l.buttons[std::size_t(b)] = QRectF(x, l.toolbar.top() + 2 * k, side, side);
             x += side + 2 * k;
@@ -295,6 +365,89 @@ ControlLayout layoutOf(const HmiObject& view)
 
 } // namespace
 
+namespace
+{
+
+// A column of the list shown: its title, share of the width and content.
+struct Column
+{
+    QString title;
+    double weight = 1.0;
+    std::function<QString(const AlarmRow&)> cell;
+};
+
+std::vector<Column> columnsOf(const HmiObject& view, AlarmList list)
+{
+    std::vector<Column> columns;
+    if (list == AlarmList::Statistics)
+    {
+        // Fixed, as WinCC Unified's alarm statistics; durations in seconds.
+        columns.push_back(
+            {tr("No."), 0.5, [](const AlarmRow& row) { return QString::number(row.id); }});
+        columns.push_back({tr("Alarm text"), 2.4, [](const AlarmRow& row) { return row.text; }});
+        // Short: active (A), inactive (I), acknowledged (Ack).
+        const char* titles[] = {QT_TRANSLATE_NOOP("hmi::Objects", "Frequency"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Sum A-A"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Sum A-I"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Sum A-Ack"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Avg A-A"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Avg A-I"),
+                                QT_TRANSLATE_NOOP("hmi::Objects", "Avg A-Ack")};
+        for (int i = 0; i < AlarmRow::StatisticsColumnCount; ++i)
+            columns.push_back({tr(titles[i]), i == 0 ? 0.8 : 1.0, [i](const AlarmRow& row)
+                               { return row.statistics[std::size_t(i)]; }});
+        return columns;
+    }
+    for (const QString& name : Describe::splitItems(view.value<QString>(Prop::Columns)))
+    {
+        const Field field = fieldOf(name);
+        columns.push_back(
+            {name, weightOf(field), [field](const AlarmRow& row) { return cellOf(row, field); }});
+    }
+    return columns;
+}
+
+QString emptyText(AlarmList list)
+{
+    switch (list)
+    {
+    case AlarmList::Logged:
+        return tr("No logged alarms");
+    case AlarmList::Statistics:
+        return tr("No alarm statistics");
+    case AlarmList::Defined:
+        return tr("No alarms configured");
+    case AlarmList::Active:
+        break;
+    }
+    return tr("No active alarms");
+}
+
+// Whether a toolbar button can act on the list and its selected line.
+bool buttonEnabled(int button, AlarmList list, const AlarmRow* selected)
+{
+    switch (button)
+    {
+    case Acknowledge:
+    case AcknowledgeVisible:
+    case Confirm:
+        return list == AlarmList::Active && selected;
+    case Shelve:
+        return (list == AlarmList::Active || list == AlarmList::Defined) && selected &&
+               selected->enabled && !selected->shelved;
+    case Unshelve:
+        return list == AlarmList::Defined && selected && selected->shelved;
+    case Disable:
+        return list == AlarmList::Defined && selected && selected->enabled;
+    case Enable:
+        return list == AlarmList::Defined && selected && !selected->enabled;
+    default:
+        return true;
+    }
+}
+
+} // namespace
+
 void AlarmView::paint(QPainter& painter, const PaintContext& context) const
 {
     [[maybe_unused]] const QSizeF size = geometry().size();
@@ -304,10 +457,11 @@ void AlarmView::paint(QPainter& painter, const PaintContext& context) const
     // Live in the runtime; the layout with empty rows in the editor.
     const IAlarmSource* source = context.editing ? nullptr : context.alarms;
     const AlarmViewState state = source ? source->viewState(id()) : AlarmViewState{};
-    const std::vector<AlarmRow> rows =
-        source ? source->rows(state.logged) : std::vector<AlarmRow>{};
+    const std::vector<AlarmRow> rows = source ? source->rows(state.list) : std::vector<AlarmRow>{};
     const int selected = state.showCurrent ? 0 : state.selected;
     const int first = state.showCurrent ? 0 : state.firstRow;
+    const AlarmRow* selectedRow =
+        selected >= 0 && selected < int(rows.size()) ? &rows[std::size_t(selected)] : nullptr;
 
     PaintHelpers::drawFace(painter, bounds, value<QColor>(Prop::FillColor),
                            value<QColor>(Prop::LineColor), 2.0);
@@ -316,48 +470,61 @@ void AlarmView::paint(QPainter& painter, const PaintContext& context) const
         painter.fillRect(l.toolbar, value<QColor>(Prop::BackgroundColor));
         for (int b = 0; b < ButtonCount; ++b)
         {
-            const bool checked = (b == ShowActive && source && !state.logged) ||
-                                 (b == ShowLogged && state.logged) ||
-                                 (b == ShowCurrent && (state.showCurrent || !source));
-            const bool acknowledging = b == Acknowledge || b == AcknowledgeVisible || b == Confirm;
+            const bool checked =
+                (source && ((b == ShowActive && state.list == AlarmList::Active) ||
+                            (b == ShowLogged && state.list == AlarmList::Logged) ||
+                            (b == ShowStatistics && state.list == AlarmList::Statistics) ||
+                            (b == ShowDefined && state.list == AlarmList::Defined))) ||
+                (b == ShowCurrent && (state.showCurrent || !source));
             drawButton(painter, l.buttons[std::size_t(b)], b, checked,
-                       !acknowledging || (source && !state.logged && !rows.empty()),
+                       !source || buttonEnabled(b, state.list, selectedRow),
                        value<QColor>(Prop::LineColor));
         }
-        // Pending alarms, and those to acknowledge, at the right.
+        // Pending alarms, and those to acknowledge, at the right, if they fit.
+        const QRectF counts(l.buttons[ShowCurrent].right() + 8 * k, l.toolbar.top(),
+                            l.toolbar.right() - l.buttons[ShowCurrent].right() - 14 * k,
+                            l.toolbar.height());
         if (source)
         {
-            const QRectF counts(l.buttons[ShowCurrent].right() + 8 * k, l.toolbar.top(),
-                                l.toolbar.right() - l.buttons[ShowCurrent].right() - 14 * k,
-                                l.toolbar.height());
-            PaintHelpers::drawText(painter, *this, counts, Qt::AlignRight | Qt::AlignVCenter,
-                                   tr("%1 pending · %2 to acknowledge")
-                                       .arg(source->pendingCount())
-                                       .arg(source->unacknowledgedCount()),
-                                   k);
+            // In full where it fits, else short, else not at all.
+            const QFontMetricsF metrics(PaintHelpers::scaledFont(*this, k));
+            for (const QString& text :
+                 {tr("%1 pending · %2 to acknowledge")
+                      .arg(source->pendingCount())
+                      .arg(source->unacknowledgedCount()),
+                  tr("%1 · %2").arg(source->pendingCount()).arg(source->unacknowledgedCount())})
+            {
+                if (metrics.horizontalAdvance(text) <= counts.width())
+                {
+                    PaintHelpers::drawText(painter, *this, counts,
+                                           Qt::AlignRight | Qt::AlignVCenter, text, k);
+                    break;
+                }
+            }
         }
     }
 
-    const QStringList columns = Describe::splitItems(value<QString>(Prop::Columns));
-    std::vector<Field> fields;
+    const std::vector<Column> columns = columnsOf(*this, state.list);
     double total = 0;
-    for (const QString& column : columns)
-    {
-        fields.push_back(fieldOf(column));
-        total += weightOf(fields.back());
-    }
+    for (const Column& column : columns)
+        total += column.weight;
     std::vector<QRectF> cells; // column extents, at the header
     double x = 1.0;
-    for (const Field field : fields)
+    for (const Column& column : columns)
     {
-        const double w = total > 0 ? (size.width() - 2) * weightOf(field) / total : 0;
+        const double w = total > 0 ? (size.width() - 2) * column.weight / total : 0;
         cells.emplace_back(x, l.header.top(), w, l.rowHeight);
         x += w;
     }
     painter.fillRect(l.header, value<QColor>(Prop::BackgroundColor).darker(104));
     for (std::size_t i = 0; i < cells.size(); ++i)
+    {
+        painter.save();
+        painter.setClipRect(cells[i], Qt::IntersectClip);
         PaintHelpers::drawText(painter, *this, cells[i].adjusted(6 * k, 0, -4 * k, 0),
-                               Qt::AlignLeft | Qt::AlignVCenter, columns[qsizetype(i)], k);
+                               Qt::AlignLeft | Qt::AlignVCenter, columns[i].title, k);
+        painter.restore();
+    }
 
     // The lines: coloured by alarm class and status, the selected one framed.
     const int shown = source ? std::min<int>(l.visibleRows, int(rows.size()) - first)
@@ -373,8 +540,10 @@ void AlarmView::paint(QPainter& painter, const PaintContext& context) const
         const QColor background = steady && row.colors.background.isValid()
                                       ? row.colors.background
                                       : value<QColor>(Prop::FillColor);
-        const QColor ink =
+        QColor ink =
             steady && row.colors.text.isValid() ? row.colors.text : value<QColor>(Prop::TextColor);
+        if (!row.enabled || row.shelved)
+            ink.setAlphaF(0.55); // disabled or shelved: greyed
         painter.fillRect(line, background);
         painter.save();
         painter.setFont(PaintHelpers::scaledFont(*this, k));
@@ -385,7 +554,7 @@ void AlarmView::paint(QPainter& painter, const PaintContext& context) const
             painter.save();
             painter.setClipRect(cell, Qt::IntersectClip);
             painter.drawText(cell.adjusted(6 * k, 0, -4 * k, 0), Qt::AlignLeft | Qt::AlignVCenter,
-                             cellOf(row, fields[c]));
+                             columns[c].cell(row));
             painter.restore();
         }
         painter.restore();
@@ -409,8 +578,7 @@ void AlarmView::paint(QPainter& painter, const PaintContext& context) const
         painter.drawLine(QPointF(1, y), QPointF(size.width() - 1, y));
     }
     if (source && rows.empty())
-        PaintHelpers::drawText(painter, *this, l.rows, Qt::AlignCenter,
-                               state.logged ? tr("No logged alarms") : tr("No active alarms"), k);
+        PaintHelpers::drawText(painter, *this, l.rows, Qt::AlignCenter, emptyText(state.list), k);
 }
 
 bool AlarmView::operateAt(QPointF point, IAlarmSource* alarms) const
@@ -419,10 +587,11 @@ bool AlarmView::operateAt(QPointF point, IAlarmSource* alarms) const
         return false;
     const ControlLayout l = layoutOf(*this);
     AlarmViewState state = alarms->viewState(id());
-    const std::vector<AlarmRow> rows = alarms->rows(state.logged);
+    const std::vector<AlarmRow> rows = alarms->rows(state.list);
     const int count = int(rows.size());
     const int current =
         state.showCurrent ? 0 : std::clamp(state.selected, 0, std::max(0, count - 1));
+    const AlarmRow* selected = current < count ? &rows[std::size_t(current)] : nullptr;
     const auto select = [&](int row)
     {
         state.showCurrent = false;
@@ -433,21 +602,31 @@ bool AlarmView::operateAt(QPointF point, IAlarmSource* alarms) const
         else if (l.visibleRows > 0 && state.selected >= state.firstRow + l.visibleRows)
             state.firstRow = state.selected - l.visibleRows + 1;
     };
+    const auto showList = [&](AlarmList list)
+    {
+        state.list = list;
+        state.firstRow = 0;
+        state.selected = 0;
+    };
     for (int b = 0; b < ButtonCount; ++b)
     {
         if (!l.buttons[std::size_t(b)].contains(point))
             continue;
+        if (!buttonEnabled(b, state.list, selected))
+            return true; // greyed: nothing to do
         switch (b)
         {
         case ShowActive:
-            state.logged = false;
-            state.firstRow = 0;
-            state.selected = 0;
+            showList(AlarmList::Active);
             break;
         case ShowLogged:
-            state.logged = true;
-            state.firstRow = 0;
-            state.selected = 0;
+            showList(AlarmList::Logged);
+            break;
+        case ShowStatistics:
+            showList(AlarmList::Statistics);
+            break;
+        case ShowDefined:
+            showList(AlarmList::Defined);
             break;
         case FirstLine:
             select(0);
@@ -462,23 +641,35 @@ bool AlarmView::operateAt(QPointF point, IAlarmSource* alarms) const
             select(count - 1);
             break;
         case Acknowledge:
-            if (!state.logged && current < count)
-                alarms->acknowledge(rows[std::size_t(current)].id);
+            alarms->acknowledge(selected->id);
             return true;
         case AcknowledgeVisible:
-            if (!state.logged)
-            {
-                // Group acknowledgment of the visible alarms.
-                std::vector<int> ids;
-                const int first = state.showCurrent ? 0 : state.firstRow;
-                for (int r = first; r < std::min(count, first + l.visibleRows); ++r)
-                    ids.push_back(rows[std::size_t(r)].id);
-                alarms->acknowledge(ids);
-            }
+        {
+            // Group acknowledgment of the visible alarms.
+            std::vector<int> ids;
+            const int first = state.showCurrent ? 0 : state.firstRow;
+            for (int r = first; r < std::min(count, first + l.visibleRows); ++r)
+                ids.push_back(rows[std::size_t(r)].id);
+            alarms->acknowledge(ids);
             return true;
+        }
         case Confirm:
-            if (!state.logged && current < count)
-                alarms->confirm(rows[std::size_t(current)].id);
+            alarms->confirm(selected->id);
+            return true;
+        case Shelve:
+            alarms->shelve(selected->id);
+            return true;
+        case Unshelve:
+            alarms->unshelve(selected->id);
+            return true;
+        case Disable:
+            alarms->disable(selected->id);
+            return true;
+        case Enable:
+            alarms->enable(selected->id);
+            return true;
+        case Export:
+            alarms->exportList(state.list);
             return true;
         case ShowCurrent:
             state.showCurrent = !state.showCurrent;

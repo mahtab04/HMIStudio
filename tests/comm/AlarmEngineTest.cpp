@@ -7,9 +7,11 @@
 #include "comm/TagEngine.h"
 #include "core/objects/AlarmView.h"
 
+#include <QFile>
 #include <QImage>
 #include <QPainter>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTest>
 
 using namespace hmi;
@@ -68,13 +70,14 @@ private:
     TagEngine m_tags;
     AlarmEngine m_alarms{m_tags};
 
-    void startWith(std::vector<Alarm> alarms)
+    void startWith(std::vector<Alarm> alarms, AlarmSettings settings = {})
     {
         m_tags.start(std::vector<Tag>{tag(u"Faults"_s, Tag::Type::Int, qint64(0)),
                                       tag(u"Door"_s, Tag::Type::Bool, true),
                                       tag(u"Level"_s, Tag::Type::Real, 50.0)});
         AlarmConfiguration configuration;
         configuration.alarms = std::move(alarms);
+        configuration.settings = std::move(settings);
         m_alarms.start(configuration);
     }
     AlarmStatus statusOf(int id) const
@@ -188,7 +191,7 @@ private Q_SLOTS:
         RuntimeAlarms alarms(m_alarms);
         m_tags.write(u"Faults"_s, qint64(7));
         QTRY_COMPARE(alarms.pendingCount(), 3);
-        const auto rows = alarms.rows(false);
+        const auto rows = alarms.rows(AlarmList::Active);
         QCOMPARE(rows.size(), std::size_t(3));
         QCOMPARE(rows.front().status, u"Incoming"_s);
         // Alarm-class alarms come red and flashing; warnings yellow.
@@ -204,7 +207,7 @@ private Q_SLOTS:
         };
 
         // "Alarms - show current": the newest is the one acknowledged.
-        const int newest = alarms.rows(false).front().id;
+        const int newest = alarms.rows(AlarmList::Active).front().id;
         QVERIFY(press(AlarmView::Acknowledge));
         QCOMPARE(alarms.unacknowledgedCount(), 2);
         QCOMPARE(m_alarms.find(newest)->status, AlarmStatus::IncomingAcknowledged);
@@ -219,8 +222,9 @@ private Q_SLOTS:
         QCOMPARE(alarms.unacknowledgedCount(), 0);
         // The log; acknowledging does nothing there.
         QVERIFY(press(AlarmView::ShowLogged));
-        QVERIFY(alarms.viewState(view.id()).logged);
-        QCOMPARE(alarms.rows(true).size(), std::size_t(6)); // 3 incoming, 3 acknowledged
+        QCOMPARE(alarms.viewState(view.id()).list, AlarmList::Logged);
+        QCOMPARE(alarms.rows(AlarmList::Logged).size(),
+                 std::size_t(6)); // 3 incoming, 3 acknowledged
         QVERIFY(press(AlarmView::ShowActive));
         QVERIFY(press(AlarmView::ShowCurrent));
         QVERIFY(alarms.viewState(view.id()).showCurrent);
@@ -238,7 +242,7 @@ private Q_SLOTS:
                                          .alarms = &alarms});
         painter.end();
         const QRectF first = view.lineRect(0);
-        const AlarmRow top = alarms.rows(false).front();
+        const AlarmRow top = alarms.rows(AlarmList::Active).front();
         QCOMPARE(image.pixel(QPoint(int(first.left()) + 3, int(first.center().y()))),
                  top.colors.background.rgba());
     }
@@ -263,6 +267,265 @@ private Q_SLOTS:
         m_tags.stop();
         QVERIFY(m_alarms.pending().empty());
         QVERIFY(!m_alarms.isRunning());
+    }
+
+    void alarmParameters()
+    {
+        // {n}: alarm parameter n; {Tag}: a tag; formats; unknown fields stay.
+        Alarm a;
+        a.name = u"Named"_s;
+        a.parameters = {u"Level"_s, u"Count"_s};
+        const Alarms::TagLookup values = [](const QString& tag) -> std::optional<TagValue>
+        {
+            if (tag == u"Level")
+                return 7.25;
+            if (tag == u"Count")
+                return TagValue(qint64(-42));
+            if (tag == u"Door")
+                return true;
+            return std::nullopt;
+        };
+        const QLocale locale;
+        a.text = u"L={1} C={2} D={Door}"_s;
+        QCOMPARE(Alarms::formatText(a, values),
+                 u"L=%1 C=%2 D=true"_s.arg(locale.toString(7.25, 'f', 1), locale.toString(-42)));
+        a.text = u"[{1:08.3}] [{2:-6}] [{2:6}] [{2:06}]"_s;
+        QCOMPARE(Alarms::formatText(a, values),
+                 u"[%1] [%2   ] [   %2] [-00042]"_s.arg(
+                     locale.toString(7.25, 'f', 3).rightJustified(8, u'0'), locale.toString(-42)));
+        a.text = u"{3} {Missing} {Level:.0}"_s;
+        QCOMPARE(Alarms::formatText(a, values),
+                 u"{3} {Missing} %1"_s.arg(locale.toString(7.25, 'f', 0)));
+        a.text.clear();
+        QCOMPARE(Alarms::formatText(a, values), u"Named"_s);
+
+        // At runtime, from the parameters' tags.
+        Alarm withParameter = discrete(10, u"Faults"_s, 0, u"Warning"_s);
+        withParameter.text = u"Faults {1} at level {2:.2}"_s;
+        withParameter.parameters = {u"Faults"_s, u"Level"_s};
+        startWith({withParameter});
+        m_tags.write(u"Faults"_s, qint64(1));
+        QTRY_VERIFY(m_alarms.find(10));
+        QCOMPARE(m_alarms.find(10)->text,
+                 u"Faults 1 at level %1"_s.arg(locale.toString(50.0, 'f', 2)));
+    }
+
+    void statusTexts()
+    {
+        AlarmSettings settings;
+        settings.statusTexts[std::size_t(AlarmStatus::Incoming)] = u"C"_s;
+        startWith({discrete(11, u"Faults"_s, 0, u"Alarm"_s)}, settings);
+        RuntimeAlarms alarms(m_alarms);
+        m_tags.write(u"Faults"_s, qint64(1));
+        QTRY_COMPARE(alarms.pendingCount(), 1);
+        QCOMPARE(alarms.rows(AlarmList::Active).front().status, u"C"_s);
+        QVERIFY(m_alarms.acknowledge(11)); // not configured: the default text
+        QCOMPARE(alarms.rows(AlarmList::Active).front().status, u"Incoming/Acknowledged"_s);
+        QCOMPARE(alarms.rows(AlarmList::Logged).back().status, u"C"_s);
+    }
+
+    void disableAndEnable()
+    {
+        startWith(
+            {discrete(12, u"Faults"_s, 0, u"Alarm"_s), discrete(13, u"Faults"_s, 1, u"Alarm"_s)});
+        RuntimeAlarms alarms(m_alarms);
+        m_tags.write(u"Faults"_s, qint64(1));
+        QTRY_COMPARE(alarms.pendingCount(), 1);
+        const std::size_t logged = m_alarms.log().size();
+        QVERIFY(m_alarms.disable(12));
+        QVERIFY(!m_alarms.disable(12));
+        QCOMPARE(alarms.pendingCount(), 0);      // gone from the list
+        QCOMPARE(m_alarms.log().size(), logged); // not logged
+        // Disabled alarms are not raised.
+        m_tags.write(u"Faults"_s, qint64(0));
+        m_tags.write(u"Faults"_s, qint64(1));
+        QTest::qWait(150);
+        QVERIFY(!m_alarms.find(12));
+        const auto defined = alarms.rows(AlarmList::Defined);
+        QCOMPARE(defined.size(), std::size_t(2));
+        QCOMPARE(defined.front().id, 12);
+        QVERIFY(!defined.front().enabled);
+        QCOMPARE(defined.front().status, u"Disabled"_s);
+        // Enabled again: checked, and it comes since its cause holds.
+        QVERIFY(m_alarms.enable(12));
+        QCOMPARE(statusOf(12), AlarmStatus::Incoming);
+        QVERIFY(m_alarms.disable(13));
+        QVERIFY(m_alarms.enable(13));
+        QVERIFY(!m_alarms.find(13)); // its bit is clear
+    }
+
+    void shelving()
+    {
+        AlarmSettings settings;
+        settings.shelvingTimeout = 1;
+        startWith(
+            {discrete(14, u"Faults"_s, 0, u"Alarm"_s), discrete(15, u"Faults"_s, 1, u"Warning"_s)},
+            settings);
+        RuntimeAlarms alarms(m_alarms);
+        m_tags.write(u"Faults"_s, qint64(3));
+        QTRY_COMPARE(alarms.pendingCount(), 2);
+        QVERIFY(m_alarms.shelve(14));
+        QVERIFY(!m_alarms.shelve(14));
+        // Out of the active alarms, the counts and acknowledgment.
+        QCOMPARE(alarms.pendingCount(), 1);
+        QCOMPARE(alarms.unacknowledgedCount(), 1);
+        QCOMPARE(alarms.rows(AlarmList::Active).front().id, 15);
+        const auto defined = alarms.rows(AlarmList::Defined);
+        QVERIFY(defined.front().shelved);
+        QCOMPARE(defined.front().status, u"Shelved · Incoming"_s);
+        // Still evaluated: it goes while shelved.
+        m_tags.write(u"Faults"_s, qint64(2));
+        QTRY_COMPARE(statusOf(14), AlarmStatus::IncomingOutgoing);
+        QCOMPARE(alarms.pendingCount(), 1);
+        // The shelving timeout unshelves it.
+        QTRY_VERIFY_WITH_TIMEOUT(!m_alarms.find(14)->shelved, 4000);
+        QCOMPARE(alarms.pendingCount(), 2);
+        QCOMPARE(alarms.unacknowledgedCount(), 2);
+        QVERIFY(m_alarms.shelve(15));
+        QVERIFY(m_alarms.unshelve(15));
+        QVERIFY(!m_alarms.unshelve(15));
+    }
+
+    void statistics()
+    {
+        // Oldest last, as the log: 1 came at 0 s, acknowledged at 4 s, went
+        // at 10 s, came again at 30 s and went at 32 s; 2 only went.
+        const QDateTime t0(QDate(2026, 1, 1), QTime(8, 0));
+        std::vector<LoggedAlarm> log{
+            {1, u"Again"_s, u"Alarm"_s, AlarmStatus::IncomingOutgoing, t0.addSecs(32),
+             AlarmEvent::Went},
+            {1, u"Again"_s, u"Alarm"_s, AlarmStatus::Incoming, t0.addSecs(30), AlarmEvent::Came},
+            {2, u"Other"_s, u"Alarm"_s, AlarmStatus::Normal, t0.addSecs(12), AlarmEvent::Went},
+            {1, u"First"_s, u"Alarm"_s, AlarmStatus::Normal, t0.addSecs(10), AlarmEvent::Went},
+            {1, u"First"_s, u"Alarm"_s, AlarmStatus::IncomingAcknowledged, t0.addSecs(4),
+             AlarmEvent::Acknowledged},
+            {1, u"First"_s, u"Alarm"_s, AlarmStatus::Incoming, t0, AlarmEvent::Came},
+        };
+        const auto lines = AlarmEngine::statisticsOf(log);
+        QCOMPARE(lines.size(), std::size_t(1)); // 2 never came
+        const AlarmStatistics& s = lines.front();
+        QCOMPARE(s.id, 1);
+        QCOMPARE(s.text, u"Again"_s);
+        QCOMPARE(s.frequency, 2);
+        QCOMPARE(s.sumActiveActive, 30.0);
+        QCOMPARE(s.sumActiveInactive, 12.0);
+        QCOMPARE(s.averageActiveInactive(), 6.0);
+        QCOMPARE(s.sumActiveAcknowledged, 4.0);
+        QCOMPARE(s.averageActiveAcknowledged(), 4.0);
+    }
+
+    void logKeptAcrossRunsAndExport()
+    {
+        QTemporaryDir dir;
+        const QString file = dir.filePath(u"logs/alarms.json"_s);
+        m_alarms.setLogFile(file);
+        startWith({discrete(16, u"Faults"_s, 0, u"Alarm"_s)});
+        m_tags.write(u"Faults"_s, qint64(1));
+        QTRY_VERIFY(m_alarms.find(16));
+        QVERIFY(m_alarms.acknowledge(16));
+        m_alarms.stop();
+        QVERIFY(m_alarms.log().empty());
+        QVERIFY(QFile::exists(file));
+
+        // The next run starts with the log of the last; statistics use it.
+        m_tags.stop();
+        startWith({discrete(16, u"Faults"_s, 0, u"Alarm"_s)});
+        QCOMPARE(m_alarms.log().size(), std::size_t(2));
+        QCOMPARE(m_alarms.log().front().event, AlarmEvent::Acknowledged);
+        RuntimeAlarms alarms(m_alarms);
+        QCOMPARE(alarms.rows(AlarmList::Statistics).size(), std::size_t(1));
+        QCOMPARE(alarms.rows(AlarmList::Statistics).front().statistics[AlarmRow::Frequency],
+                 u"1"_s);
+
+        // Export: CSV with a byte order mark and a header.
+        alarms.setExportFolder(dir.filePath(u"exports"_s));
+        QSignalSpy exported(&alarms, &RuntimeAlarms::exported);
+        const QString path = alarms.exportList(AlarmList::Logged);
+        QVERIFY(!path.isEmpty());
+        QCOMPARE(exported.count(), 1);
+        QFile csv(path);
+        QVERIFY(csv.open(QIODevice::ReadOnly));
+        const QByteArray content = csv.readAll();
+        QVERIFY(content.startsWith("\xEF\xBB\xBF"));
+        const QStringList lines =
+            QString::fromUtf8(content.mid(3)).split(u"\r\n"_s, Qt::SkipEmptyParts);
+        QCOMPARE(lines.size(), 3);
+        QVERIFY(lines.front().startsWith(u"Alarm number,Date,Time"_s));
+        QVERIFY(lines.at(1).startsWith(u"16,"_s));
+        QVERIFY(
+            alarms.csvOf(AlarmList::Statistics).startsWith(u"Alarm number,Alarm text,Frequency"_s));
+        m_alarms.setLogFile({});
+    }
+
+    void alarmControlListsAndOperatorActions()
+    {
+        startWith(
+            {discrete(17, u"Faults"_s, 0, u"Alarm"_s), discrete(18, u"Faults"_s, 1, u"Alarm"_s)});
+        RuntimeAlarms alarms(m_alarms);
+        QTemporaryDir dir;
+        alarms.setExportFolder(dir.path());
+        m_tags.write(u"Faults"_s, qint64(3));
+        QTRY_COMPARE(alarms.pendingCount(), 2);
+        AlarmView view;
+        const auto press = [&](AlarmView::ToolbarButton button)
+        {
+            return view.operateAt(view.buttonRect(button).center(), &alarms);
+        };
+        const auto list = [&]
+        {
+            return alarms.viewState(view.id()).list;
+        };
+
+        // Disable works on the defined alarms only.
+        QVERIFY(press(AlarmView::Disable));
+        QCOMPARE(alarms.pendingCount(), 2);
+        // Shelve the newest active alarm.
+        const int newest = alarms.rows(AlarmList::Active).front().id;
+        QVERIFY(press(AlarmView::Shelve));
+        QCOMPARE(alarms.pendingCount(), 1);
+        QVERIFY(m_alarms.find(newest)->shelved);
+
+        QVERIFY(press(AlarmView::ShowDefined));
+        QCOMPARE(list(), AlarmList::Defined);
+        QCOMPARE(alarms.rows(AlarmList::Defined).size(), std::size_t(2));
+        // Select the shelved one and unshelve it, then disable and enable it.
+        QVERIFY(view.operateAt(view.lineRect(newest == 17 ? 0 : 1).center(), &alarms));
+        QVERIFY(press(AlarmView::Unshelve));
+        QVERIFY(!m_alarms.find(newest)->shelved);
+        QVERIFY(press(AlarmView::Disable));
+        QVERIFY(!m_alarms.find(newest));
+        QVERIFY(!alarms.rows(AlarmList::Defined)[newest == 17 ? 0 : 1].enabled);
+        QVERIFY(press(AlarmView::Enable));
+        QTRY_VERIFY(m_alarms.find(newest));
+
+        QVERIFY(press(AlarmView::ShowStatistics));
+        QCOMPARE(list(), AlarmList::Statistics);
+        QCOMPARE(alarms.rows(AlarmList::Statistics).size(), std::size_t(2));
+        QSignalSpy exported(&alarms, &RuntimeAlarms::exported);
+        QVERIFY(press(AlarmView::Export));
+        QCOMPARE(exported.count(), 1);
+        QVERIFY(exported.front().front().toString().contains(u"AlarmStatistics_"_s));
+
+        // Every list paints, with its columns.
+        for (const AlarmView::ToolbarButton b : {AlarmView::ShowActive, AlarmView::ShowLogged,
+                                                 AlarmView::ShowStatistics, AlarmView::ShowDefined})
+        {
+            QVERIFY(press(b));
+            QImage image(view.geometry().size().toSize(), QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            view.paint(painter, PaintContext{.zoom = 1.0,
+                                             .editing = false,
+                                             .graphics = nullptr,
+                                             .screens = nullptr,
+                                             .depth = 0,
+                                             .alarms = &alarms});
+            painter.end();
+            // HMI_ALARMVIEW_SCREENSHOT=<folder> keeps the pictures.
+            if (const QString folder = qEnvironmentVariable("HMI_ALARMVIEW_SCREENSHOT");
+                !folder.isEmpty())
+                QVERIFY(image.save(QStringLiteral("%1/alarmview_%2.png").arg(folder).arg(int(b))));
+        }
     }
 };
 

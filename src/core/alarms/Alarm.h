@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Result.h"
+#include "core/tags/Tag.h"
 
 #include <QColor>
 #include <QJsonObject>
@@ -8,6 +9,8 @@
 #include <QStringList>
 
 #include <array>
+#include <functional>
+#include <optional>
 #include <vector>
 
 namespace hmi
@@ -33,6 +36,7 @@ enum class AlarmStatus
     IncomingOutgoingAcknowledged, // acknowledged after it went; to confirm
     IncomingAcknowledgedOutgoing, // went after it was acknowledged; to confirm
 };
+inline constexpr int kAlarmStatusCount = 6;
 
 // Text colour, background and flashing of alarms in one status.
 struct AlarmColors
@@ -105,8 +109,9 @@ struct Alarm
     int id = 1; // the alarm number, unique in the project
     QString name;
     Kind kind = Kind::Discrete;
-    // May name tags in braces, "Level {Level} % too high", replaced by
-    // their values at runtime.
+    // May show values in braces, replaced at runtime: an alarm parameter
+    // by number, "{1}", or a tag by name, "{Level}", with an optional
+    // format, "{1:6.2}" (see Alarms::formatText).
     QString text;
     QString alarmClass = QStringLiteral("Alarm");
     QString infoText;
@@ -119,7 +124,12 @@ struct Alarm
     // Analog
     Mode mode = Mode::Greater;
     double limit = 0.0;
+    // The alarm parameters (associated values): tags whose values the text
+    // shows as {1} to {10}.
+    QStringList parameters;
     QJsonObject preserved;
+
+    static constexpr int kMaxParameters = 10;
 
     // Whether a tag value raises the alarm.
     [[nodiscard]] bool isActive(double value) const;
@@ -128,11 +138,29 @@ struct Alarm
     friend bool operator==(const Alarm&, const Alarm&) = default;
 };
 
+// The alarm settings of the runtime, as WinCC Unified's Runtime settings >
+// Alarms: the status texts operators see, and how long a shelved alarm
+// stays shelved.
+struct AlarmSettings
+{
+    // Per AlarmStatus; empty means the default text.
+    std::array<QString, kAlarmStatusCount> statusTexts{};
+    // Seconds; 0 keeps shelved alarms shelved until unshelved.
+    int shelvingTimeout = 3600;
+    QJsonObject preserved;
+
+    [[nodiscard]] QString statusText(AlarmStatus status) const;
+    [[nodiscard]] QJsonObject toJson() const;
+    [[nodiscard]] static AlarmSettings fromJson(const QJsonObject& json);
+    friend bool operator==(const AlarmSettings&, const AlarmSettings&) = default;
+};
+
 // The project's alarms and alarm classes.
 struct AlarmConfiguration
 {
     std::vector<AlarmClass> classes = AlarmClass::predefinedClasses();
     std::vector<Alarm> alarms;
+    AlarmSettings settings;
 
     [[nodiscard]] const AlarmClass* findClass(const QString& name) const;
     [[nodiscard]] const Alarm* findAlarm(int id) const;
@@ -150,6 +178,18 @@ namespace Alarms
 [[nodiscard]] QStringList stateMachineNames(); // AlarmStateMachine
 [[nodiscard]] QStringList modeNames();         // Alarm::Mode
 [[nodiscard]] QString statusName(AlarmStatus status);
+// The key of a status in files, "incomingOutgoing", and back.
+[[nodiscard]] QString statusKey(AlarmStatus status);
+[[nodiscard]] std::optional<AlarmStatus> statusFromKey(const QString& key);
+
+// The value of a tag, or nothing for an unknown tag.
+using TagLookup = std::function<std::optional<TagValue>(const QString& tag)>;
+// An alarm's text with its values filled in. {n} shows alarm parameter n
+// (1 to 10), {Name} the tag Name. A format may follow a colon:
+// [0][-][width][.decimals] — leading zeros, left alignment, the least
+// width, decimals of numbers (reals show 1 by default). Unknown fields stay
+// as written. An empty text shows the alarm's name.
+[[nodiscard]] QString formatText(const Alarm& alarm, const TagLookup& value);
 } // namespace Alarms
 
 } // namespace hmi

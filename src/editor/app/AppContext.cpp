@@ -22,6 +22,7 @@
 #include "render/GraphicLibrary.h"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QStandardPaths>
 
 namespace hmi
@@ -59,6 +60,11 @@ AppContext::AppContext(std::unique_ptr<Project> project, const Paths& paths)
     m_screens = std::make_unique<ScreenListModel>(*m_toolContext);
     m_tags = std::make_unique<TagModel>(*m_toolContext, *m_tagEngine);
     m_simulation = std::make_unique<SimulationController>(*m_toolContext, *m_tagEngine);
+    m_simulation->setRuntimeFolder(
+        !paths.runtimeFolder.isEmpty()
+            ? paths.runtimeFolder
+            : QFileInfo(autosave).absoluteDir().filePath(QStringLiteral("runtime")));
+    m_simulation->setDocumentPath([this] { return m_document->filePath(); });
     // Native PLC libraries load only from paths chosen on this computer.
     m_simulation->setTrustedLibraries([this] { return m_settings->trustedLibraries(); });
     QObject::connect(m_tags->connections(), &TagConnections::libraryChosen, m_settings.get(),

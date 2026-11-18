@@ -442,19 +442,24 @@ std::unique_ptr<Project> makeSampleProject()
         analogAlarm(1, QStringLiteral("LevelHigh"), tr("T-101 level high: {Level} %"),
                     QStringLiteral("Warning"), QStringLiteral("Level"), Alarm::Mode::GreaterOrEqual,
                     85, tr("Auto mode pauses filling at 80 %. Check the downstream demand.")),
-        analogAlarm(2, QStringLiteral("LevelCritical"), tr("T-101 level critical: {Level} %"),
+        analogAlarm(2, QStringLiteral("LevelCritical"), tr("T-101 level critical: {1} %"),
                     QStringLiteral("Alarm"), QStringLiteral("Level"), Alarm::Mode::GreaterOrEqual,
                     90, tr("The high-level interlock stops the pump. Stop the transfer.")),
         discreteAlarm(3, QStringLiteral("Interlock"),
-                      tr("High-level interlock tripped, P-101 stopped"),
+                      tr("High-level interlock tripped at {1} %, P-101 stopped"),
                       QStringLiteral("AlarmWithReset"), QStringLiteral("HighLevel"),
                       tr("Acknowledge, and confirm once the level is back below 90 %.")),
-        analogAlarm(4, QStringLiteral("PressureHigh"), tr("Line pressure high: {Pressure} bar"),
+        analogAlarm(4, QStringLiteral("PressureHigh"),
+                    tr("Line pressure high: {1:.2} bar at {2:.0} % level"),
                     QStringLiteral("Warning"), QStringLiteral("Pressure"), Alarm::Mode::Greater,
                     3.5, tr("Reduce the flow setpoint.")),
         discreteAlarm(5, QStringLiteral("PumpRunning"), tr("P-101 transfer pump running"),
                       QStringLiteral("Notification"), QStringLiteral("PumpRunning"), {}),
     };
+    // Alarm parameters: the values the texts show as {1}, {2}.
+    alarms.alarms[1].parameters = {QStringLiteral("Level")};
+    alarms.alarms[2].parameters = {QStringLiteral("Level")};
+    alarms.alarms[3].parameters = {QStringLiteral("Pressure"), QStringLiteral("Level")};
     [[maybe_unused]] const auto alarmsSet = project->setAlarms(std::move(alarms));
     Q_ASSERT(alarmsSet);
     return project;

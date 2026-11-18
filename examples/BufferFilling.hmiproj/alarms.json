@@ -21,8 +21,11 @@
             "mode": "greaterOrEqual",
             "name": "LevelCritical",
             "origin": "Line 3 / T-101",
+            "parameters": [
+                "Level"
+            ],
             "tag": "Level",
-            "text": "T-101 level critical: {Level} %"
+            "text": "T-101 level critical: {1} %"
         },
         {
             "bit": 0,
@@ -33,8 +36,11 @@
             "kind": "discrete",
             "name": "Interlock",
             "origin": "Line 3 / P-101",
+            "parameters": [
+                "Level"
+            ],
             "tag": "HighLevel",
-            "text": "High-level interlock tripped, P-101 stopped"
+            "text": "High-level interlock tripped at {1} %, P-101 stopped"
         },
         {
             "class": "Warning",
@@ -45,8 +51,12 @@
             "mode": "greater",
             "name": "PressureHigh",
             "origin": "Line 3 / T-101",
+            "parameters": [
+                "Pressure",
+                "Level"
+            ],
             "tag": "Pressure",
-            "text": "Line pressure high: {Pressure} bar"
+            "text": "Line pressure high: {1:.2} bar at {2:.0} % level"
         },
         {
             "bit": 0,
@@ -198,5 +208,10 @@
             "stateMachine": "acknowledgmentAndConfirmation"
         }
     ],
-    "formatVersion": 4
+    "formatVersion": 4,
+    "settings": {
+        "shelvingTimeout": 3600,
+        "statusTexts": {
+        }
+    }
 }

@@ -2,6 +2,8 @@
 
 #include <QCoreApplication>
 #include <QJsonArray>
+#include <QLocale>
+#include <QRegularExpression>
 #include <QSet>
 
 #include <algorithm>
@@ -22,6 +24,12 @@ constexpr const char* kStateMachineKeys[] = {"withoutAcknowledgment", "simpleAck
                                              "acknowledgmentAndConfirmation"};
 constexpr const char* kColorKeys[] = {"incoming", "incomingOutgoing", "incomingAcknowledged",
                                       "incomingOutgoingAcknowledged"};
+constexpr const char* kStatusKeys[] = {"normal",
+                                       "incoming",
+                                       "incomingOutgoing",
+                                       "incomingAcknowledged",
+                                       "incomingOutgoingAcknowledged",
+                                       "incomingAcknowledgedOutgoing"};
 constexpr const char* kModeKeys[] = {"less",     "greater",     "equal",
                                      "notEqual", "lessOrEqual", "greaterOrEqual"};
 
@@ -200,6 +208,8 @@ QJsonObject Alarm::toJson() const
     json.insert(QStringLiteral("infoText"), infoText);
     json.insert(QStringLiteral("origin"), origin);
     json.insert(QStringLiteral("tag"), tag);
+    if (!parameters.isEmpty())
+        json.insert(QStringLiteral("parameters"), QJsonArray::fromStringList(parameters));
     if (kind == Kind::Discrete)
     {
         json.insert(QStringLiteral("bit"), bit);
@@ -233,6 +243,8 @@ Result<Alarm> Alarm::fromJson(const QJsonObject& json)
     a.tag = json.value(QStringLiteral("tag")).toString();
     a.bit = json.value(QStringLiteral("bit")).toInt(0);
     a.fallingEdge = json.value(QStringLiteral("fallingEdge")).toBool(false);
+    for (const QJsonValue& parameter : json.value(QStringLiteral("parameters")).toArray())
+        a.parameters << parameter.toString();
     if (a.kind == Kind::Analog)
     {
         const int mode = keyIndex(kModeKeys, json.value(QStringLiteral("mode")).toString());
@@ -242,14 +254,48 @@ Result<Alarm> Alarm::fromJson(const QJsonObject& json)
         a.mode = Mode(mode);
         a.limit = json.value(QStringLiteral("limit")).toDouble();
     }
-    if (a.bit < 0 || a.bit > 63 || !std::isfinite(a.limit))
-        return makeError(ErrorCode::BadFormat,
-                         QStringLiteral("Alarm %1 has an invalid bit or limit").arg(a.id));
+    if (a.bit < 0 || a.bit > 63 || !std::isfinite(a.limit) || a.parameters.size() > kMaxParameters)
+        return makeError(
+            ErrorCode::BadFormat,
+            QStringLiteral("Alarm %1 has an invalid bit, limit or parameters").arg(a.id));
     a.preserved = json;
     for (const char* key : {"id", "name", "kind", "text", "class", "infoText", "origin", "tag",
-                            "bit", "fallingEdge", "mode", "limit"})
+                            "bit", "fallingEdge", "mode", "limit", "parameters"})
         a.preserved.remove(QLatin1StringView(key));
     return a;
+}
+
+QString AlarmSettings::statusText(AlarmStatus status) const
+{
+    const QString& text = statusTexts[std::size_t(status)];
+    return text.isEmpty() ? Alarms::statusName(status) : text;
+}
+
+QJsonObject AlarmSettings::toJson() const
+{
+    QJsonObject json = preserved;
+    QJsonObject texts;
+    for (int i = 0; i < kAlarmStatusCount; ++i)
+    {
+        if (!statusTexts[std::size_t(i)].isEmpty())
+            texts.insert(QLatin1StringView(kStatusKeys[i]), statusTexts[std::size_t(i)]);
+    }
+    json.insert(QStringLiteral("statusTexts"), texts);
+    json.insert(QStringLiteral("shelvingTimeout"), shelvingTimeout);
+    return json;
+}
+
+AlarmSettings AlarmSettings::fromJson(const QJsonObject& json)
+{
+    AlarmSettings s;
+    const QJsonObject texts = json.value(QStringLiteral("statusTexts")).toObject();
+    for (int i = 0; i < kAlarmStatusCount; ++i)
+        s.statusTexts[std::size_t(i)] = texts.value(QLatin1StringView(kStatusKeys[i])).toString();
+    s.shelvingTimeout = std::max(0, json.value(QStringLiteral("shelvingTimeout")).toInt(3600));
+    s.preserved = json;
+    s.preserved.remove(QStringLiteral("statusTexts"));
+    s.preserved.remove(QStringLiteral("shelvingTimeout"));
+    return s;
 }
 
 const AlarmClass* AlarmConfiguration::findClass(const QString& name) const
@@ -303,7 +349,14 @@ Result<void> AlarmConfiguration::validate() const
             return makeError(
                 ErrorCode::OutOfRange,
                 tr("Alarm %1: the bit goes from 0 to 63, the limit must be a number.").arg(a.id));
+        if (a.parameters.size() > Alarm::kMaxParameters)
+            return makeError(ErrorCode::OutOfRange,
+                             tr("Alarm %1: an alarm has at most %2 alarm parameters.")
+                                 .arg(a.id)
+                                 .arg(Alarm::kMaxParameters));
     }
+    if (settings.shelvingTimeout < 0)
+        return makeError(ErrorCode::OutOfRange, tr("The shelving timeout cannot be negative."));
     return {};
 }
 
@@ -331,6 +384,76 @@ QStringList statusNames()
 QString statusName(AlarmStatus status)
 {
     return statusNames().at(int(status));
+}
+
+QString statusKey(AlarmStatus status)
+{
+    return QString::fromLatin1(kStatusKeys[int(status)]);
+}
+
+std::optional<AlarmStatus> statusFromKey(const QString& key)
+{
+    const int index = keyIndex(kStatusKeys, key);
+    return index < 0 ? std::nullopt : std::optional<AlarmStatus>(AlarmStatus(index));
+}
+
+QString formatText(const Alarm& alarm, const TagLookup& value)
+{
+    // {ref} or {ref:format}; format = [0][-][width][.decimals].
+    static const QRegularExpression field(
+        QStringLiteral("\\{\\s*([^{}:]+?)\\s*(?::(0?)(-?)(\\d*)(?:\\.(\\d+))?)?\\s*\\}"));
+    if (alarm.text.isEmpty())
+        return alarm.name;
+    QString result;
+    qsizetype done = 0;
+    QRegularExpressionMatchIterator it = field.globalMatch(alarm.text);
+    while (it.hasNext())
+    {
+        const QRegularExpressionMatch match = it.next();
+        const QString ref = match.captured(1);
+        bool isNumber = false;
+        const int index = ref.toInt(&isNumber);
+        QString tag = ref;
+        if (isNumber)
+            tag = index >= 1 && index <= alarm.parameters.size() ? alarm.parameters.at(index - 1)
+                                                                 : QString();
+        const std::optional<TagValue> v =
+            tag.isEmpty() || !value ? std::nullopt : value(tag.trimmed());
+        if (!v)
+            continue; // unknown: left as written
+        const bool zeros = !match.captured(2).isEmpty();
+        const bool left = !match.captured(3).isEmpty();
+        const int width = match.captured(4).toInt();
+        const bool hasDecimals = match.hasCaptured(5) && !match.captured(5).isEmpty();
+        const int decimals = std::clamp(match.captured(5).toInt(), 0, 12);
+        QString shown;
+        if (const auto* real = std::get_if<double>(&*v))
+            shown = QLocale().toString(*real, 'f', hasDecimals ? decimals : 1);
+        else if (const auto* integer = std::get_if<qint64>(&*v); integer && hasDecimals)
+            shown = QLocale().toString(double(*integer), 'f', decimals);
+        else if (integer)
+            shown = QLocale().toString(*integer);
+        else
+            shown = TagValues::toText(*v);
+        if (shown.size() < width)
+        {
+            const qsizetype pad = width - shown.size();
+            if (left)
+                shown += QString(pad, u' ');
+            else if (zeros)
+            {
+                const bool negative = shown.startsWith(u'-');
+                shown.insert(negative ? 1 : 0, QString(pad, u'0'));
+            }
+            else
+                shown.prepend(QString(pad, u' '));
+        }
+        result += QStringView(alarm.text).mid(done, match.capturedStart() - done);
+        result += shown;
+        done = match.capturedEnd();
+    }
+    result += QStringView(alarm.text).mid(done);
+    return result;
 }
 
 QStringList stateMachineNames()

@@ -378,6 +378,10 @@ the alarm control lists them live, with WinCC Unified's toolbar (active or
 logged alarms, line navigation, single and group acknowledgment, single
 confirm, show current); the simulator shows an alarm line with ACK. The
 sample raises level, interlock and pressure alarms. See `docs/ALARMS.md`.
+On `feat/alarms-advanced`: alarm parameters ({1}..{10} with formats),
+status texts and the shelving timeout in the runtime settings, shelving,
+disabling, the defined alarms and the alarm statistics in the alarm
+control, CSV export, and the alarm log kept across runs.
 Still open in phase 7: trends and the validation pass.
 
 ## Phase 8 — Real connections

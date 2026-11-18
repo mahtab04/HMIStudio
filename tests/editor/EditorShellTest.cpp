@@ -1,8 +1,11 @@
 // Loads the real QML shell offscreen. Set HMI_SCREENSHOT=<file.png> to save
 // an image of the window for a visual check.
 
+#include "comm/RuntimeAlarms.h"
 #include "comm/TagEngine.h"
 #include "core/model/Project.h"
+#include "core/model/Screen.h"
+#include "core/objects/AlarmView.h"
 #include "core/property/Prop.h"
 #include "editor/app/AppContext.h"
 #include "editor/app/AppSettings.h"
@@ -336,6 +339,21 @@ private Q_SLOTS:
         work->setProperty("showingTags", false);
         QTRY_VERIFY(canvas->isVisible());
 
+        // The HMI alarms editor: the discrete alarms and the runtime settings.
+        if (const QString path = qEnvironmentVariable("HMI_ALARMS_SCREENSHOT"); !path.isEmpty())
+        {
+            work->setProperty("showingAlarms", true);
+            context.alarms().setPage(AlarmModel::DiscretePage);
+            QTest::qWait(300);
+            QVERIFY(window->grabWindow().save(path.chopped(4) + QStringLiteral("_editor.png")));
+            context.alarms().setPage(AlarmModel::SettingsPage);
+            QTest::qWait(300);
+            QVERIFY(window->grabWindow().save(path.chopped(4) + QStringLiteral("_settings.png")));
+            context.alarms().setPage(AlarmModel::DiscretePage);
+            work->setProperty("showingAlarms", false);
+            QTRY_VERIFY(canvas->isVisible());
+        }
+
         // The Overview's screen window shows the P-101 details screen: a
         // preview in the editor, live in the simulator.
         if (const QString path = qEnvironmentVariable("HMI_OVERVIEW_SCREENSHOT"); !path.isEmpty())
@@ -374,6 +392,24 @@ private Q_SLOTS:
             QTRY_VERIFY(live->findChild<QQuickItem*>(QStringLiteral("alarmLine"))->isVisible());
             QTest::qWait(1200);
             QVERIFY(live->grabWindow().save(path));
+            // The defined alarms, one shelved and one disabled.
+            RuntimeAlarms& runtime = context.simulation().runtimeAlarms();
+            QVERIFY(runtime.shelve(4));
+            QVERIFY(runtime.disable(5));
+            const Screen& overview = *context.project().screens()[1];
+            const auto control =
+                std::ranges::find_if(overview.objects(), [](const auto& o)
+                                     { return o->typeId() == AlarmView::kTypeId; });
+            QVERIFY(control != overview.objects().end());
+            runtime.setViewState((*control)->id(), AlarmViewState{.list = AlarmList::Defined,
+                                                                  .showCurrent = false,
+                                                                  .selected = 3,
+                                                                  .firstRow = 0});
+            QTest::qWait(400);
+            QVERIFY(live->grabWindow().save(path.chopped(4) + QStringLiteral("_defined.png")));
+            runtime.setViewState((*control)->id(), AlarmViewState{.list = AlarmList::Statistics});
+            QTest::qWait(400);
+            QVERIFY(live->grabWindow().save(path.chopped(4) + QStringLiteral("_statistics.png")));
             context.simulation().stop();
             QTRY_VERIFY(simulatorWindow(engine) == nullptr);
             context.editor().setCurrentScreen(0);

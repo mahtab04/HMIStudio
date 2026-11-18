@@ -6,9 +6,10 @@ namespace hmi
 {
 
 // The alarm control of WinCC Unified: at runtime it lists the active alarms
-// (or the alarm log) in their class colours, newest first, with a toolbar to
-// switch views, move the selection and acknowledge or confirm. In the editor
-// it shows its layout: toolbar, column headers and empty rows.
+// in their class colours, newest first, or the alarm log, the alarm
+// statistics or the defined alarms, with a toolbar to switch lists, move
+// the selection, acknowledge or confirm, shelve, disable and export. In the
+// editor it shows its layout: toolbar, column headers and empty rows.
 class AlarmView final : public ControlObject
 {
 public:
@@ -29,8 +30,10 @@ public:
     // The toolbar buttons, as in the WinCC Unified alarm control.
     enum ToolbarButton
     {
-        ShowActive, // "Show active alarms"
-        ShowLogged, // "Show logged alarms"
+        ShowActive,     // "Show active alarms"
+        ShowLogged,     // "Show logged alarms"
+        ShowStatistics, // "Alarm statistics - view"
+        ShowDefined,    // "Show defined alarms"
         FirstLine,
         PreviousLine,
         NextLine,
@@ -38,6 +41,11 @@ public:
         Acknowledge,        // "Single acknowledgment"
         AcknowledgeVisible, // "Acknowledge visible alarms"
         Confirm,            // "Single confirm"
+        Shelve,             // "Shelve alarm": active or defined alarms
+        Unshelve,           // "Unshelve alarm": defined alarms
+        Disable,            // "Disable alarm": defined alarms
+        Enable,             // "Enable alarm": defined alarms
+        Export,             // "Export": the list shown, to CSV
         ShowCurrent,        // "Alarms - show current"
         ButtonCount,
     };

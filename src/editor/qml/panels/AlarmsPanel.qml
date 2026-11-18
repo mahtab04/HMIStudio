@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import QtQml.Models
 
 // The HMI alarms editor, shown in the work area like TIA Portal's: Discrete
-// alarms, Analog alarms and Alarm classes, each a table with plain cells
+// alarms, Analog alarms, Alarm classes and Runtime settings, each a table with plain cells
 // (double-click or F2 to edit), drop-downs for choices, colour swatches for
 // the class colours, "<Add new>" after the last row and Delete.
 Item {
@@ -17,6 +17,7 @@ Item {
 
     property string message
     readonly property int currentRow: selection.currentIndex.valid ? selection.currentIndex.row : -1
+    readonly property bool settingsPage: panel.alarms.page === AlarmModel.SettingsPage
 
     function addRow() {
         panel.message = ""
@@ -79,6 +80,7 @@ Item {
                 ToolButton {
                     text: qsTr("Add")
                     implicitHeight: panel.theme.controlHeight
+                    enabled: !panel.settingsPage
                     focusPolicy: Qt.NoFocus
                     onClicked: panel.addRow()
                 }
@@ -86,7 +88,7 @@ Item {
                     objectName: "deleteAlarmButton"
                     text: qsTr("Delete")
                     implicitHeight: panel.theme.controlHeight
-                    enabled: panel.currentRow >= 0
+                    enabled: panel.currentRow >= 0 && !panel.settingsPage
                     focusPolicy: Qt.NoFocus
                     onClicked: {
                         panel.message = ""
@@ -97,9 +99,11 @@ Item {
                     Layout.fillWidth: true
                 }
                 Label {
-                    text: qsTr("Alarm texts may show tag values: {TagName}")
+                    text: qsTr("Alarm texts show values: {1} an alarm parameter, {TagName} a tag, {1:6.2} width and decimals")
                     color: panel.theme.textMuted
-                    visible: panel.alarms.page !== AlarmModel.ClassesPage
+                    elide: Text.ElideRight
+                    Layout.maximumWidth: panel.width * 0.5
+                    visible: panel.alarms.page < AlarmModel.ClassesPage
                 }
             }
         }
@@ -129,7 +133,9 @@ Item {
             // As tall as its rows, so "<Add new>" follows the last one.
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.maximumHeight: Math.max(1, table.contentHeight)
+            // All its rows, as far as they fit; the spacer below takes the rest.
+            Layout.preferredHeight: Math.max(1, table.rows * (panel.theme.controlHeight + table.rowSpacing))
+            Layout.maximumHeight: table.Layout.preferredHeight
             clip: true
             model: panel.alarms
             boundsBehavior: Flickable.StopAtBounds
@@ -244,6 +250,7 @@ Item {
         // The last row adds an alarm (or a class), as in TIA Portal.
         ItemDelegate {
             objectName: "addAlarmRow"
+            visible: !panel.settingsPage
             Layout.fillWidth: true
             implicitHeight: panel.theme.controlHeight
             leftPadding: panel.theme.spacing
@@ -258,6 +265,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: 0
         }
     }
 }

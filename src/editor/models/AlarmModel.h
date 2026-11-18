@@ -13,8 +13,9 @@ namespace hmi
 
 class ToolContext;
 
-// The HMI alarms editor, as in TIA Portal: three pages, Discrete alarms,
-// Analog alarms and Alarm classes, each a table. Every edit is one undo step
+// The HMI alarms editor, as in TIA Portal: Discrete alarms, Analog alarms,
+// Alarm classes and the alarms' runtime settings (status texts, shelving
+// timeout), each a table. Every edit is one undo step
 // (ChangeAlarmsCommand); edits that would make the configuration invalid
 // are refused with a reason (problem).
 class AlarmModel : public QAbstractTableModel
@@ -39,6 +40,7 @@ public:
         DiscretePage,
         AnalogPage,
         ClassesPage,
+        SettingsPage,
     };
     Q_ENUM(Page)
 
@@ -48,6 +50,7 @@ public:
         IdColumn,
         NameColumn,
         TextColumn,
+        ParametersColumn, // the alarm parameters' tags, "Level; Pressure"
         ClassColumn,
         TagColumn,
         BitColumn,   // discrete
@@ -71,6 +74,18 @@ public:
         ClassColumnCount = ClassColorColumn + 3 * AlarmClass::ColorStateCount,
     };
     Q_ENUM(ClassPageColumn)
+
+    // Runtime settings page: one setting per row.
+    enum SettingsPageColumn
+    {
+        SettingColumn,
+        SettingValueColumn,
+        SettingDefaultColumn,
+        SettingsColumnCount,
+    };
+    Q_ENUM(SettingsPageColumn)
+    // Its rows: a status text per AlarmStatus, then the shelving timeout.
+    static constexpr int kShelvingTimeoutRow = kAlarmStatusCount;
 
     enum Role
     {
@@ -125,6 +140,8 @@ private:
     bool change(AlarmConfiguration after, const QString& text);
     [[nodiscard]] QVariant alarmData(const Alarm& alarm, int column, int role) const;
     [[nodiscard]] QVariant classData(const AlarmClass& alarmClass, int column, int role) const;
+    [[nodiscard]] QVariant settingData(int row, int column, int role) const;
+    bool setSetting(int row, const QVariant& value);
 
     ToolContext& m_context;
     Page m_page = DiscretePage;

@@ -42,6 +42,9 @@ public:
     {
         QString settingsFile;
         QString autosaveFolder;
+        // Alarm logs and exports of the simulator; empty: next to the
+        // autosave folder.
+        QString runtimeFolder;
     };
 
     // Takes the document to edit; it must have at least one screen.
