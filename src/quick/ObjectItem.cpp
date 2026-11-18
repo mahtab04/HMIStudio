@@ -52,6 +52,14 @@ void ObjectItem::showPreview(const QRectF& sceneGeometry, double rotation)
     update();
 }
 
+void ObjectItem::setAlarms(const IAlarmSource* alarms)
+{
+    if (alarms == m_alarms)
+        return;
+    m_alarms = alarms;
+    update();
+}
+
 void ObjectItem::setScreens(const IScreenSource* screens)
 {
     if (screens == m_screens)
@@ -113,7 +121,8 @@ void ObjectItem::paint(QPainter* painter)
                                            .editing = m_editing,
                                            .graphics = m_graphics,
                                            .screens = m_screens,
-                                           .depth = 0});
+                                           .depth = 0,
+                                           .alarms = m_alarms});
 }
 
 } // namespace hmi

@@ -86,6 +86,15 @@ public:
         return std::nullopt;
     }
     [[nodiscard]] virtual QTransform childTransform() const { return {}; }
+    // Objects drawn from the running alarms (alarm controls) are redrawn
+    // when they change.
+    [[nodiscard]] virtual bool usesAlarms() const { return false; }
+    // Runtime input to a Control object at a local point: an alarm
+    // control's buttons and lines. Returns whether the point was used.
+    virtual bool operateAt(QPointF /*point*/, class IAlarmSource* /*alarms*/) const
+    {
+        return false;
+    }
     // In play mode, what replaces the object: a screen window becomes a live
     // copy of the screen it shows. Null for objects that stay as they are.
     [[nodiscard]] virtual std::unique_ptr<HmiObject>

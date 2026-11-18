@@ -10,6 +10,7 @@ namespace hmi
 
 class DocumentNotifier;
 class IGraphicProvider;
+class IAlarmSource;
 class IScreenSource;
 class ObjectItem;
 class Screen;
@@ -44,6 +45,7 @@ public:
     void setRenderScale(double scale, const QRectF& sharpArea);
     void setGraphics(const IGraphicProvider* graphics);
     void setScreens(const IScreenSource* screens);
+    void setAlarms(const IAlarmSource* alarms);
     void setEditing(bool editing);
 
     void showPreview(ObjectId id, const QRectF& sceneGeometry, double rotation);
@@ -71,6 +73,7 @@ private:
     QRectF m_sharpArea;
     const IGraphicProvider* m_graphics = nullptr;
     const IScreenSource* m_screens = nullptr;
+    const IAlarmSource* m_alarms = nullptr;
 };
 
 } // namespace hmi

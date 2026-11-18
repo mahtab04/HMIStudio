@@ -130,6 +130,7 @@ add_library(hmi_core_impl STATIC
 
     alarms/Alarm.cpp
     alarms/Alarm.h
+    alarms/IAlarmSource.h
     tags/Connection.cpp
     tags/Connection.h
     tags/Binding.cpp

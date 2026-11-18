@@ -130,6 +130,43 @@ Window {
         }
     }
 
+    // The alarm line: the newest alarm to acknowledge, in its class colours.
+    Rectangle {
+        objectName: "alarmLine"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: window.theme.controlHeight + 8
+        visible: window.simulation.unacknowledgedAlarms > 0
+        color: window.simulation.newestAlarmColor
+        border.color: Qt.darker(window.simulation.newestAlarmColor, 1.4)
+
+        Label {
+            anchors.left: parent.left
+            anchors.leftMargin: window.theme.padding
+            anchors.right: ackButton.left
+            anchors.rightMargin: window.theme.spacing
+            anchors.verticalCenter: parent.verticalCenter
+            text: window.simulation.unacknowledgedAlarms > 1 ? qsTr("%1   (+%2 more to acknowledge)").arg(window.simulation.newestAlarmText).arg(window.simulation.unacknowledgedAlarms - 1) : window.simulation.newestAlarmText
+            color: window.simulation.newestAlarmTextColor
+            font.bold: true
+            elide: Text.ElideRight
+        }
+        Button {
+            id: ackButton
+
+            objectName: "acknowledgeAlarmButton"
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.verticalCenter: parent.verticalCenter
+            implicitHeight: window.theme.controlHeight
+            text: qsTr("ACK")
+            focusPolicy: Qt.NoFocus
+            Accessible.name: qsTr("Acknowledge this alarm")
+            onClicked: window.simulation.acknowledgeNewestAlarm()
+        }
+    }
+
     RuntimeValueDialog {
         input: window.simulation.input
         theme: window.theme

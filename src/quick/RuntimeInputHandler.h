@@ -14,6 +14,7 @@
 namespace hmi
 {
 class HmiObject;
+class IAlarmSource;
 class Screen;
 class TagEngine;
 
@@ -36,6 +37,8 @@ public:
     explicit RuntimeInputHandler(TagEngine& engine, QObject* parent = nullptr);
     ~RuntimeInputHandler() override;
     void setScreen(const Screen* screen);
+    // The running alarms, operated through alarm controls.
+    void setAlarms(IAlarmSource* alarms) { m_alarms = alarms; }
     void handleGesture(const PointerGesture& gesture);
     void keyInput(int key, Qt::KeyboardModifiers modifiers, bool released);
     void cancel();
@@ -93,6 +96,7 @@ private:
     QStringList m_choices;
     int m_selected = -1;
     QString m_error;
+    IAlarmSource* m_alarms = nullptr;
     const HmiObject* m_held = nullptr; // pressed: its Release actions are due
     bool m_keyboardActive = false;
     bool m_replaceInput = false;

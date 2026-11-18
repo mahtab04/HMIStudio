@@ -8,6 +8,8 @@ add_library(hmi_comm STATIC
     BindingEvaluator.cpp
     BindingEvaluator.h
     IDriver.h
+    RuntimeAlarms.cpp
+    RuntimeAlarms.h
     PlcDriver.cpp
     PlcDriver.h
     SimulatorDriver.cpp

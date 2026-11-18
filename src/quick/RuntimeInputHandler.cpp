@@ -300,6 +300,9 @@ void RuntimeInputHandler::activate(const Hit& target, QPointF scene)
     case Kind::Slider:
         slider(target, scene);
         break;
+    case Kind::Control:
+        object.operateAt(target.toScreen.inverted().map(scene), m_alarms);
+        break;
     case Kind::Action:
     case Kind::None:
         break;

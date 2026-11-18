@@ -3,8 +3,12 @@
 
 #include "comm/AlarmEngine.h"
 
+#include "comm/RuntimeAlarms.h"
 #include "comm/TagEngine.h"
+#include "core/objects/AlarmView.h"
 
+#include <QImage>
+#include <QPainter>
 #include <QSignalSpy>
 #include <QTest>
 
@@ -175,6 +179,68 @@ private Q_SLOTS:
         QVERIFY(m_alarms.confirm(5));
         QVERIFY(m_alarms.confirm(6));
         QVERIFY(m_alarms.pending().empty());
+    }
+
+    void alarmControlAtRuntime()
+    {
+        startWith({discrete(7, u"Faults"_s, 0, u"Alarm"_s), discrete(8, u"Faults"_s, 1, u"Alarm"_s),
+                   discrete(9, u"Faults"_s, 2, u"Warning"_s)});
+        RuntimeAlarms alarms(m_alarms);
+        m_tags.write(u"Faults"_s, qint64(7));
+        QTRY_COMPARE(alarms.pendingCount(), 3);
+        const auto rows = alarms.rows(false);
+        QCOMPARE(rows.size(), std::size_t(3));
+        QCOMPARE(rows.front().status, u"Incoming"_s);
+        // Alarm-class alarms come red and flashing; warnings yellow.
+        const auto alarmRow = std::ranges::find(rows, 7, &AlarmRow::id);
+        QVERIFY(alarmRow->colors.flashing);
+        QCOMPARE(alarmRow->colors.background, QColor(0xD6, 0x45, 0x41));
+
+        AlarmView view;
+        const QRectF size = view.geometry();
+        const auto press = [&](AlarmView::ToolbarButton button)
+        {
+            return view.operateAt(view.buttonRect(button).center(), &alarms);
+        };
+
+        // "Alarms - show current": the newest is the one acknowledged.
+        const int newest = alarms.rows(false).front().id;
+        QVERIFY(press(AlarmView::Acknowledge));
+        QCOMPARE(alarms.unacknowledgedCount(), 2);
+        QCOMPARE(m_alarms.find(newest)->status, AlarmStatus::IncomingAcknowledged);
+        // Moving the selection stops showing the newest.
+        QVERIFY(press(AlarmView::NextLine));
+        QVERIFY(!alarms.viewState(view.id()).showCurrent);
+        QCOMPARE(alarms.viewState(view.id()).selected, 1);
+        QVERIFY(view.operateAt(view.lineRect(2).center(), &alarms));
+        QCOMPARE(alarms.viewState(view.id()).selected, 2);
+        // Group acknowledgment of the visible alarms.
+        QVERIFY(press(AlarmView::AcknowledgeVisible));
+        QCOMPARE(alarms.unacknowledgedCount(), 0);
+        // The log; acknowledging does nothing there.
+        QVERIFY(press(AlarmView::ShowLogged));
+        QVERIFY(alarms.viewState(view.id()).logged);
+        QCOMPARE(alarms.rows(true).size(), std::size_t(6)); // 3 incoming, 3 acknowledged
+        QVERIFY(press(AlarmView::ShowActive));
+        QVERIFY(press(AlarmView::ShowCurrent));
+        QVERIFY(alarms.viewState(view.id()).showCurrent);
+        QVERIFY(!view.operateAt(QPointF(-5, -5), &alarms)); // outside
+
+        // Drawn live: the first line in the colours of its status.
+        QImage image(size.size().toSize(), QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::transparent);
+        QPainter painter(&image);
+        view.paint(painter, PaintContext{.zoom = 1.0,
+                                         .editing = false,
+                                         .graphics = nullptr,
+                                         .screens = nullptr,
+                                         .depth = 0,
+                                         .alarms = &alarms});
+        painter.end();
+        const QRectF first = view.lineRect(0);
+        const AlarmRow top = alarms.rows(false).front();
+        QCOMPARE(image.pixel(QPoint(int(first.left()) + 3, int(first.center().y()))),
+                 top.colors.background.rgba());
     }
 
     void groupAcknowledgmentAndRestart()

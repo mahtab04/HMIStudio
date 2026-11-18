@@ -7,6 +7,7 @@ namespace hmi
 
 class HmiObject;
 class IGraphicProvider;
+class IAlarmSource;
 class IScreenSource;
 
 // Hosts one HmiObject on the canvas. Holds only a non-owning pointer: the
@@ -44,6 +45,7 @@ public:
     void setGraphics(const IGraphicProvider* graphics);
     // The project's screens, for screen window previews.
     void setScreens(const IScreenSource* screens);
+    void setAlarms(const IAlarmSource* alarms);
 
     void setEditing(bool editing);
     void paint(QPainter* painter) override;
@@ -56,6 +58,7 @@ private:
     double m_renderScale = 1.0;
     const IGraphicProvider* m_graphics = nullptr;
     const IScreenSource* m_screens = nullptr;
+    const IAlarmSource* m_alarms = nullptr;
 };
 
 } // namespace hmi

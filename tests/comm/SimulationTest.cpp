@@ -102,6 +102,15 @@ private Q_SLOTS:
 
         // The ramp moves; updates come at most every kPublishMs.
         QTRY_VERIFY_WITH_TIMEOUT(number(engine.value(u"Level"_s)) > 0.0, 2000);
+        // Each tag is announced once more when the driver first reports it
+        // (its quality is no longer "waiting"); on a busy machine that can
+        // come late. After it, only changed values are announced.
+        const auto announced = [&changed](const QString& name)
+        {
+            return std::ranges::count_if(changed, [&name](const QList<QVariant>& call)
+                                         { return call.front().toStringList().contains(name); });
+        };
+        QTRY_VERIFY_WITH_TIMEOUT(announced(u"Setpoint"_s) >= 2, 3000);
         // Measured against the time that really passed, so a busy machine
         // (tests run in parallel) cannot fail it: updates keep coming, and
         // never more often than every kPublishMs.
