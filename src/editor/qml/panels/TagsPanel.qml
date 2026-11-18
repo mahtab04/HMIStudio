@@ -122,7 +122,7 @@ Item {
                 }
                 Label {
                     visible: panel.simulation.running
-                    text: panel.simulation.monitoring ? qsTr("PLC monitoring - read only") : qsTr("Simulated values")
+                    text: panel.simulation.connectedToPlcs ? qsTr("Runtime: PLC tags from the PLCs") : qsTr("Simulated values")
                     color: panel.theme.good
                 }
                 TextField {
@@ -166,11 +166,17 @@ Item {
                 onClicked: connectionsDialog.open()
             }
             Item { Layout.fillWidth: true }
-            Button {
+            // Without a PLC at hand, PLC tags can be simulated like internal ones.
+            CheckBox {
+                objectName: "simulatePlcTags"
                 implicitHeight: panel.theme.controlHeight
-                objectName: "monitorPlcsButton"
-                text: panel.simulation.running && panel.simulation.monitoring ? qsTr("Stop monitoring") : qsTr("Monitor PLCs")
-                onClicked: panel.simulation.running && panel.simulation.monitoring ? panel.simulation.stop() : panel.simulation.startMonitoring()
+                text: qsTr("Simulate PLC tags")
+                checked: panel.simulation.simulatePlcTags
+                enabled: !panel.simulation.running
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("When the runtime starts, PLC tags are read and written on their PLCs. Check this to simulate them instead.")
+                onToggled: panel.simulation.simulatePlcTags = checked
             }
         }
 

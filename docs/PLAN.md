@@ -397,6 +397,14 @@ Still open in phase 7: trends and the validation pass.
 Done when: the demo runs against a real or simulated PLC (PLCSIM Advanced or
 an OPC UA demo server) for 24 hours without leaks or stalls.
 
+Simplified on `feat/plc-connections`: a PLC is a name, a PLC type and an IP
+address (optional :port) with a Test button; S7 reads and writes DB, M, I
+and Q addresses, Modbus TCP and Allen-Bradley read and write too; the data
+type follows the address; the runtime reads and writes PLC tags (no
+separate monitor mode, "Simulate PLC tags" without a PLC);
+`tools/s7_test_plc.py` is a test S7 PLC. Still open: OPC UA, block-optimized
+polling, connection status on objects, reconnect back-off, the 24-hour run.
+
 ## Phase 9 — Runtime and deployment
 
 - `hmi_runtime` executable: minimal QML window hosting `ScreenItem` in play

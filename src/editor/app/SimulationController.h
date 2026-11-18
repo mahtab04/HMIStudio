@@ -33,7 +33,13 @@ class SimulationController : public QObject
     QML_ELEMENT
     QML_UNCREATABLE("SimulationController is provided by the application")
     Q_PROPERTY(hmi::RuntimeInputHandler* input READ input CONSTANT)
-    Q_PROPERTY(bool monitoring READ isMonitoring NOTIFY runningChanged)
+    // Whether this run reads and writes PLC tags on their PLCs (the project
+    // has PLC tags and they are not simulated).
+    Q_PROPERTY(bool connectedToPlcs READ isConnectedToPlcs NOTIFY runningChanged)
+    // Simulate PLC tags too, as internal tags, when no PLC is at hand; for
+    // the next start.
+    Q_PROPERTY(bool simulatePlcTags READ simulatePlcTags WRITE setSimulatePlcTags NOTIFY
+                   simulatePlcTagsChanged)
     Q_PROPERTY(bool running READ isRunning NOTIFY runningChanged)
     Q_PROPERTY(QString screenTitle READ screenTitle NOTIFY screenChanged)
     Q_PROPERTY(QSizeF screenSize READ screenSize NOTIFY screenChanged)
@@ -62,8 +68,9 @@ public:
 
     // Starts with the screen the editor shows.
     Q_INVOKABLE void start();
-    Q_INVOKABLE void startMonitoring();
-    [[nodiscard]] bool isMonitoring() const noexcept { return m_monitoring; }
+    [[nodiscard]] bool isConnectedToPlcs() const noexcept { return m_connectedToPlcs; }
+    [[nodiscard]] bool simulatePlcTags() const noexcept { return m_simulatePlcTags; }
+    void setSimulatePlcTags(bool simulate);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void toggle();
     // Takes a new copy of the screen and the tags, keeping the window.
@@ -107,7 +114,7 @@ public:
     void setDocumentPath(std::function<QString()> path) { m_documentPath = std::move(path); }
     // The alarm log file of the project, or empty.
     [[nodiscard]] QString alarmLogFile() const;
-    // Where PLC monitoring reads the native libraries the user trusts.
+    // Where the runtime reads the native PLC libraries the user trusts.
     void setTrustedLibraries(std::function<QStringList()> trusted)
     {
         m_trustedLibraries = std::move(trusted);
@@ -127,6 +134,7 @@ Q_SIGNALS:
     // Pending alarms changed (or flash).
     void alarmsChanged();
     void alarmExportChanged();
+    void simulatePlcTagsChanged();
     void problemsChanged();
 
 private:
@@ -154,7 +162,8 @@ private:
     std::function<QString()> m_documentPath;
     QString m_alarmExportMessage;
     std::function<QStringList()> m_trustedLibraries;
-    bool m_monitoring = false;
+    bool m_connectedToPlcs = false;
+    bool m_simulatePlcTags = false;
     bool m_running = false;
 };
 

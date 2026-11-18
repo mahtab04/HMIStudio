@@ -106,8 +106,15 @@ void TagEngine::start(std::span<const Tag> tags, std::unique_ptr<IDriver> driver
         const QString key = tag.name.toLower();
         m_tags.insert(key, tag);
         m_names.insert(key, tag.name);
-        m_values.insert(key,
-                        !m_readOnly || tag.connection.isEmpty() ? tag.startValue() : TagValue());
+        const bool simulated = driver->simulates(tag);
+        if (simulated)
+            m_simulated.insert(key);
+        // PLC tags wait for their first read; the others start at their
+        // start value.
+        const bool fromPlc = !simulated && !tag.connection.isEmpty();
+        if (fromPlc)
+            m_fromPlc.insert(key);
+        m_values.insert(key, fromPlc ? TagValue() : tag.startValue());
         m_dirty.insert(key);
     }
 
@@ -145,6 +152,8 @@ void TagEngine::stop()
     ++m_generation;
     m_errors.clear();
     m_received.clear();
+    m_simulated.clear();
+    m_fromPlc.clear();
     m_values.clear();
     m_names.clear();
     m_tags.clear();
@@ -166,7 +175,8 @@ void TagEngine::write(const QString& tag, const TagValue& value)
     if (m_readOnly)
         return;
     const TagValue converted = m_tags.value(key).converted(value);
-    if (m_values.value(key) != converted)
+    // A PLC tag shows the value once the PLC has it (read back at once).
+    if (!m_fromPlc.contains(key) && m_values.value(key) != converted)
     {
         m_values.insert(key, converted);
         m_dirty.insert(key);
@@ -174,6 +184,11 @@ void TagEngine::write(const QString& tag, const TagValue& value)
     QMetaObject::invokeMethod(
         m_host, [host = m_host, name = m_names.value(key), converted]
         { host->write(name, converted); }, Qt::QueuedConnection);
+}
+
+bool TagEngine::readsPlc(const QString& tag) const
+{
+    return m_fromPlc.contains(tag.toLower());
 }
 
 const Tag* TagEngine::definition(const QString& tag) const
@@ -187,8 +202,7 @@ Result<void> TagEngine::writeChecked(const QString& name, const TagValue& value)
     if (!m_running)
         return makeError(ErrorCode::InvalidArgument, tr("The runtime is stopped."));
     if (m_readOnly)
-        return makeError(ErrorCode::InvalidArgument,
-                         tr("PLC monitoring is read only. Use Simulation to operate controls."));
+        return makeError(ErrorCode::InvalidArgument, tr("This tag source is read only."));
     const Tag* tag = definition(name);
     if (!tag)
         return makeError(ErrorCode::NotFound, tr("Tag '%1' is missing.").arg(name));
@@ -251,7 +265,7 @@ QString TagEngine::quality(const QString& tag) const
     const QString key = tag.toLower();
     if (!m_running)
         return tr("Offline");
-    if (m_simulating)
+    if (m_simulated.contains(key))
         return tr("Simulated");
     if (!m_errors.value(key).isEmpty())
         return tr("Bad");

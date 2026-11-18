@@ -15,6 +15,8 @@ namespace hmi
 
 class Project;
 class TagEngine;
+struct Connection;
+struct Tag;
 class ToolContext;
 
 // The Tags panel: one row per tag of the project, filtered by `filterText`
@@ -104,6 +106,8 @@ public:
         Q_EMIT messageChanged();
     }
     Q_INVOKABLE double columnWidth(int column, double width, double minimum) const;
+    // Sets the data type an address implies when the tag's does not fit it.
+    static void fitTypeToAddress(Tag& tag, const Connection& connection);
     Q_INVOKABLE int createTag(const QString& name, int type, const QString& table, int source,
                               const QString& address);
 

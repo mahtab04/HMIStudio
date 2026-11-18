@@ -18,12 +18,29 @@ Result<void> Connection::validate() const
     if (!hostPattern.match(host).hasMatch())
         return makeError(ErrorCode::InvalidArgument,
                          QStringLiteral("Enter a PLC host name or IP address"));
+    if (port < 0 || port > 65535)
+        return makeError(ErrorCode::InvalidArgument,
+                         QStringLiteral("The port goes from 1 to 65535 (0: the default)"));
     if (rack < 0 || rack > 7 || slot < 0 || slot > 31 || unit < 0 || unit > 255)
         return makeError(ErrorCode::InvalidArgument,
                          QStringLiteral("PLC rack, slot or unit is out of range"));
     if (!routePattern.match(path).hasMatch())
         return makeError(ErrorCode::InvalidArgument, QStringLiteral("Use a CIP route such as 1,0"));
     return {};
+}
+
+int Connection::defaultPort(const QString& driver)
+{
+    if (driver == u"modbus-tcp")
+        return 502;
+    if (driver == u"ab-eip")
+        return 44818;
+    return 102;
+}
+
+int Connection::effectivePort() const
+{
+    return port > 0 ? port : defaultPort(driver);
 }
 
 QJsonObject Connection::toJson() const
@@ -33,6 +50,8 @@ QJsonObject Connection::toJson() const
     json.insert(QStringLiteral("name"), name);
     json.insert(QStringLiteral("driver"), driver);
     json.insert(QStringLiteral("host"), host);
+    if (port > 0)
+        json.insert(QStringLiteral("port"), port);
     json.insert(QStringLiteral("rack"), rack);
     json.insert(QStringLiteral("slot"), slot);
     json.insert(QStringLiteral("path"), path);
@@ -43,7 +62,7 @@ QJsonObject Connection::toJson() const
 
 Result<Connection> Connection::fromJson(const QJsonObject& json)
 {
-    for (const char* field : {"rack", "slot", "unit"})
+    for (const char* field : {"port", "rack", "slot", "unit"})
     {
         const QJsonValue value = json.value(QLatin1StringView(field));
         if (!value.isUndefined() && (!value.isDouble() || value.toDouble() != value.toInt(-1)))
@@ -56,6 +75,7 @@ Result<Connection> Connection::fromJson(const QJsonObject& json)
     connection.name = json.value(QStringLiteral("name")).toString();
     connection.driver = json.value(QStringLiteral("driver")).toString();
     connection.host = json.value(QStringLiteral("host")).toString();
+    connection.port = json.value(QStringLiteral("port")).toInt(0);
     connection.rack = json.value(QStringLiteral("rack")).toInt(0);
     connection.slot = json.value(QStringLiteral("slot")).toInt(1);
     connection.path = json.value(QStringLiteral("path")).toString(QStringLiteral("1,0"));
@@ -65,7 +85,7 @@ Result<Connection> Connection::fromJson(const QJsonObject& json)
         return tl::unexpected(checked.error());
     connection.preserved = json;
     for (const char* key :
-         {"id", "name", "driver", "host", "rack", "slot", "path", "unit", "library"})
+         {"id", "name", "driver", "host", "port", "rack", "slot", "path", "unit", "library"})
         connection.preserved.remove(QLatin1StringView(key));
     return connection;
 }

@@ -4,6 +4,8 @@
 #include "comm/BindingEvaluator.h"
 #include "comm/PlcDriver.h"
 #include "comm/RuntimeAlarms.h"
+#include "comm/RuntimeDriver.h"
+#include "comm/SimulatorDriver.h"
 #include "comm/TagEngine.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
@@ -18,6 +20,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QRegularExpression>
+
+#include <algorithm>
 
 namespace hmi
 {
@@ -84,17 +88,26 @@ bool SimulationController::begin()
     const Screen* screen = m_context.screen();
     if (!screen)
         return false;
+    // Internal tags: simulated (or the training profile). PLC tags: read
+    // and written on their PLCs, unless they are simulated as well.
     std::unique_ptr<IDriver> driver;
-    if (m_monitoring)
+    if (m_context.project().simulationProfile() == u"filling-station")
+        driver = std::make_unique<FillingStationDriver>();
+    else
+        driver = std::make_unique<SimulatorDriver>();
+    const auto tags = m_context.project().tags().tags();
+    m_connectedToPlcs =
+        !m_simulatePlcTags &&
+        std::ranges::any_of(tags, [](const Tag& tag) { return !tag.connection.isEmpty(); });
+    if (m_connectedToPlcs)
     {
         const auto connections = m_context.project().connections();
-        driver = std::make_unique<PlcDriver>(
-            std::vector<Connection>(connections.begin(), connections.end()),
-            m_trustedLibraries ? m_trustedLibraries() : QStringList());
+        driver = std::make_unique<RuntimeDriver>(
+            std::move(driver), std::make_unique<PlcDriver>(
+                                   std::vector<Connection>(connections.begin(), connections.end()),
+                                   m_trustedLibraries ? m_trustedLibraries() : QStringList()));
     }
-    else if (m_context.project().simulationProfile() == u"filling-station")
-        driver = std::make_unique<FillingStationDriver>();
-    m_engine.start(m_context.project().tags().tags(), std::move(driver));
+    m_engine.start(tags, std::move(driver));
     m_alarms->reset();
     m_alarmEngine->setLogFile(alarmLogFile());
     m_alarmEngine->start(m_context.project().alarms());
@@ -350,20 +363,18 @@ void SimulationController::start()
 {
     if (m_running)
         return;
-    m_monitoring = false;
     if (!begin())
         return;
     m_running = true;
     Q_EMIT runningChanged();
 }
 
-void SimulationController::startMonitoring()
+void SimulationController::setSimulatePlcTags(bool simulate)
 {
-    if (m_running)
-        end();
-    m_monitoring = true;
-    m_running = begin();
-    Q_EMIT runningChanged();
+    if (simulate == m_simulatePlcTags)
+        return;
+    m_simulatePlcTags = simulate;
+    Q_EMIT simulatePlcTagsChanged();
 }
 
 void SimulationController::stop()

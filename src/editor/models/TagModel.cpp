@@ -176,6 +176,19 @@ double TagModel::columnWidth(int column, double width, double minimum) const
     return std::max(minimum, (width - double(columns.size() - 1)) * weight(column) / total);
 }
 
+void TagModel::fitTypeToAddress(Tag& tag, const Connection& connection)
+{
+    // DB1.DBX0.0 makes a Bool, DB1.DBW2 an Int, DB1.DBD4 a Real; an Int on a
+    // double word (a DInt) is kept.
+    if (PlcDriver::validateAddress(connection, tag))
+        return;
+    if (const auto type = PlcDriver::typeForAddress(connection.driver, tag.address))
+    {
+        tag.type = *type;
+        tag.initial = tag.converted(tag.initial);
+    }
+}
+
 int TagModel::createTag(const QString& name, int type, const QString& table, int source,
                         const QString& address)
 {
@@ -196,6 +209,7 @@ int TagModel::createTag(const QString& name, int type, const QString& table, int
     }
     if (const Connection* connection = m_context.project().connection(tag.connection))
     {
+        fitTypeToAddress(tag, *connection);
         if (auto valid = PlcDriver::validateAddress(*connection, tag); !valid)
         {
             Q_EMIT problem(valid.error().message);
@@ -415,7 +429,7 @@ bool TagModel::setCell(int row, int column, const QVariant& value)
     {
         if (m_engine.isRunning() && m_engine.isReadOnly())
         {
-            Q_EMIT problem(tr("PLC monitoring is read only. Use Simulation to test values."));
+            Q_EMIT problem(tr("This tag source is read only."));
             return false;
         }
         // While simulating, the value goes to the engine; otherwise it is the
@@ -468,6 +482,9 @@ bool TagModel::setCell(int row, int column, const QVariant& value)
     }
     case AddressColumn:
         changed.address = value.toString().trimmed();
+        // The data type follows the address where it does not fit it.
+        if (const Connection* connection = m_context.project().connection(changed.connection))
+            fitTypeToAddress(changed, *connection);
         break;
     case TableColumn:
         changed.table = value.toString().trimmed();

@@ -26,6 +26,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
+#include <QTcpServer>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -252,6 +253,83 @@ private Q_SLOTS:
             m_app->undoStack().undo();
         QVERIFY(project().connections().empty());
         QVERIFY(!project().tags().find(u"TankLevel"_s));
+    }
+
+    void simplePlcSetup()
+    {
+        // A PLC is a name, a type and an IP address (with an optional port).
+        TagConnections* connections = tags().connections();
+        connections->edit(-1);
+        QCOMPARE(connections->plcType(), 0); // S7-1200/1500
+        connections->setPlcType(1);          // S7-300/400: slot 2
+        QCOMPARE(connections->draft().value(u"slot"_s).toInt(), 2);
+        QCOMPARE(connections->plcType(), 1);
+        connections->setPlcType(2);
+        QCOMPARE(connections->draft().value(u"driver"_s).toString(), u"modbus-tcp"_s);
+        QVERIFY(connections->addressHint().contains(u"hr0"_s));
+        connections->setPlcType(0);
+        connections->setAddress(u" 127.0.0.1:1102 "_s);
+        QCOMPARE(connections->draft().value(u"host"_s).toString(), u"127.0.0.1"_s);
+        QCOMPARE(connections->draft().value(u"port"_s).toInt(), 1102);
+        QCOMPARE(connections->address(), u"127.0.0.1:1102"_s);
+        connections->setDraftField(u"name"_s, u"S7Test"_s);
+        QSignalSpy saved(connections, &TagConnections::saved);
+        connections->saveDraft();
+        QCOMPARE(saved.count(), 1);
+        QCOMPARE(project().connections().size(), std::size_t(1));
+        const Connection plc = project().connections()[0];
+        QCOMPARE(plc.port, 1102);
+        QCOMPARE(plc.slot, 1);
+        QCOMPARE(plc.driver, u"s7"_s);
+
+        // The data type follows the address where it does not fit it.
+        const int row = tags().createTag(u"Running"_s, 2, u"Default"_s, 1, u"M0.0"_s);
+        QVERIFY(row >= 0);
+        QCOMPARE(project().tags().find(u"Running"_s)->type, Tag::Type::Bool);
+        QVERIFY(tags().setCell(tagRow(u"Running"_s), TagModel::AddressColumn, u"%MW4"_s));
+        QCOMPARE(project().tags().find(u"Running"_s)->type, Tag::Type::Int);
+        QVERIFY(tags().setCell(tagRow(u"Running"_s), TagModel::AddressColumn, u"MD8"_s));
+        QCOMPARE(project().tags().find(u"Running"_s)->type, Tag::Type::Int); // a DInt stays
+
+        // Starting the runtime connects PLC tags, unless they are simulated.
+        SimulationController& simulation = m_app->simulation();
+        simulation.start();
+        QVERIFY(simulation.isConnectedToPlcs());
+        QVERIFY(m_app->tagEngine().readsPlc(u"Running"_s));
+        simulation.stop();
+        simulation.setSimulatePlcTags(true);
+        simulation.start();
+        QVERIFY(!simulation.isConnectedToPlcs());
+        QCOMPARE(m_app->tagEngine().quality(u"Running"_s), u"Simulated"_s);
+        simulation.stop();
+        simulation.setSimulatePlcTags(false);
+    }
+
+    void testConnection()
+    {
+        TagConnections* connections = tags().connections();
+        QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        connections->edit(-1);
+        connections->setAddress(u"127.0.0.1:%1"_s.arg(server.serverPort()));
+        connections->testConnection();
+        QVERIFY(connections->testing());
+        QTRY_VERIFY(!connections->testing());
+        QVERIFY2(connections->testPassed(), qPrintable(connections->testResult()));
+        QVERIFY(connections->testResult().contains(u"answers"_s));
+        // Nothing listens there any more.
+        const quint16 port = server.serverPort();
+        server.close();
+        connections->setAddress(u"127.0.0.1:%1"_s.arg(port));
+        connections->testConnection();
+        QTRY_VERIFY_WITH_TIMEOUT(!connections->testing(), 5000);
+        QVERIFY(!connections->testPassed());
+        QVERIFY(connections->testResult().contains(u"No answer"_s));
+        // An address is needed.
+        connections->setAddress({});
+        connections->testConnection();
+        QVERIFY(!connections->testing());
+        QVERIFY(!connections->testPassed());
     }
 
     void externalTagCreationValidationAndCsv()

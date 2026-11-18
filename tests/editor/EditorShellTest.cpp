@@ -294,7 +294,7 @@ private Q_SLOTS:
         QTRY_VERIFY(connectionsDialog->property("opened").toBool());
         auto* connections = context.tags().connections();
         connections->setDraftField(QStringLiteral("name"), QStringLiteral("LinePLC"));
-        connections->setDraftField(QStringLiteral("host"), QStringLiteral("fixture.invalid"));
+        connections->setAddress(QStringLiteral("192.168.0.10"));
         if (const QString path = qEnvironmentVariable("HMI_CONNECTIONS_SCREENSHOT");
             !path.isEmpty())
         {

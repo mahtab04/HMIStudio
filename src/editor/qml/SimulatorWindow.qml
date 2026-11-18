@@ -23,7 +23,7 @@ Window {
     minimumWidth: 160
     minimumHeight: 120
     visible: true
-    title: window.simulation.monitoring ? qsTr("%1 - PLC monitor").arg(window.simulation.screenTitle) : qsTr("%1 - Runtime simulation").arg(window.simulation.screenTitle)
+    title: window.simulation.connectedToPlcs ? qsTr("%1 - Runtime (PLC)").arg(window.simulation.screenTitle) : qsTr("%1 - Runtime simulation").arg(window.simulation.screenTitle)
     color: window.theme.window
 
     // Stopping destroys this window; not from inside its own close handler.

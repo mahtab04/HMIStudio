@@ -29,6 +29,9 @@ public:
 
     [[nodiscard]] virtual bool isReadOnly() const noexcept { return false; }
     [[nodiscard]] virtual bool isSimulation() const noexcept { return false; }
+    // Whether this tag's values are simulated (shown as such), rather than
+    // read from a PLC.
+    [[nodiscard]] virtual bool simulates(const Tag& /*tag*/) const { return isSimulation(); }
 
     // Starts serving these tags.
     virtual Result<void> start(std::span<const Tag> tags) = 0;

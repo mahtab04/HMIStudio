@@ -1,7 +1,7 @@
 # hmi_editor_lib: controllers, tools, commands and panel models plus the QML
 # shell, as a static QML module so tests can link the C++ without the app.
 # hmi_editor: the executable (main.cpp only).
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Svg)
+find_package(Qt6 REQUIRED COMPONENTS Network Quick QuickControls2 Svg)
 
 qt_add_library(hmi_editor_lib STATIC)
 
@@ -209,6 +209,7 @@ target_link_libraries(hmi_editor_lib PUBLIC
     hmi_comm
     hmi_render
     hmi_quickplugin
+    Qt6::Network
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Svg)

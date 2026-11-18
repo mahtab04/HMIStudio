@@ -893,9 +893,13 @@ The explicitly saved `Project::simulationProfile()` chooses ordinary tag
 simulation or the buffer-filling training model. `FillingStationDriver` runs
 on the existing worker boundary, never opens a device connection and resets
 its process state on restart. It belongs to the sample project, so it lives
-in `editor/app/` next to it, not in `hmi_comm`. Native PLC monitoring remains
-read only, and loads a native library named by a project only from a path
-the user chose on this computer (`AppSettings::trustedLibraries`).
+in `editor/app/` next to it, not in `hmi_comm`. When the project has PLC
+tags, the runtime starts a `RuntimeDriver`: internal tags from the simulator
+(or the profile), PLC tags from `PlcDriver`, which reads and writes them
+and loads a native library named by a project only from a path the user
+chose on this computer (`AppSettings::trustedLibraries`). `TagEngine` keeps
+per tag whether it is simulated or read from a PLC; a written PLC tag shows
+its value once read back.
 
 Tag minimum and maximum are the simulation and display range. They limit
 operator input only for tags with `limitInput`, like the optional limits of

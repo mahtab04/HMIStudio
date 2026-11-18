@@ -1,41 +1,60 @@
-# HMI tags and PLC monitoring
+# HMI tags and PLCs
 
-Use an HMI tag as the named value that screen objects bind to. Each tag has an HMI data type and belongs to a tag table. An internal tag holds its value in the HMI. An external tag selects a named PLC connection and an address within that PLC.
+A tag is a named value that screen objects bind to. An **internal** tag lives in the HMI (simulated while you test). A **PLC tag** names a PLC and an address in it; the runtime reads it from the PLC and writes it there when an operator changes it. This is the model most HMIs share (WinCC Unified's internal and external tags, Ignition's devices and tags, FactoryTalk's device shortcuts), kept to the few fields a working connection needs.
 
-This workflow follows WinCC Unified's distinction between internal and external tags and its use of named tag tables for organization. Connection definitions belong to the project and have stable IDs, so renaming a connection preserves its tag assignments. [Siemens tag basics](https://docs.tia.siemens.cloud/r/en-us/v21/configuring-tags-rt-unified/basics-rt-unified/basics-of-tags-rt-unified), [Siemens tag tables](https://docs.tia.siemens.cloud/r/en-us/v20/configuring-tags-rt-unified/basics-rt-unified/overview-of-hmi-tag-tables-rt-unified)
+## Connecting a PLC in three steps
 
-1. Open **HMI tags** and choose **Connections** to configure a PLC endpoint.
-2. Choose the driver, host, and its rack/slot, CIP route, or Modbus unit ID. Give the connection a recognizable name such as `LinePLC`.
-3. Choose **Add** and enter the HMI tag name, data type, tag table, connection, and PLC address. Use **Internal** for a local HMI value.
-4. Return to a screen tab and assign the tag to an object's Process property or another bindable property in the properties panel.
-5. Use **Simulation settings** to configure start values and ramp, sine, random, or toggle test signals. The normal simulation action uses those settings for all tags.
-6. Use **Monitor PLCs** to read configured PLC addresses. The monitor uses a copy of the screen, and PLC values appear in the Value column. Monitoring is read only in this implementation.
+1. **HMI tags > Connections.** Enter a name, choose the **PLC type** and type its **IP address**, then **Test** (it checks that the PLC answers on the network) and **Save**.
 
-The tag workspace expands across the window. The table selector filters a named tag table. Search also matches addresses and connection names. Changes to tags and connections use the document's undo stack. Cycle is the requested polling interval in milliseconds, from 100 to 60,000. Acquisition is best effort and shares the communication worker across tags.
+   | PLC type | Port | Defaults |
+   |---|---|---|
+   | Siemens S7-1200 / S7-1500 | 102 | rack 0, slot 1 |
+   | Siemens S7-300 / S7-400 | 102 | rack 0, slot 2 |
+   | Modbus TCP | 502 | unit 1 |
+   | Allen-Bradley (EtherNet/IP) | 44818 | CIP route 1,0 |
 
-| Driver | Native library | Address examples | Scalar mapping |
-|---|---|---|---|
-| Siemens S7 | Snap7 | `DB1.DBX0.0`, `DB1.DBB1`, `DB1.DBW2`, `DB1.DBD4` | Bool uses DBX, Int uses byte/16-bit signed word/32-bit signed double word, Real uses 32-bit IEEE DBD |
-| Allen-Bradley Logix | libplctag | `Motor.Running`, `Motor.Speed`, `Program:Main.Counter` | Bool uses BOOL, Int uses DINT, Real uses REAL |
-| Modbus TCP | libplctag | `co0`, `di0`, `hr0`, `ir0` | Bool uses a coil/input bit, Int uses a signed 16-bit register, Real uses two registers with the library's default big-endian byte/word order |
+   A PLC on another port: add it to the address, `127.0.0.1:1102`. Rack and slot, the CIP route, the Modbus unit and the driver library wait under **More settings**; the defaults fit most PLCs.
+2. **Add tags** with that PLC as their connection and an address. The data type follows the address:
 
-String tags work internally and in simulation. External monitoring currently supports the scalar subset in this table. Configure the HMI type to match the PLC storage type. Arrays, structures, strings, selectable Modbus word order, native symbol browsing, PLC writes, and automatic reconnection backoff remain extension work.
+   | PLC | Address | Data type |
+   |---|---|---|
+   | Siemens S7 | `DB1.DBX0.0`, `M0.0`, `I0.0`, `Q0.1` (a bit) | Bool |
+   | | `DB1.DBB1`, `DB1.DBW2`, `MB3`, `MW10`, `IW64`, `QW0` | Int (byte unsigned, word signed) |
+   | | `DB1.DBD4`, `MD20` | Real (choose Int for a DInt) |
+   | Modbus TCP | `co0` (coil), `di0` (input) | Bool |
+   | | `hr0` (holding register), `ir0` (input register) | Int; a Real uses two registers |
+   | Allen-Bradley | `Motor.Running`, `Motor.Speed`, `Program:Main.Counter` | as the PLC's BOOL, DINT, REAL |
 
-For Snap7, place the matching `snap7` shared library beside the application or choose its absolute path in Connections.
+   S7 addresses may be written as TIA Portal does, with `%` (`%MW10`), and with German letters (`E`, `A`). Modbus addresses are zero based.
+3. **Simulate** (F5). PLC tags are read every acquisition cycle (Cycle, default 500 ms) and written at once when an operator sets them; the value shows once the PLC has it. Internal tags are simulated as before. To test without a PLC, check **Simulate PLC tags** in HMI tags: PLC tags are then simulated like internal ones.
 
-Loading a native library runs its code, and a project file can come from anyone. So a library path stored in a project is loaded only after it was chosen with **Browse** in Connections on this computer; the choice is remembered in the local application settings, not in the project. A path that is only typed, or that arrives with a project from elsewhere, reports "loaded only after you choose it with Browse" in the Quality tooltip until it is chosen. The library beside the application is always allowed. Windows uses `snap7.dll` and Linux commonly uses `libsnap7.so`. The initial adapter reads absolute global DB locations. S7-1200/1500 access depends on the CPU configuration, including compatible PUT/GET access and non-optimized DB layout. [Snap7 client compatibility](https://snap7.sourceforge.net/snap7_client.html)
+The Quality column reports **Simulated**, **Waiting** (no value from the PLC yet), **Good** or **Bad**, with the reason in its tooltip and the first problem above the table. A PLC that does not answer is retried on the next cycles. Changes to tags and connections are undoable; stop and start the runtime to use them.
 
-For Allen-Bradley and Modbus, use the matching `plctag` shared library, such as `plctag.dll` or `libplctag.so`, or select its absolute path. The Logix adapter supplies `plc=controllogix` and the configured CIP route. Modbus addresses are zero based, so `hr0` denotes the first holding register. A Real occupies two consecutive registers. Native binaries must match the application's architecture. [libplctag project](https://github.com/libplctag/libplctag), [native API](https://github.com/libplctag/libplctag/wiki/API), [driver attributes](https://github.com/libplctag/libplctag/wiki/Tag-String-Attributes)
+## Testing without hardware
 
-Quality reports **Offline**, **Simulated**, **Waiting**, **Good**, or **Bad**. Missing connections and invalid addresses have configuration messages. The first active driver error is shown above the table, and cell tooltips expose the applicable error. Failed reads clear the tag engine's current value. Objects retain their last successfully applied property until a valid value arrives. PLC connection errors are retried on subsequent acquisition turns. Stop and start monitoring after changing native library settings or tag configuration to take a new runtime snapshot.
+- **A test S7 PLC on this computer**: `tools/s7_test_plc.py` runs an S7 server ([python-snap7](https://github.com/gijzelaerr/python-snap7)) with DB1 and the markers, and changes a few values. Run `pip install python-snap7`, then `python tools/s7_test_plc.py`, add a PLC *Siemens S7-1200 / S7-1500* at `127.0.0.1:1102`, and tags `Level` (DB1.DBD0, a ramp), `Running` (DB1.DBX4.0, toggles), `Setpoint` (DB1.DBW6) and `Start` (M0.0); the script prints what the HMI writes. Port 102 needs administrator rights, hence 1102.
+- **Siemens S7-PLCSIM Advanced** (licensed) simulates an S7-1500 that clients reach over TCP/IP; allow PUT/GET in its CPU.
+- **Modbus TCP**: any Modbus TCP server or simulator, or a soft PLC such as OpenPLC.
 
-CSV export includes `table`, `connection`, `address`, and `acquisitionMs` in addition to the existing columns. Connections are exported by name. On import, names matching configured connections are resolved to their stable IDs. Configure the destination connections before importing external tags. An unresolved connection remains visible as missing. Existing CSV files with the earlier columns still import. The CSV schema is HmiStudio's schema, and vendor-native TIA/Studio 5000 export formats require a dedicated importer.
+## Driver libraries
 
-Project formats 2 and 3 store connection definitions in `project.json` and the additional tag settings in `tags.json`. Versions 0 and 1 load with the Default tag table, a 500 ms acquisition interval, and their existing simulation settings. The native libraries are loaded dynamically and are supplied separately.
+The runtime talks to S7 PLCs through [Snap7](https://snap7.sourceforge.net/) and to Modbus TCP and Allen-Bradley PLCs through [libplctag](https://github.com/libplctag/libplctag), loaded when needed. Put `snap7.dll` and `plctag.dll` (Linux: `libsnap7.so`, `libplctag.so`), built for the same architecture as the application, beside the application. They are not part of this repository.
 
-OPC UA is a useful next integration for PLCs or gateways exposing an OPC UA server. Ignition uses the same broad separation between device connections and tags and can connect through OPC UA services. An OPC UA adapter can fit the existing worker/driver boundary, but requires endpoint security, certificates, subscriptions, quality mapping, and node browsing. These are still to be implemented here. [Ignition device drivers](https://www.docs.inductiveautomation.com/docs/8.3/ignition-modules/opc-ua/opc-ua-drivers), [open62541 client documentation](https://www.open62541.org/doc/master/client.html)
+Loading a library runs its code, and a project file can come from anyone. So a library path stored in a project (More settings > Driver library) is loaded only after it was chosen with **Browse** on this computer; the choice is remembered in the local application settings, not in the project. The library beside the application is always allowed.
 
-The native adapter tests load a deterministic shared-library fixture and cover address validation, native ABI calls, S7 byte order, scalar conversion, acquisition intervals, missing libraries, failed reads, and read-only behavior. Validation against physical PLC hardware is still required for deployment.
+S7-1200/1500 CPUs answer only with **PUT/GET access** allowed (CPU properties > Protection & Security) and read **non-optimized** data blocks (block access); markers, inputs and outputs need neither. [Snap7 client compatibility](https://snap7.sourceforge.net/snap7_client.html)
+
+## More
+
+The tag workspace fills the window. The table selector filters a named tag table; search also matches addresses and connection names. Cycle is the acquisition interval in milliseconds, from 100 to 60,000.
+
+String tags work internally and in simulation; PLC tags are Bool, Int or Real. Arrays, structures and strings on PLCs, Modbus word order, browsing the PLC's tags, OPC UA, and reconnection back-off are still to come.
+
+CSV export includes `table`, `connection`, `address` and `acquisitionMs`. Connections are exported by name; on import, names matching configured connections are resolved to their ids, so configure the connections before importing PLC tags. An unknown connection stays visible as missing. The CSV schema is HMI Studio's own; TIA Portal or Studio 5000 exports need a dedicated importer.
+
+Connections are stored in `project.json`, tag settings in `tags.json`. Older projects load unchanged.
+
+The driver tests use a deterministic shared-library fixture: addresses, reads and writes, byte order, conversions, acquisition intervals, ports, missing libraries and failed reads. Validation against physical PLC hardware is still required for deployment.
 
 ## Runtime operation
 
@@ -78,7 +97,7 @@ Mouse and touch use the same gesture path. Tab selects an operating element, Ent
 
 A tag's **Minimum** and **Maximum** are its simulation and display range. They limit operator input only when **Limit input** is Yes (in the table's simulation settings view), like the optional limits of a WinCC tag; the sample's `FlowSetpoint` has it on, so the operator cannot set more than 100 L/min.
 
-Input accepts direct bindings and invertible linear scaling. Range maps, expression transforms and zero-span scales are display only and report an error on input. Invalid numbers, non-finite numbers, missing tags and out-of-range values are rejected with a visible explanation. The I/O field is currently numeric; String tags remain editable in the tag table. Slider movement writes continuously; cancelling ends movement without rolling back values already written. All native PLC adapters remain read only, so these interactions are available in **Simulation**, not **Monitor PLCs**.
+Input accepts direct bindings and invertible linear scaling. Range maps, expression transforms and zero-span scales are display only and report an error on input. Invalid numbers, non-finite numbers, missing tags and out-of-range values are rejected with a visible explanation. The I/O field is currently numeric; String tags remain editable in the tag table. Slider movement writes continuously; cancelling ends movement without rolling back values already written. On PLC tags these interactions write the PLC.
 
 Tags named by event actions take part in Where used ("Click event"), delete warnings, renaming and undo, including objects inside groups. Format 4 stores events under `"events": {"click": [...], "press": [...], "release": [...]}` in the screen files. Format 3 files are converted on load: a Set, Toggle or Increment operation becomes a Click action, and a Momentary operation becomes Set true on Press and Set false on Release.
 
@@ -92,6 +111,6 @@ The built-in sample and `examples/BufferFilling.hmiproj` are an operable transfe
 - **FlowSetpoint** is shared by the editable I/O field, slider and gauge. The -5/+5 and 50 L/min preset buttons write the same tag. `Flow` is the separately simulated actual flow with a short response lag; pressure follows actual flow.
 - **Level**, **Flow**, **Pressure**, **Temperature**, **PumpRunning** and **HighLevel** are generated measurements. Changing their start values is useful for test scenarios; writing a measurement during this simulation is overwritten by the process model.
 
-The saved `simulationProfile: "filling-station"` explicitly selects `FillingStationDriver`; an empty profile uses the normal independent per-tag generators. The profile's tag names form its fixed demo interface. Keep those names when customizing this sample, or remove the profile to use ordinary tags. Saved profile behavior survives closing and reopening the project. PLC monitoring always selects the configured native adapters instead.
+The saved `simulationProfile: "filling-station"` explicitly selects `FillingStationDriver`; an empty profile uses the normal independent per-tag generators. The profile's tag names form its fixed demo interface. Keep those names when customizing this sample, or remove the profile to use ordinary tags. Saved profile behavior survives closing and reopening the project. PLC tags (with a connection) always go to their PLCs unless Simulate PLC tags is checked.
 
 This is a deterministic training model of a pump and buffer tank, with bounded time steps and reset state on restart. It is not a PLC program or a safety function; its HMI alarms (`docs/ALARMS.md`) are operator information only. No physical outputs are written.

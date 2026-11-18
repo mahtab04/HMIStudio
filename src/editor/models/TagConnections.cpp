@@ -1,9 +1,12 @@
 #include "editor/models/TagConnections.h"
 
+#include "comm/PlcDriver.h"
 #include "core/model/Project.h"
 #include "editor/commands/TagCommands.h"
 #include "editor/tools/ToolContext.h"
 
+#include <QTcpSocket>
+#include <QTimer>
 #include <QUuid>
 
 namespace hmi
@@ -28,6 +31,149 @@ TagConnections::TagConnections(ToolContext& context, QObject* parent)
     edit(-1);
 }
 
+TagConnections::~TagConnections()
+{
+    if (m_test)
+        m_test->abort();
+}
+
+namespace
+{
+// The PLC types of the dialog: a driver and its usual slot.
+struct PlcType
+{
+    const char* driver;
+    int slot;
+};
+constexpr PlcType kPlcTypes[] = {{"s7", 1}, {"s7", 2}, {"modbus-tcp", 1}, {"ab-eip", 1}};
+} // namespace
+
+QStringList TagConnections::plcTypeNames() const
+{
+    return {tr("Siemens S7-1200 / S7-1500"), tr("Siemens S7-300 / S7-400"), tr("Modbus TCP"),
+            tr("Allen-Bradley (EtherNet/IP)")};
+}
+
+int TagConnections::plcType() const
+{
+    const QString driver = m_draft.value(QStringLiteral("driver")).toString();
+    if (driver == u"modbus-tcp")
+        return 2;
+    if (driver == u"ab-eip")
+        return 3;
+    return m_draft.value(QStringLiteral("slot"), 1).toInt() == 2 ? 1 : 0;
+}
+
+void TagConnections::setPlcType(int type)
+{
+    if (type < 0 || type >= int(std::size(kPlcTypes)))
+        return;
+    m_draft.insert(QStringLiteral("driver"), QString::fromLatin1(kPlcTypes[type].driver));
+    m_draft.insert(QStringLiteral("slot"), kPlcTypes[type].slot);
+    m_draft.insert(QStringLiteral("rack"), 0);
+    m_testResult.clear();
+    Q_EMIT testChanged();
+    Q_EMIT draftChanged();
+}
+
+QString TagConnections::address() const
+{
+    const QString host = m_draft.value(QStringLiteral("host")).toString();
+    const int port = m_draft.value(QStringLiteral("port")).toInt();
+    return port > 0 ? QStringLiteral("%1:%2").arg(host).arg(port) : host;
+}
+
+void TagConnections::setAddress(const QString& text)
+{
+    // host[:port]; a port that is not a number stays in the host, where
+    // saving reports it.
+    QString host = text.trimmed();
+    int port = 0;
+    if (const qsizetype colon = host.lastIndexOf(u':'); colon > 0)
+    {
+        bool ok = false;
+        const int value = host.mid(colon + 1).toInt(&ok);
+        if (ok)
+        {
+            port = value;
+            host.truncate(colon);
+        }
+    }
+    m_draft.insert(QStringLiteral("host"), host);
+    m_draft.insert(QStringLiteral("port"), port);
+    m_testResult.clear();
+    Q_EMIT testChanged();
+    Q_EMIT draftChanged();
+}
+
+QString TagConnections::addressHint() const
+{
+    return PlcDriver::addressExamples(m_draft.value(QStringLiteral("driver")).toString());
+}
+
+bool TagConnections::testing() const
+{
+    return m_test != nullptr;
+}
+
+void TagConnections::testConnection()
+{
+    if (m_test)
+        m_test->abort();
+    const QString host = m_draft.value(QStringLiteral("host")).toString().trimmed();
+    Connection probe;
+    probe.driver = m_draft.value(QStringLiteral("driver")).toString();
+    probe.port = m_draft.value(QStringLiteral("port")).toInt();
+    const int port = probe.effectivePort();
+    if (host.isEmpty())
+    {
+        m_testPassed = false;
+        m_testResult = tr("Enter the PLC's IP address first.");
+        Q_EMIT testChanged();
+        return;
+    }
+    auto* socket = new QTcpSocket(this);
+    m_test = socket;
+    m_testPassed = false;
+    m_testResult = tr("Connecting to %1:%2 …").arg(host).arg(port);
+    Q_EMIT testChanged();
+    const auto finish = [this, socket](bool passed, const QString& result)
+    {
+        if (m_test != socket)
+            return; // a newer test, or the result is in already
+        m_test = nullptr;
+        m_testPassed = passed;
+        m_testResult = result;
+        socket->abort();
+        socket->deleteLater();
+        Q_EMIT testChanged();
+    };
+    connect(socket, &QTcpSocket::connected, this,
+            [finish, host, port]
+            {
+                finish(true, tr("The PLC answers at %1:%2. Values are read when the runtime "
+                                "starts.")
+                                 .arg(host)
+                                 .arg(port));
+            });
+    connect(socket, &QTcpSocket::errorOccurred, this,
+            [finish, socket, host, port]
+            {
+                finish(false,
+                       tr("No answer at %1:%2: %3").arg(host).arg(port).arg(socket->errorString()));
+            });
+    QTimer::singleShot(kTestTimeoutMs, socket,
+                       [finish, host, port]
+                       {
+                           finish(false, tr("No answer at %1:%2 within %3 s. Check the IP "
+                                            "address, the cable and the PLC's port.")
+                                             .arg(host)
+                                             .arg(port)
+                                             .arg(kTestTimeoutMs / 1000));
+                       });
+    socket->connectToHost(host, quint16(port));
+}
+
 QStringList TagConnections::driverKeys() const
 {
     return {QStringLiteral("s7"), QStringLiteral("ab-eip"), QStringLiteral("modbus-tcp")};
@@ -40,8 +186,11 @@ void TagConnections::edit(int row)
     m_draft = m_selectedRow < 0 ? Connection{}.toJson().toVariantMap()
                                 : connections[std::size_t(row)].toJson().toVariantMap();
     m_message.clear();
+    m_testResult.clear();
+    m_testPassed = false;
     Q_EMIT draftChanged();
     Q_EMIT messageChanged();
+    Q_EMIT testChanged();
 }
 
 void TagConnections::setDraftField(const QString& field, const QVariant& value)
@@ -85,8 +234,7 @@ QStringList TagConnections::names() const
 
 QStringList TagConnections::driverNames() const
 {
-    return {tr("Siemens S7 · Snap7"), tr("Allen-Bradley Logix · libplctag"),
-            tr("Modbus TCP · libplctag")};
+    return {tr("Siemens S7"), tr("Allen-Bradley (EtherNet/IP)"), tr("Modbus TCP")};
 }
 
 QString TagConnections::name(const QString& id) const

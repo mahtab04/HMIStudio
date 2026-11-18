@@ -11,6 +11,8 @@ add_library(hmi_comm STATIC
     RuntimeAlarms.cpp
     RuntimeAlarms.h
     PlcDriver.cpp
+    RuntimeDriver.cpp
+    RuntimeDriver.h
     PlcDriver.h
     SimulatorDriver.cpp
     SimulatorDriver.h

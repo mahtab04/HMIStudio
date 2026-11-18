@@ -48,6 +48,8 @@ public:
     void stop();
     [[nodiscard]] bool isReadOnly() const noexcept { return m_readOnly; }
     [[nodiscard]] bool isSimulating() const noexcept { return m_simulating; }
+    // Whether a tag's values come from a PLC in this run.
+    [[nodiscard]] bool readsPlc(const QString& tag) const;
     [[nodiscard]] QString quality(const QString& tag) const;
     [[nodiscard]] QString problem(const QString& tag) const;
     [[nodiscard]] bool isRunning() const noexcept { return m_running; }
@@ -81,6 +83,8 @@ private:
     QTimer m_publishTimer;
     QHash<QString, QString> m_errors;
     QSet<QString> m_received;
+    QSet<QString> m_simulated; // tags whose values are simulated
+    QSet<QString> m_fromPlc;   // tags read from a PLC: written values show once read back
     quint64 m_generation = 0;
     bool m_readOnly = false;
     bool m_simulating = true;

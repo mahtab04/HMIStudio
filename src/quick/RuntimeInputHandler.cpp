@@ -321,7 +321,7 @@ void RuntimeInputHandler::beginInput(const HmiObject& object)
     }
     if (m_engine.isReadOnly())
     {
-        reject(tr("PLC monitoring is read only. Use Simulation to operate controls."));
+        reject(tr("This tag source is read only."));
         return;
     }
     m_input = &object;

@@ -96,7 +96,7 @@ Dialog {
         Label {
             Layout.columnSpan: 2
             Layout.fillWidth: true
-            text: source.currentIndex === 0 ? qsTr("Internal tags hold values inside this HMI. Configure test signals in the Simulation view.") : qsTr("The address is read through the selected connection. Use Monitor PLCs to acquire values.")
+            text: source.currentIndex === 0 ? qsTr("Internal tags hold values inside this HMI. Configure test signals in the Simulation view.") : qsTr("The runtime reads and writes this address on the PLC. The data type follows the address (DB1.DBX0.0 a Bool, DB1.DBW2 an Int, DB1.DBD4 a Real).")
             wrapMode: Text.WordWrap
             color: dialog.theme.textMuted
         }

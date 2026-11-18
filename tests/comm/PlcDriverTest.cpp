@@ -1,9 +1,12 @@
 #include "comm/PlcDriver.h"
 
+#include "comm/RuntimeDriver.h"
+#include "comm/SimulatorDriver.h"
 #include "comm/TagEngine.h"
 
 #include <QFileInfo>
 #include <QHash>
+#include <QLibrary>
 #include <QTest>
 
 using namespace hmi;
@@ -101,7 +104,6 @@ private Q_SLOTS:
         QVERIFY(values.isEmpty());
         driver.poll(0.5, collect);
         QCOMPARE(values.size(), 6);
-        QVERIFY(!driver.write(u"Ab"_s, qint64(7)));
         driver.stop();
         QVERIFY(driver.start(tags));
         driver.poll(0, collect);
@@ -152,6 +154,106 @@ private Q_SLOTS:
             ab.library, QStringList{file.absolutePath() + u"/x/../"_s + file.fileName()}));
         QVERIFY(!PlcDriver::isTrustedLibrary(u"//server/share/evil.dll"_s, trusted()));
         QVERIFY(!PlcDriver::isTrustedLibrary(QString(), trusted()));
+    }
+
+    void s7AddressesAndTypes()
+    {
+        const Connection s7 = connection(u"s7"_s);
+        // TIA Portal's forms: with or without %, markers, inputs, outputs.
+        for (const auto& [address, type] :
+             std::vector<std::pair<QString, Tag::Type>>{{u"%DB1.DBX0.0"_s, Tag::Type::Bool},
+                                                        {u"M0.0"_s, Tag::Type::Bool},
+                                                        {u"%I0.7"_s, Tag::Type::Bool},
+                                                        {u"Q1.0"_s, Tag::Type::Bool},
+                                                        {u"%MW10"_s, Tag::Type::Int},
+                                                        {u"MB3"_s, Tag::Type::Int},
+                                                        {u"%IW64"_s, Tag::Type::Int},
+                                                        {u"MD20"_s, Tag::Type::Real},
+                                                        {u"DB2.DBD4"_s, Tag::Type::Real}})
+        {
+            QCOMPARE(PlcDriver::typeForAddress(u"s7"_s, address), type);
+            QVERIFY2(PlcDriver::validateAddress(s7, tag(u"T"_s, type, s7.id, address)),
+                     qPrintable(address));
+        }
+        // A DInt: an Int on a double word is fine too.
+        QVERIFY(PlcDriver::validateAddress(s7, tag(u"T"_s, Tag::Type::Int, s7.id, u"MD20"_s)));
+        for (const QString& wrong : {u"M0"_s, u"MW0.1"_s, u"DB1.DBX0"_s, u"X5"_s, u"DB0.DBW0"_s})
+        {
+            QVERIFY(!PlcDriver::typeForAddress(u"s7"_s, wrong));
+        }
+        QCOMPARE(PlcDriver::typeForAddress(u"modbus-tcp"_s, u"co3"_s), Tag::Type::Bool);
+        QCOMPARE(PlcDriver::typeForAddress(u"modbus-tcp"_s, u"hr7"_s), Tag::Type::Int);
+        QVERIFY(!PlcDriver::typeForAddress(u"ab-eip"_s, u"Motor.Speed"_s));
+        // The port: the protocol's unless given.
+        QCOMPARE(s7.effectivePort(), 102);
+        Connection modbus = connection(u"modbus-tcp"_s);
+        QCOMPARE(modbus.effectivePort(), 502);
+        modbus.port = 1502;
+        QVERIFY(PlcDriver::attributes(modbus, tag(u"R"_s, Tag::Type::Int, modbus.id, u"hr0"_s))
+                    ->contains(u"gateway=fixture.invalid:1502"));
+    }
+
+    void writesThroughNativeAdapters()
+    {
+        Connection s7 = connection(u"s7"_s);
+        s7.port = 1102;
+        const std::vector<Connection> connections{s7, connection(u"ab-eip"_s)};
+        const std::vector<Tag> tags{tag(u"Flag"_s, Tag::Type::Bool, u"s7"_s, u"M1.3"_s),
+                                    tag(u"Word"_s, Tag::Type::Int, u"s7"_s, u"MW4"_s),
+                                    tag(u"Speed"_s, Tag::Type::Real, u"s7"_s, u"MD8"_s),
+                                    tag(u"Count"_s, Tag::Type::Int, u"ab-eip"_s, u"Count"_s)};
+        PlcDriver driver(connections, trusted());
+        QVERIFY(driver.start(tags));
+        QHash<QString, TagValue> values;
+        const auto collect = [&](const QString& name, const TagValue& value)
+        {
+            values.insert(name, value);
+        };
+        driver.poll(0, collect);
+        QCOMPARE(values.value(u"Flag"_s), TagValue(false));
+        QVERIFY(driver.write(u"Flag"_s, true));
+        QVERIFY(driver.write(u"Word"_s, qint64(-1234)));
+        QVERIFY(driver.write(u"Speed"_s, 3.5));
+        QVERIFY(driver.write(u"Count"_s, qint64(7)));
+        // Read back at once, on the next poll.
+        values.clear();
+        driver.poll(0.05, collect);
+        QCOMPARE(values.value(u"Flag"_s), TagValue(true));
+        QCOMPARE(values.value(u"Word"_s), TagValue(qint64(-1234)));
+        QCOMPARE(values.value(u"Speed"_s), TagValue(3.5));
+        QCOMPARE(values.value(u"Count"_s), TagValue(qint64(7)));
+        // The port was set before connecting.
+        QLibrary fixture(QString::fromUtf8(HMI_FAKE_PLC_LIBRARY));
+        const auto port = reinterpret_cast<int (*)()>(fixture.resolve("fake_s7_port"));
+        QVERIFY(port);
+        QCOMPARE(port(), 1102);
+        QVERIFY(!driver.write(u"Nothing"_s, qint64(1)));
+        driver.stop();
+    }
+
+    void runtimeMixesSimulationAndPlcs()
+    {
+        // Internal tags simulated, PLC tags from the PLC, in one run.
+        Tag local = tag(u"Local"_s, Tag::Type::Real, {}, {});
+        local.initial = 5.0;
+        const std::vector<Tag> tags{local, tag(u"Plc"_s, Tag::Type::Int, u"s7"_s, u"MW12"_s)};
+        TagEngine engine;
+        engine.start(tags,
+                     std::make_unique<RuntimeDriver>(
+                         std::make_unique<SimulatorDriver>(),
+                         std::make_unique<PlcDriver>(std::vector{connection(u"s7"_s)}, trusted())));
+        QCOMPARE(engine.quality(u"Local"_s), u"Simulated"_s);
+        QCOMPARE(engine.value(u"Local"_s), TagValue(5.0));
+        QVERIFY(engine.readsPlc(u"Plc"_s));
+        QVERIFY(!engine.readsPlc(u"Local"_s));
+        QTRY_COMPARE(engine.quality(u"Plc"_s), u"Good"_s);
+        QCOMPARE(engine.value(u"Plc"_s), TagValue(qint64(0)));
+        // An operator input reaches the PLC and shows once read back.
+        QVERIFY(engine.writeChecked(u"Plc"_s, qint64(77)));
+        QTRY_COMPARE(engine.value(u"Plc"_s), TagValue(qint64(77)));
+        engine.write(u"Local"_s, 9.0);
+        QCOMPARE(engine.value(u"Local"_s), TagValue(9.0));
+        engine.stop();
     }
 
     void queuedValuesStayInTheirRun()
