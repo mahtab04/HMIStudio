@@ -1,6 +1,7 @@
 #include "editor/models/TagConnections.h"
 
 #include "comm/PlcDriver.h"
+#include "comm/TestPlc.h"
 #include "core/model/Project.h"
 #include "editor/commands/TagCommands.h"
 #include "editor/tools/ToolContext.h"
@@ -15,7 +16,9 @@ namespace hmi
 TagConnections::TagConnections(ToolContext& context, QObject* parent)
     : QObject(parent)
     , m_context(context)
+    , m_testPlc(std::make_unique<TestPlc>())
 {
+    m_testPlcStatus = tr("A test PLC on this computer, to try PLC tags without hardware.");
     connect(&context.project().notifier(), &DocumentNotifier::connectionsChanged, this,
             &TagConnections::changed);
     connect(&context.project().notifier(), &DocumentNotifier::projectReset, this,
@@ -35,6 +38,44 @@ TagConnections::~TagConnections()
 {
     if (m_test)
         m_test->abort();
+}
+
+bool TagConnections::testPlcRunning() const
+{
+    return m_testPlc->isRunning();
+}
+
+void TagConnections::startTestPlc()
+{
+    if (m_testPlc->isRunning())
+        return;
+    if (auto started = m_testPlc->start(); !started)
+        m_testPlcStatus = tr("The test PLC could not start: %1").arg(started.error().message);
+    else
+        m_testPlcStatus = tr("Test PLC running: S7 at 127.0.0.1:%1, Modbus TCP at 127.0.0.1:%2.")
+                              .arg(m_testPlc->s7Port())
+                              .arg(m_testPlc->modbusPort());
+    Q_EMIT testPlcChanged();
+}
+
+void TagConnections::stopTestPlc()
+{
+    m_testPlc->stop();
+    m_testPlcStatus = tr("Test PLC stopped.");
+    Q_EMIT testPlcChanged();
+}
+
+void TagConnections::useTestPlc(bool modbus)
+{
+    startTestPlc();
+    if (!m_testPlc->isRunning())
+        return;
+    if (m_draft.value(QStringLiteral("name")).toString().trimmed().isEmpty())
+        m_draft.insert(QStringLiteral("name"),
+                       modbus ? QStringLiteral("TestModbus") : QStringLiteral("TestPLC"));
+    setPlcType(modbus ? 2 : 0);
+    setAddress(
+        QStringLiteral("127.0.0.1:%1").arg(modbus ? m_testPlc->modbusPort() : m_testPlc->s7Port()));
 }
 
 namespace

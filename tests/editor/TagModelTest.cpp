@@ -7,6 +7,7 @@
 #include "comm/BindingEvaluator.h"
 #include "comm/RuntimeAlarms.h"
 #include "comm/TagEngine.h"
+#include "comm/TestPlc.h"
 #include "core/model/HmiObject.h"
 #include "core/model/Project.h"
 #include "core/objects/Tank.h"
@@ -303,6 +304,36 @@ private Q_SLOTS:
         QCOMPARE(m_app->tagEngine().quality(u"Running"_s), u"Simulated"_s);
         simulation.stop();
         simulation.setSimulatePlcTags(false);
+    }
+
+    void builtInTestPlc()
+    {
+        // The test PLC from the Connections dialog, end to end: a PLC tag on
+        // it is written and read back through the S7 protocol while
+        // simulating.
+        TagConnections* connections = tags().connections();
+        connections->edit(-1);
+        connections->useTestPlc(false);
+        if (!connections->testPlcRunning())
+            QSKIP(qPrintable(connections->testPlcStatus())); // its port is taken here
+        QCOMPARE(connections->plcType(), 0);
+        QCOMPARE(connections->address(), u"127.0.0.1:%1"_s.arg(connections->testPlc().s7Port()));
+        connections->saveDraft();
+        QCOMPARE(project().connections().size(), std::size_t(1));
+        QVERIFY(tags().createTag(u"StartBit"_s, 0, u"Default"_s, 1, u"M0.0"_s) >= 0);
+        QVERIFY(tags().createTag(u"Seconds"_s, 1, u"Default"_s, 1, u"MW100"_s) >= 0);
+        SimulationController& simulation = m_app->simulation();
+        simulation.start();
+        QVERIFY(simulation.isConnectedToPlcs());
+        TagEngine& engine = m_app->tagEngine();
+        QTRY_COMPARE(engine.quality(u"StartBit"_s), u"Good"_s);
+        QCOMPARE(engine.value(u"StartBit"_s), TagValue(false));
+        QVERIFY(engine.writeChecked(u"StartBit"_s, true));
+        QTRY_COMPARE(engine.value(u"StartBit"_s), TagValue(true));
+        QTRY_COMPARE(engine.quality(u"Seconds"_s), u"Good"_s);
+        simulation.stop();
+        connections->stopTestPlc();
+        QVERIFY(!connections->testPlcRunning());
     }
 
     void testConnection()

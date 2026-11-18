@@ -6,8 +6,9 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 
 // PLC connections: a PLC is a name, a PLC type and an IP address, with a
-// Test button. Rack and slot, the CIP route, the Modbus unit and the
-// driver library have defaults and wait under "More settings".
+// Test button. Rack and slot, the CIP route, the Modbus unit and (for
+// Allen-Bradley) the driver library have defaults and wait under "More
+// settings". A test PLC on this computer can stand in for a real one.
 Dialog {
     id: dialog
 
@@ -209,15 +210,17 @@ Dialog {
                 onValueModified: dialog.connections.setDraftField("unit", value)
             }
             Label {
+                visible: plcType.currentIndex === 3
                 text: qsTr("Driver library")
             }
             RowLayout {
+                visible: plcType.currentIndex === 3
                 Layout.fillWidth: true
                 TextField {
                     implicitHeight: dialog.theme.controlHeight
                     Layout.fillWidth: true
                     text: dialog.connections.draft.library ?? ""
-                    placeholderText: plcType.currentIndex <= 1 ? qsTr("snap7, beside the application") : qsTr("plctag, beside the application")
+                    placeholderText: qsTr("plctag, beside the application")
                     Accessible.name: qsTr("Driver library path")
                     onTextEdited: dialog.connections.setDraftField("library", text)
                 }
@@ -225,6 +228,54 @@ Dialog {
                     implicitHeight: dialog.theme.controlHeight
                     text: qsTr("Browse")
                     onClicked: libraryDialog.open()
+                }
+            }
+        }
+
+        // A test PLC on this computer, instead of hardware.
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: testPlc.implicitHeight + 2 * dialog.theme.spacing
+            color: dialog.theme.panelRaised
+            radius: 4
+
+            ColumnLayout {
+                id: testPlc
+
+                anchors.fill: parent
+                anchors.margins: dialog.theme.spacing
+                spacing: dialog.theme.spacing
+
+                Label {
+                    objectName: "testPlcStatus"
+                    Layout.fillWidth: true
+                    text: dialog.connections.testPlcStatus
+                    wrapMode: Text.WordWrap
+                    color: dialog.connections.testPlcRunning ? dialog.theme.good : dialog.theme.textMuted
+                }
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Button {
+                        objectName: "testPlcButton"
+                        implicitHeight: dialog.theme.controlHeight
+                        text: dialog.connections.testPlcRunning ? qsTr("Stop test PLC") : qsTr("Start test PLC")
+                        onClicked: dialog.connections.testPlcRunning ? dialog.connections.stopTestPlc() : dialog.connections.startTestPlc()
+                    }
+                    Item {
+                        Layout.fillWidth: true
+                    }
+                    Button {
+                        objectName: "useTestPlcButton"
+                        implicitHeight: dialog.theme.controlHeight
+                        text: qsTr("Use as S7 PLC")
+                        onClicked: dialog.connections.useTestPlc(false)
+                    }
+                    Button {
+                        implicitHeight: dialog.theme.controlHeight
+                        text: qsTr("Use as Modbus")
+                        onClicked: dialog.connections.useTestPlc(true)
+                    }
                 }
             }
         }
@@ -247,7 +298,7 @@ Dialog {
 
     FileDialog {
         id: libraryDialog
-        title: qsTr("Select the driver library")
+        title: qsTr("Select the libplctag library")
         fileMode: FileDialog.OpenFile
         onAccepted: dialog.connections.setLibraryFile(libraryDialog.selectedFile)
     }

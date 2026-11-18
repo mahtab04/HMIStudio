@@ -389,7 +389,7 @@ Still open in phase 7: trends and the validation pass.
 - Connection editor (type, address, rack/slot or endpoint, cycle time).
 - OPC UA driver (open62541): connect, browse, subscribe, write; tag import
   by browsing the server.
-- S7 driver (Snap7): DB, M, I, Q addresses, polling optimized by block.
+- S7 driver (built in): DB, M, I, Q addresses, polling optimized by block.
 - Modbus TCP driver.
 - Connection status in the status bar; quality flag per tag shown on objects.
 - Reconnect with back-off; all driver errors reported through `Result`.
@@ -402,7 +402,8 @@ address (optional :port) with a Test button; S7 reads and writes DB, M, I
 and Q addresses, Modbus TCP and Allen-Bradley read and write too; the data
 type follows the address; the runtime reads and writes PLC tags (no
 separate monitor mode, "Simulate PLC tags" without a PLC);
-`tools/s7_test_plc.py` is a test S7 PLC. Still open: OPC UA, block-optimized
+S7 and Modbus TCP are built in (no library), and a test PLC (S7 and Modbus
+on 127.0.0.1) starts from the Connections dialog. Still open: OPC UA, block-optimized
 polling, connection status on objects, reconnect back-off, the 24-hour run.
 
 ## Phase 9 — Runtime and deployment

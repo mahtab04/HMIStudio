@@ -12,12 +12,13 @@
 namespace hmi
 {
 
-// Reads and writes PLC tags through the optional Snap7 (Siemens S7) and
-// libplctag (Modbus TCP, Allen-Bradley EtherNet/IP) shared libraries. All
-// native handles, calls, retries and destruction stay on the worker thread.
-// A write is sent at once and the tag is read back on the next poll.
+// Reads and writes PLC tags: Siemens S7 and Modbus TCP through the built-in
+// clients (PlcProtocols.h), Allen-Bradley EtherNet/IP through the optional
+// libplctag library. All sockets, handles, calls, retries and destruction
+// stay on the worker thread. A write is sent at once and the tag is read
+// back on the next poll.
 //
-// A connection may name its native library by path. That path comes from the
+// An Allen-Bradley connection may name its library by path. That path comes from the
 // project file, which may come from anyone, and loading a library runs its
 // code; so a named library is loaded only when it is in `trustedLibraries`
 // (paths the user chose on this computer). The library beside the

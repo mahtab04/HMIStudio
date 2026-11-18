@@ -7,11 +7,14 @@
 #include <QVariantList>
 #include <qqmlintegration.h>
 
+#include <memory>
+
 class QTcpSocket;
 
 namespace hmi
 {
 
+class TestPlc;
 class ToolContext;
 
 // Connection setup shared by the tag table and its source picker: a PLC is
@@ -41,6 +44,9 @@ class TagConnections : public QObject
     Q_PROPERTY(bool testing READ testing NOTIFY testChanged)
     Q_PROPERTY(QString testResult READ testResult NOTIFY testChanged)
     Q_PROPERTY(bool testPassed READ testPassed NOTIFY testChanged)
+    // The test PLC on this computer (S7 and Modbus TCP on 127.0.0.1).
+    Q_PROPERTY(bool testPlcRunning READ testPlcRunning NOTIFY testPlcChanged)
+    Q_PROPERTY(QString testPlcStatus READ testPlcStatus NOTIFY testPlcChanged)
 
 public:
     static constexpr int kTestTimeoutMs = 3000;
@@ -71,6 +77,14 @@ public:
     [[nodiscard]] bool testing() const;
     [[nodiscard]] QString testResult() const { return m_testResult; }
     [[nodiscard]] bool testPassed() const noexcept { return m_testPassed; }
+    [[nodiscard]] bool testPlcRunning() const;
+    [[nodiscard]] QString testPlcStatus() const { return m_testPlcStatus; }
+    Q_INVOKABLE void startTestPlc();
+    Q_INVOKABLE void stopTestPlc();
+    // Fills the draft for the test PLC: as an S7-1200/1500, or as a Modbus
+    // TCP device, at its address (starting it if needed).
+    Q_INVOKABLE void useTestPlc(bool modbus);
+    [[nodiscard]] TestPlc& testPlc() const { return *m_testPlc; }
     [[nodiscard]] QVariantList entries() const;
     [[nodiscard]] QStringList names() const;
     [[nodiscard]] QStringList driverNames() const;
@@ -85,6 +99,7 @@ Q_SIGNALS:
     void draftChanged();
     void messageChanged();
     void testChanged();
+    void testPlcChanged();
     void saved();
     // The user picked a native library with the file dialog: it may be
     // loaded on this computer from now on.
@@ -96,6 +111,8 @@ private:
     QVariantMap m_draft;
     int m_selectedRow = -1;
     QString m_message;
+    std::unique_ptr<TestPlc> m_testPlc;
+    QString m_testPlcStatus;
     QPointer<QTcpSocket> m_test;
     QString m_testResult;
     bool m_testPassed = false;

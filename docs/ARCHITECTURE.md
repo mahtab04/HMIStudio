@@ -620,8 +620,9 @@ licence column is from memory and should be confirmed on the project page.
 | Logging | spdlog | MIT | Or `QLoggingCategory` with no dependency |
 | Expressions in bindings | exprtk | MIT | Alternative: `QJSEngine` if scripts are wanted |
 | OPC UA client | open62541 | MPL 2.0 | Qt OPC UA is GPL/commercial only |
-| Siemens S7 | Snap7 | LGPL 3 | Covers S7-300/400/1200/1500 with PUT/GET enabled |
-| Modbus TCP/RTU | Qt SerialBus or libmodbus | LGPL | |
+| Siemens S7 | built in (`comm/PlcProtocols`) | — | ISO-on-TCP and S7 read/write; S7-300/400/1200/1500 with PUT/GET |
+| Modbus TCP | built in (`comm/PlcProtocols`) | — | FC1-6 and FC16; RTU would need Qt SerialBus |
+| Allen-Bradley EtherNet/IP | libplctag | MPL 2.0 / LGPL | Loaded at runtime when present |
 | Tests | Qt Test | LGPL | Qt Quick Test only if QML-level tests become necessary |
 | JSON | `QJsonDocument` | part of Qt | No extra dependency needed |
 | SVG rendering | Qt SVG | part of Qt (LGPL) | Default backend, see section 14 |

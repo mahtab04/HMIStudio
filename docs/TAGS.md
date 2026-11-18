@@ -32,17 +32,24 @@ The Quality column reports **Simulated**, **Waiting** (no value from the PLC yet
 
 ## Testing without hardware
 
-- **A test S7 PLC on this computer**: `tools/s7_test_plc.py` runs an S7 server ([python-snap7](https://github.com/gijzelaerr/python-snap7)) with DB1 and the markers, and changes a few values. Run `pip install python-snap7`, then `python tools/s7_test_plc.py`, add a PLC *Siemens S7-1200 / S7-1500* at `127.0.0.1:1102`, and tags `Level` (DB1.DBD0, a ramp), `Running` (DB1.DBX4.0, toggles), `Setpoint` (DB1.DBW6) and `Start` (M0.0); the script prints what the HMI writes. Port 102 needs administrator rights, hence 1102.
-- **Siemens S7-PLCSIM Advanced** (licensed) simulates an S7-1500 that clients reach over TCP/IP; allow PUT/GET in its CPU.
-- **Modbus TCP**: any Modbus TCP server or simulator, or a soft PLC such as OpenPLC.
+**The built-in test PLC.** In Connections, **Start test PLC** runs a PLC on this computer: an S7 server at `127.0.0.1:1102` (it answers like an S7-1200/1500 with PUT/GET) and a Modbus TCP server at `127.0.0.1:1502`. **Use as S7 PLC** (or **Use as Modbus**) fills in the PLC for you; save it, add tags on it and press Simulate. Nothing to install.
 
-## Driver libraries
+Its memory starts at zero and keeps what the HMI writes: any data block (DB1, DB2, … 1024 bytes each), markers M (1024 bytes), inputs I and outputs Q (128 bytes each); 10,000 coils, discrete inputs, holding and input registers. So a button writing `M0.0` and a lamp showing `M0.0` show the round trip through the S7 protocol. A heartbeat shows live values: `MW100` counts seconds and `M102.0` toggles every second; on Modbus `ir0` counts and `di0` toggles. It runs while the editor is open and stops with it.
 
-The runtime talks to S7 PLCs through [Snap7](https://snap7.sourceforge.net/) and to Modbus TCP and Allen-Bradley PLCs through [libplctag](https://github.com/libplctag/libplctag), loaded when needed. Put `snap7.dll` and `plctag.dll` (Linux: `libsnap7.so`, `libplctag.so`), built for the same architecture as the application, beside the application. They are not part of this repository.
+**Siemens S7-PLCSIM.**
+- *S7-PLCSIM Advanced* simulates an S7-1500 that other programs reach over TCP/IP. In its control panel choose *PLCSIM Virtual Eth. Adapter* (or TCP/IP) as the online access, start an instance with an IP address, download the PLC program from TIA Portal, and allow **PUT/GET** in the CPU (Protection & Security). Then add a PLC *Siemens S7-1200 / S7-1500* at that IP address and **Test** it.
+- The *S7-PLCSIM* that comes with TIA Portal normally talks only to TIA Portal on the same computer, not to other programs over the network; check your version's documentation for a TCP/IP or virtual Ethernet mode before relying on it.
+- *In a virtual machine*: the VM's network must let this computer reach the simulated PLC's address — use a bridged or host-only network adapter, give the PLC instance an address on that network, and check with **Test**. Or run HMI Studio inside the same VM.
 
-Loading a library runs its code, and a project file can come from anyone. So a library path stored in a project (More settings > Driver library) is loaded only after it was chosen with **Browse** on this computer; the choice is remembered in the local application settings, not in the project. The library beside the application is always allowed.
+**Modbus TCP**: any Modbus TCP server or simulator, or a soft PLC such as OpenPLC.
 
-S7-1200/1500 CPUs answer only with **PUT/GET access** allowed (CPU properties > Protection & Security) and read **non-optimized** data blocks (block access); markers, inputs and outputs need neither. [Snap7 client compatibility](https://snap7.sourceforge.net/snap7_client.html)
+## Drivers
+
+S7 (ISO-on-TCP, the S7 communication protocol) and Modbus TCP are built into HMI Studio: nothing to install. Allen-Bradley (EtherNet/IP) uses the [libplctag](https://github.com/libplctag/libplctag) library: put `plctag.dll` (Linux `libplctag.so`, built for the same architecture) beside the application, or choose it under More settings.
+
+Loading a library runs its code, and a project file can come from anyone. So a library path stored in a project is loaded only after it was chosen with **Browse** on this computer; the choice is remembered in the local application settings, not in the project. The library beside the application is always allowed.
+
+S7-1200/1500 CPUs answer only with **PUT/GET access** allowed (CPU properties > Protection & Security) and read **non-optimized** data blocks (block access); markers, inputs and outputs need only PUT/GET.
 
 ## More
 
@@ -54,7 +61,7 @@ CSV export includes `table`, `connection`, `address` and `acquisitionMs`. Connec
 
 Connections are stored in `project.json`, tag settings in `tags.json`. Older projects load unchanged.
 
-The driver tests use a deterministic shared-library fixture: addresses, reads and writes, byte order, conversions, acquisition intervals, ports, missing libraries and failed reads. Validation against physical PLC hardware is still required for deployment.
+The driver tests run the S7 and Modbus clients against the built-in test PLC over real sockets (every area and size, bits beside other bits, byte order, out-of-range replies, unreachable PLCs), and Allen-Bradley against a deterministic libplctag fixture. Validation against physical PLC hardware is still required for deployment.
 
 ## Runtime operation
 

@@ -298,6 +298,7 @@ private Q_SLOTS:
         if (const QString path = qEnvironmentVariable("HMI_CONNECTIONS_SCREENSHOT");
             !path.isEmpty())
         {
+            connections->useTestPlc(false);
             QTest::qWait(200);
             QVERIFY(window->grabWindow().save(path));
         }
